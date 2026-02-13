@@ -1,4 +1,57 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+
+const modalAnimationStyles = `
+  @keyframes modalFadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  
+  @keyframes modalSlideIn {
+    from {
+      opacity: 0;
+      transform: scale(0.9) translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+  
+  @keyframes modalFadeOut {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+  
+  @keyframes modalSlideOut {
+    from {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: scale(0.9) translateY(-20px);
+    }
+  }
+  
+  @keyframes toastSlideIn {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  }
+`
 
 export default function MarketsChannels() {
   const [activeTab, setActiveTab] = useState('markets')
@@ -19,7 +72,12 @@ export default function MarketsChannels() {
   ])
 
   const [showModal, setShowModal] = useState(false)
+  const [isClosing, setIsClosing] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
+  const [deletedItem, setDeletedItem] = useState(null)
+  const [deletedType, setDeletedType] = useState(null)
+  const [showUndoToast, setShowUndoToast] = useState(false)
+  const deleteTimerRef = useRef(null)
   const [formData, setFormData] = useState({})
 
   const handleAdd = (type) => {
@@ -29,22 +87,59 @@ export default function MarketsChannels() {
     } else {
       setFormData({ name: '', type: 'online', commission: 0, description: '', isActive: true })
     }
+    setIsClosing(false)
     setShowModal(true)
   }
 
   const handleEdit = (item, type) => {
     setEditingItem(item)
     setFormData(item)
+    setIsClosing(false)
     setShowModal(true)
   }
 
-  const handleDelete = (id, type) => {
-    if (window.confirm('确定要删除此项吗？')) {
-      if (type === 'markets') {
-        setMarkets(markets.filter((m) => m.id !== id))
+  const handleCloseModal = () => {
+    setIsClosing(true)
+    setTimeout(() => {
+      setShowModal(false)
+      setIsClosing(false)
+    }, 200)
+  }
+
+  const handleDelete = (item, type) => {
+    setDeletedItem(item)
+    setDeletedType(type)
+    if (type === 'markets') {
+      setMarkets(prev => prev.filter(m => m.id !== item.id))
+    } else {
+      setChannels(prev => prev.filter(c => c.id !== item.id))
+    }
+    setShowUndoToast(true)
+    
+    deleteTimerRef.current = setTimeout(() => {
+      confirmDelete()
+    }, 5000)
+  }
+
+  const confirmDelete = () => {
+    setDeletedItem(null)
+    setDeletedType(null)
+    setShowUndoToast(false)
+  }
+
+  const handleUndoDelete = () => {
+    if (deleteTimerRef.current) {
+      clearTimeout(deleteTimerRef.current)
+    }
+    if (deletedItem && deletedType) {
+      if (deletedType === 'markets') {
+        setMarkets(prev => [...prev, deletedItem])
       } else {
-        setChannels(channels.filter((c) => c.id !== id))
+        setChannels(prev => [...prev, deletedItem])
       }
+      setDeletedItem(null)
+      setDeletedType(null)
+      setShowUndoToast(false)
     }
   }
 
@@ -75,8 +170,18 @@ export default function MarketsChannels() {
   }
 
   return (
-    <div>
-      <div style={styles.header}>
+    <div style={styles.container}>
+      {showUndoToast && (
+        <div style={styles.undoToast}>
+          <style>{modalAnimationStyles}</style>
+          <span>{deletedType === 'markets' ? '市场已删除' : '销售渠道已删除'}</span>
+          <button style={styles.undoButton} onClick={handleUndoDelete}>
+            撤销
+          </button>
+        </div>
+      )}
+      
+      <div style={styles.topBar}>
         <h2 style={styles.pageTitle}>市场与渠道管理</h2>
       </div>
 
@@ -121,7 +226,7 @@ export default function MarketsChannels() {
             </button>
           </div>
 
-          <div style={styles.tableContainer}>
+          <div style={styles.tableCard}>
             <table style={styles.table}>
               <thead>
                 <tr style={styles.tableHeader}>
@@ -137,11 +242,11 @@ export default function MarketsChannels() {
                 {markets.map((market) => (
                   <tr key={market.id} style={styles.tableRow}>
                     <td style={styles.td}>
-                      <strong>{market.name}</strong>
+                      <span style={styles.productName}>{market.name}</span>
                     </td>
-                    <td style={styles.td}>{market.code}</td>
-                    <td style={styles.td}>{market.currency}</td>
-                    <td style={styles.td}>{market.description}</td>
+                    <td style={styles.tdSecondary}>{market.code}</td>
+                    <td style={styles.tdSecondary}>{market.currency}</td>
+                    <td style={styles.tdSecondary}>{market.description}</td>
                     <td style={styles.td}>
                       <button
                         style={{
@@ -157,7 +262,7 @@ export default function MarketsChannels() {
                       <button style={styles.editButton} onClick={() => handleEdit(market, 'markets')}>
                         编辑
                       </button>
-                      <button style={styles.deleteButton} onClick={() => handleDelete(market.id, 'markets')}>
+                      <button style={styles.deleteButton} onClick={() => handleDelete(market, 'markets')}>
                         删除
                       </button>
                     </td>
@@ -193,7 +298,7 @@ export default function MarketsChannels() {
             </button>
           </div>
 
-          <div style={styles.tableContainer}>
+          <div style={styles.tableCard}>
             <table style={styles.table}>
               <thead>
                 <tr style={styles.tableHeader}>
@@ -209,18 +314,19 @@ export default function MarketsChannels() {
                 {channels.map((channel) => (
                   <tr key={channel.id} style={styles.tableRow}>
                     <td style={styles.td}>
-                      <strong>{channel.name}</strong>
+                      <span style={styles.productName}>{channel.name}</span>
                     </td>
                     <td style={styles.td}>
                       <span style={{
                         ...styles.typeBadge,
-                        backgroundColor: channel.type === 'online' ? '#4e73df' : '#36b9cc',
+                        backgroundColor: channel.type === 'online' ? '#DBEAFE' : '#D1FAE5',
+                        color: channel.type === 'online' ? '#2563EB' : '#059669',
                       }}>
                         {channel.type === 'online' ? '线上' : '线下'}
                       </span>
                     </td>
-                    <td style={styles.td}>{channel.commission}%</td>
-                    <td style={styles.td}>{channel.description}</td>
+                    <td style={styles.tdPrice}>{channel.commission}%</td>
+                    <td style={styles.tdSecondary}>{channel.description}</td>
                     <td style={styles.td}>
                       <button
                         style={{
@@ -236,7 +342,7 @@ export default function MarketsChannels() {
                       <button style={styles.editButton} onClick={() => handleEdit(channel, 'channels')}>
                         编辑
                       </button>
-                      <button style={styles.deleteButton} onClick={() => handleDelete(channel.id, 'channels')}>
+                      <button style={styles.deleteButton} onClick={() => handleDelete(channel, 'channels')}>
                         删除
                       </button>
                     </td>
@@ -249,132 +355,165 @@ export default function MarketsChannels() {
       )}
 
       {showModal && (
-        <div style={styles.modalOverlay} onClick={() => setShowModal(false)}>
-          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+        <div 
+          style={{
+            ...styles.modalOverlay,
+            animation: isClosing ? 'modalFadeOut 0.2s ease-out forwards' : 'modalFadeIn 0.2s ease-out forwards',
+          }} 
+          onClick={handleCloseModal}
+        >
+          <style>{modalAnimationStyles}</style>
+          <div 
+            style={{
+              ...styles.modal,
+              animation: isClosing ? 'modalSlideOut 0.2s ease-out forwards' : 'modalSlideIn 0.2s ease-out forwards',
+            }} 
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 style={styles.modalTitle}>
               {editingItem ? '编辑' : '添加'}{activeTab === 'markets' ? '市场' : '销售渠道'}
             </h3>
-            <form onSubmit={handleSubmit}>
-              {activeTab === 'markets' ? (
-                <>
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>市场名称</label>
-                    <input
-                      style={styles.input}
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>市场代码</label>
-                    <input
-                      style={styles.input}
-                      value={formData.code}
-                      onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                      placeholder="例如: CN"
-                      required
-                    />
-                  </div>
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>货币</label>
-                    <select
-                      style={styles.input}
-                      value={formData.currency}
-                      onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                    >
-                      <option value="CNY">人民币 (CNY)</option>
-                      <option value="USD">美元 (USD)</option>
-                      <option value="EUR">欧元 (EUR)</option>
-                      <option value="JPY">日元 (JPY)</option>
-                      <option value="GBP">英镑 (GBP)</option>
-                    </select>
-                  </div>
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>描述</label>
-                    <input
-                      style={styles.input}
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    />
-                  </div>
-                  <div style={styles.checkboxGroup}>
-                    <input
-                      type="checkbox"
-                      id="isActive"
-                      checked={formData.isActive}
-                      onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                    />
-                    <label htmlFor="isActive" style={styles.checkboxLabel}>
-                      启用此市场
-                    </label>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>渠道名称</label>
-                    <input
-                      style={styles.input}
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>渠道类型</label>
-                    <select
-                      style={styles.input}
-                      value={formData.type}
-                      onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                    >
-                      <option value="online">线上</option>
-                      <option value="offline">线下</option>
-                    </select>
-                  </div>
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>佣金率 (%)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="100"
-                      style={styles.input}
-                      value={formData.commission}
-                      onChange={(e) => setFormData({ ...formData, commission: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>描述</label>
-                    <input
-                      style={styles.input}
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    />
-                  </div>
-                  <div style={styles.checkboxGroup}>
-                    <input
-                      type="checkbox"
-                      id="isActive"
-                      checked={formData.isActive}
-                      onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                    />
-                    <label htmlFor="isActive" style={styles.checkboxLabel}>
-                      启用此渠道
-                    </label>
-                  </div>
-                </>
-              )}
-              <div style={styles.modalButtons}>
-                <button type="button" style={styles.cancelButton} onClick={() => setShowModal(false)}>
-                  取消
-                </button>
-                <button type="submit" style={styles.submitButton}>
-                  {editingItem ? '更新' : '添加'}
-                </button>
-              </div>
-            </form>
+            <div style={styles.formScroll}>
+              <form onSubmit={handleSubmit}>
+                {activeTab === 'markets' ? (
+                  <>
+                    <div style={styles.formSection}>
+                      <div style={styles.sectionTitle}>基础信息</div>
+                      <div style={styles.formRow}>
+                        <div style={{ ...styles.formGroup, flex: 1 }}>
+                          <label style={styles.label}>市场名称</label>
+                          <input
+                            style={styles.input}
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div style={{ ...styles.formGroup, flex: 1 }}>
+                          <label style={styles.label}>市场代码</label>
+                          <input
+                            style={styles.input}
+                            value={formData.code}
+                            onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                            placeholder="例如: CN"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={styles.formSection}>
+                      <div style={styles.sectionTitle}>市场设置</div>
+                      <div style={styles.formGroup}>
+                        <label style={styles.label}>货币</label>
+                        <select
+                          style={styles.input}
+                          value={formData.currency}
+                          onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                        >
+                          <option value="CNY">人民币 (CNY)</option>
+                          <option value="USD">美元 (USD)</option>
+                          <option value="EUR">欧元 (EUR)</option>
+                          <option value="JPY">日元 (JPY)</option>
+                          <option value="GBP">英镑 (GBP)</option>
+                        </select>
+                      </div>
+                      <div style={styles.formGroup}>
+                        <label style={styles.label}>描述</label>
+                        <input
+                          style={styles.input}
+                          value={formData.description}
+                          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        />
+                      </div>
+                      <div style={styles.checkboxGroup}>
+                        <input
+                          type="checkbox"
+                          id="isActive"
+                          checked={formData.isActive}
+                          onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                        />
+                        <label htmlFor="isActive" style={styles.checkboxLabel}>
+                          启用此市场
+                        </label>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={styles.formSection}>
+                      <div style={styles.sectionTitle}>基础信息</div>
+                      <div style={styles.formGroup}>
+                        <label style={styles.label}>渠道名称</label>
+                        <input
+                          style={styles.input}
+                          value={formData.name}
+                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div style={styles.formGroup}>
+                        <label style={styles.label}>描述</label>
+                        <input
+                          style={styles.input}
+                          value={formData.description}
+                          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={styles.formSection}>
+                      <div style={styles.sectionTitle}>渠道设置</div>
+                      <div style={styles.formRow}>
+                        <div style={{ ...styles.formGroup, flex: 1 }}>
+                          <label style={styles.label}>渠道类型</label>
+                          <select
+                            style={styles.input}
+                            value={formData.type}
+                            onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                          >
+                            <option value="online">线上</option>
+                            <option value="offline">线下</option>
+                          </select>
+                        </div>
+                        <div style={{ ...styles.formGroup, flex: 1 }}>
+                          <label style={styles.label}>佣金率 (%)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max="100"
+                            style={styles.input}
+                            value={formData.commission}
+                            onChange={(e) => setFormData({ ...formData, commission: e.target.value })}
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div style={styles.checkboxGroup}>
+                        <input
+                          type="checkbox"
+                          id="isActive"
+                          checked={formData.isActive}
+                          onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                        />
+                        <label htmlFor="isActive" style={styles.checkboxLabel}>
+                          启用此渠道
+                        </label>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </form>
+            </div>
+            <div style={styles.modalButtons}>
+              <button type="button" style={styles.cancelButton} onClick={handleCloseModal}>
+                取消
+              </button>
+              <button type="button" style={styles.submitButton} onClick={handleSubmit}>
+                {editingItem ? '保存修改' : '添加'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -383,40 +522,76 @@ export default function MarketsChannels() {
 }
 
 const styles = {
-  header: {
-    marginBottom: '24px',
+  container: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '20px',
+  },
+  undoToast: {
+    position: 'fixed',
+    bottom: '24px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    backgroundColor: '#333',
+    color: '#fff',
+    padding: '12px 24px',
+    borderRadius: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+    border: '1px solid rgba(255,255,255,0.1)',
+    zIndex: 1001,
+    animation: 'toastSlideIn 0.3s ease-out',
+  },
+  undoButton: {
+    backgroundColor: '#4e73df',
+    color: '#fff',
+    border: 'none',
+    padding: '6px 16px',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: '500',
+  },
+  topBar: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   pageTitle: {
     fontSize: '24px',
     fontWeight: '600',
-    color: '#333',
+    color: '#1a1a2e',
+    margin: 0,
   },
   tabs: {
     display: 'flex',
-    gap: '8px',
-    marginBottom: '24px',
-    borderBottom: '1px solid #E8ECF1',
+    gap: '4px',
+    backgroundColor: '#F3F4F6',
+    padding: '4px',
+    borderRadius: '8px',
+    width: 'fit-content',
   },
   tab: {
-    padding: '12px 24px',
+    padding: '10px 20px',
     backgroundColor: 'transparent',
     border: 'none',
-    borderBottom: '2px solid transparent',
-    marginBottom: '-1px',
+    borderRadius: '6px',
     cursor: 'pointer',
     fontSize: '14px',
-    color: '#5a6a85',
+    fontWeight: '500',
+    color: '#6B7280',
+    transition: 'all 0.15s',
   },
   tabActive: {
-    borderBottomColor: '#4e73df',
-    color: '#4e73df',
-    fontWeight: '600',
+    backgroundColor: '#FFFFFF',
+    color: '#111827',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
   },
   summaryCards: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
     gap: '16px',
-    marginBottom: '24px',
   },
   summaryCard: {
     backgroundColor: '#FFFFFF',
@@ -425,36 +600,39 @@ const styles = {
     border: '1px solid #E8ECF1',
   },
   summaryLabel: {
-    fontSize: '14px',
-    color: '#5a6a85',
+    fontSize: '13px',
+    color: '#6B7280',
     marginBottom: '8px',
+    fontWeight: '500',
   },
   summaryValue: {
     fontSize: '24px',
     fontWeight: '700',
-    color: '#333',
+    color: '#111827',
   },
   sectionHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '16px',
   },
   sectionTitle: {
-    fontSize: '18px',
+    fontSize: '16px',
     fontWeight: '600',
-    color: '#333',
+    color: '#111827',
+    margin: 0,
   },
   addButton: {
-    padding: '8px 16px',
+    padding: '10px 20px',
     backgroundColor: '#4e73df',
     color: '#fff',
     border: 'none',
-    borderRadius: '4px',
+    borderRadius: '6px',
     cursor: 'pointer',
     fontSize: '14px',
+    fontWeight: '500',
+    transition: 'background-color 0.2s',
   },
-  tableContainer: {
+  tableCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: '8px',
     border: '1px solid #E8ECF1',
@@ -468,26 +646,43 @@ const styles = {
     backgroundColor: '#FAFBFC',
   },
   th: {
-    padding: '16px',
+    padding: '14px 20px',
     textAlign: 'left',
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#5a6a85',
+    fontSize: '13px',
+    fontWeight: '500',
+    color: '#6B7280',
     borderBottom: '1px solid #E8ECF1',
   },
   tableRow: {
     borderBottom: '1px solid #E8ECF1',
+    transition: 'background-color 0.15s',
   },
   td: {
-    padding: '16px',
+    padding: '14px 20px',
     fontSize: '14px',
     color: '#333',
   },
+  tdSecondary: {
+    padding: '14px 20px',
+    fontSize: '14px',
+    color: '#6B7280',
+  },
+  productName: {
+    fontSize: '16px',
+    fontWeight: '600',
+    color: '#111827',
+  },
+  tdPrice: {
+    padding: '14px 20px',
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#2563EB',
+  },
   typeBadge: {
     padding: '4px 12px',
-    borderRadius: '12px',
-    color: '#fff',
+    borderRadius: '4px',
     fontSize: '12px',
+    fontWeight: '500',
   },
   statusButton: {
     padding: '4px 12px',
@@ -495,26 +690,32 @@ const styles = {
     borderRadius: '4px',
     color: '#fff',
     fontSize: '12px',
+    fontWeight: '500',
     cursor: 'pointer',
+    transition: 'opacity 0.15s',
   },
   editButton: {
-    padding: '6px 12px',
-    backgroundColor: '#4e73df',
-    color: '#fff',
+    padding: '6px 14px',
+    backgroundColor: '#EEF2FF',
+    color: '#4e73df',
     border: 'none',
     borderRadius: '4px',
     cursor: 'pointer',
-    fontSize: '12px',
+    fontSize: '13px',
+    fontWeight: '500',
     marginRight: '8px',
+    transition: 'background-color 0.2s',
   },
   deleteButton: {
-    padding: '6px 12px',
-    backgroundColor: '#e74a3b',
-    color: '#fff',
+    padding: '6px 14px',
+    backgroundColor: '#FEF2F2',
+    color: '#e74a3b',
     border: 'none',
     borderRadius: '4px',
     cursor: 'pointer',
-    fontSize: '12px',
+    fontSize: '13px',
+    fontWeight: '500',
+    transition: 'background-color 0.2s',
   },
   modalOverlay: {
     position: 'fixed',
@@ -530,39 +731,67 @@ const styles = {
   },
   modal: {
     backgroundColor: '#FFFFFF',
-    padding: '32px',
-    borderRadius: '8px',
+    padding: '0',
+    borderRadius: '12px',
     border: '1px solid #E8ECF1',
-    width: '400px',
+    width: '480px',
     maxWidth: '90%',
+    maxHeight: '90vh',
+    display: 'flex',
+    flexDirection: 'column',
   },
   modalTitle: {
-    fontSize: '20px',
+    fontSize: '18px',
     fontWeight: '600',
-    marginBottom: '24px',
-    color: '#333',
+    padding: '20px 24px',
+    margin: 0,
+    color: '#111827',
+    borderBottom: '1px solid #E8ECF1',
+    backgroundColor: '#FAFBFC',
+    flexShrink: 0,
+  },
+  formScroll: {
+    flex: 1,
+    overflowY: 'auto',
+  },
+  formSection: {
+    padding: '20px 24px',
+  },
+  sectionTitle: {
+    fontSize: '13px',
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: '16px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
   },
   formGroup: {
     marginBottom: '16px',
+  },
+  formRow: {
+    display: 'flex',
+    gap: '16px',
   },
   label: {
     display: 'block',
     marginBottom: '8px',
     fontSize: '14px',
+    fontWeight: '500',
     color: '#5a6a85',
   },
   input: {
     width: '100%',
-    padding: '10px',
+    padding: '10px 14px',
     border: '1px solid #E8ECF1',
-    borderRadius: '4px',
+    borderRadius: '6px',
     fontSize: '14px',
+    backgroundColor: '#FFFFFF',
+    transition: 'border-color 0.2s',
   },
   checkboxGroup: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    marginBottom: '16px',
   },
   checkboxLabel: {
     fontSize: '14px',
@@ -572,24 +801,31 @@ const styles = {
     display: 'flex',
     justifyContent: 'flex-end',
     gap: '12px',
-    marginTop: '24px',
+    padding: '16px 24px',
+    backgroundColor: '#FAFBFC',
+    borderTop: '1px solid #E8ECF1',
+    flexShrink: 0,
   },
   cancelButton: {
-    padding: '10px 20px',
-    backgroundColor: '#6c757d',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '4px',
+    padding: '10px 24px',
+    backgroundColor: '#FFFFFF',
+    color: '#374151',
+    border: '1px solid #D1D5DB',
+    borderRadius: '6px',
     cursor: 'pointer',
     fontSize: '14px',
+    fontWeight: '500',
+    transition: 'all 0.15s',
   },
   submitButton: {
-    padding: '10px 20px',
-    backgroundColor: '#4e73df',
+    padding: '10px 24px',
+    backgroundColor: '#2563EB',
     color: '#fff',
     border: 'none',
-    borderRadius: '4px',
+    borderRadius: '6px',
     cursor: 'pointer',
     fontSize: '14px',
+    fontWeight: '500',
+    transition: 'background-color 0.15s',
   },
 }

@@ -1,4 +1,57 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+
+const modalAnimationStyles = `
+  @keyframes modalFadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  
+  @keyframes modalSlideIn {
+    from {
+      opacity: 0;
+      transform: scale(0.9) translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+  
+  @keyframes modalFadeOut {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+  
+  @keyframes modalSlideOut {
+    from {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: scale(0.9) translateY(-20px);
+    }
+  }
+  
+  @keyframes toastSlideIn {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  }
+`
 
 export default function Costs() {
   const [costs, setCosts] = useState([
@@ -8,7 +61,11 @@ export default function Costs() {
   ])
 
   const [showModal, setShowModal] = useState(false)
+  const [isClosing, setIsClosing] = useState(false)
   const [editingCost, setEditingCost] = useState(null)
+  const [deletedCost, setDeletedCost] = useState(null)
+  const [showUndoToast, setShowUndoToast] = useState(false)
+  const deleteTimerRef = useRef(null)
   const [formData, setFormData] = useState({
     productName: '',
     sku: '',
@@ -20,18 +77,48 @@ export default function Costs() {
   const handleAdd = () => {
     setEditingCost(null)
     setFormData({ productName: '', sku: '', materialCost: '', laborCost: '', overheadCost: '' })
+    setIsClosing(false)
     setShowModal(true)
   }
 
   const handleEdit = (cost) => {
     setEditingCost(cost)
     setFormData(cost)
+    setIsClosing(false)
     setShowModal(true)
   }
 
-  const handleDelete = (id) => {
-    if (window.confirm('确定要删除此成本数据吗？')) {
-      setCosts(costs.filter((c) => c.id !== id))
+  const handleCloseModal = () => {
+    setIsClosing(true)
+    setTimeout(() => {
+      setShowModal(false)
+      setIsClosing(false)
+    }, 200)
+  }
+
+  const handleDelete = (cost) => {
+    setDeletedCost(cost)
+    setCosts(prev => prev.filter(c => c.id !== cost.id))
+    setShowUndoToast(true)
+    
+    deleteTimerRef.current = setTimeout(() => {
+      confirmDelete()
+    }, 5000)
+  }
+
+  const confirmDelete = () => {
+    setDeletedCost(null)
+    setShowUndoToast(false)
+  }
+
+  const handleUndoDelete = () => {
+    if (deleteTimerRef.current) {
+      clearTimeout(deleteTimerRef.current)
+    }
+    if (deletedCost) {
+      setCosts(prev => [...prev, deletedCost])
+      setDeletedCost(null)
+      setShowUndoToast(false)
     }
   }
 
@@ -48,12 +135,24 @@ export default function Costs() {
   }
 
   return (
-    <div>
-      <div style={styles.header}>
+    <div style={styles.container}>
+      {showUndoToast && (
+        <div style={styles.undoToast}>
+          <style>{modalAnimationStyles}</style>
+          <span>成本数据已删除</span>
+          <button style={styles.undoButton} onClick={handleUndoDelete}>
+            撤销
+          </button>
+        </div>
+      )}
+      
+      <div style={styles.topBar}>
         <h2 style={styles.pageTitle}>成本数据管理</h2>
-        <button style={styles.addButton} onClick={handleAdd}>
-          添加成本数据
-        </button>
+        <div style={styles.topActions}>
+          <button style={styles.addButton} onClick={handleAdd}>
+            添加成本数据
+          </button>
+        </div>
       </div>
 
       <div style={styles.summaryCards}>
@@ -75,12 +174,12 @@ export default function Costs() {
         </div>
       </div>
 
-      <div style={styles.tableContainer}>
+      <div style={styles.tableCard}>
         <table style={styles.table}>
           <thead>
             <tr style={styles.tableHeader}>
               <th style={styles.th}>SKU</th>
-              <th style={styles.th}>产品名称</th>
+              <th style={styles.th}>产品</th>
               <th style={styles.th}>材料成本</th>
               <th style={styles.th}>人工成本</th>
               <th style={styles.th}>间接成本</th>
@@ -91,17 +190,19 @@ export default function Costs() {
           <tbody>
             {costs.map((cost) => (
               <tr key={cost.id} style={styles.tableRow}>
-                <td style={styles.td}>{cost.sku}</td>
-                <td style={styles.td}>{cost.productName}</td>
-                <td style={styles.td}>¥{cost.materialCost.toLocaleString()}</td>
-                <td style={styles.td}>¥{cost.laborCost.toLocaleString()}</td>
-                <td style={styles.td}>¥{cost.overheadCost.toLocaleString()}</td>
-                <td style={styles.td}><strong>¥{cost.totalCost.toLocaleString()}</strong></td>
+                <td style={styles.tdSecondary}>{cost.sku}</td>
+                <td style={styles.td}>
+                  <span style={styles.productName}>{cost.productName}</span>
+                </td>
+                <td style={styles.tdSecondary}>¥{cost.materialCost.toLocaleString()}</td>
+                <td style={styles.tdSecondary}>¥{cost.laborCost.toLocaleString()}</td>
+                <td style={styles.tdSecondary}>¥{cost.overheadCost.toLocaleString()}</td>
+                <td style={styles.tdPrice}>¥{cost.totalCost.toLocaleString()}</td>
                 <td style={styles.td}>
                   <button style={styles.editButton} onClick={() => handleEdit(cost)}>
                     编辑
                   </button>
-                  <button style={styles.deleteButton} onClick={() => handleDelete(cost.id)}>
+                  <button style={styles.deleteButton} onClick={() => handleDelete(cost)}>
                     删除
                   </button>
                 </td>
@@ -112,67 +213,91 @@ export default function Costs() {
       </div>
 
       {showModal && (
-        <div style={styles.modalOverlay} onClick={() => setShowModal(false)}>
-          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+        <div 
+          style={{
+            ...styles.modalOverlay,
+            animation: isClosing ? 'modalFadeOut 0.2s ease-out forwards' : 'modalFadeIn 0.2s ease-out forwards',
+          }} 
+          onClick={handleCloseModal}
+        >
+          <style>{modalAnimationStyles}</style>
+          <div 
+            style={{
+              ...styles.modal,
+              animation: isClosing ? 'modalSlideOut 0.2s ease-out forwards' : 'modalSlideIn 0.2s ease-out forwards',
+            }} 
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 style={styles.modalTitle}>{editingCost ? '编辑成本数据' : '添加成本数据'}</h3>
-            <form onSubmit={handleSubmit}>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>SKU</label>
-                <input
-                  style={styles.input}
-                  value={formData.sku}
-                  onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                  required
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>产品名称</label>
-                <input
-                  style={styles.input}
-                  value={formData.productName}
-                  onChange={(e) => setFormData({ ...formData, productName: e.target.value })}
-                  required
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>材料成本</label>
-                <input
-                  type="number"
-                  style={styles.input}
-                  value={formData.materialCost}
-                  onChange={(e) => setFormData({ ...formData, materialCost: e.target.value })}
-                  required
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>人工成本</label>
-                <input
-                  type="number"
-                  style={styles.input}
-                  value={formData.laborCost}
-                  onChange={(e) => setFormData({ ...formData, laborCost: e.target.value })}
-                  required
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>间接成本</label>
-                <input
-                  type="number"
-                  style={styles.input}
-                  value={formData.overheadCost}
-                  onChange={(e) => setFormData({ ...formData, overheadCost: e.target.value })}
-                  required
-                />
-              </div>
-              <div style={styles.modalButtons}>
-                <button type="button" style={styles.cancelButton} onClick={() => setShowModal(false)}>
-                  取消
-                </button>
-                <button type="submit" style={styles.submitButton}>
-                  {editingCost ? '更新' : '添加'}
-                </button>
-              </div>
-            </form>
+            <div style={styles.formScroll}>
+              <form onSubmit={handleSubmit}>
+                <div style={styles.formSection}>
+                  <div style={styles.sectionTitle}>基础信息</div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>产品名称</label>
+                    <input
+                      style={styles.input}
+                      value={formData.productName}
+                      onChange={(e) => setFormData({ ...formData, productName: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>SKU</label>
+                    <input
+                      style={styles.input}
+                      value={formData.sku}
+                      onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div style={styles.formSection}>
+                  <div style={styles.sectionTitle}>成本信息</div>
+                  <div style={styles.formRow}>
+                    <div style={{ ...styles.formGroup, flex: 1 }}>
+                      <label style={styles.label}>材料成本</label>
+                      <input
+                        type="number"
+                        style={styles.input}
+                        value={formData.materialCost}
+                        onChange={(e) => setFormData({ ...formData, materialCost: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div style={{ ...styles.formGroup, flex: 1 }}>
+                      <label style={styles.label}>人工成本</label>
+                      <input
+                        type="number"
+                        style={styles.input}
+                        value={formData.laborCost}
+                        onChange={(e) => setFormData({ ...formData, laborCost: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>间接成本</label>
+                    <input
+                      type="number"
+                      style={styles.input}
+                      value={formData.overheadCost}
+                      onChange={(e) => setFormData({ ...formData, overheadCost: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+            <div style={styles.modalButtons}>
+              <button type="button" style={styles.cancelButton} onClick={handleCloseModal}>
+                取消
+              </button>
+              <button type="button" style={styles.submitButton} onClick={handleSubmit}>
+                {editingCost ? '保存修改' : '添加'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -181,31 +306,68 @@ export default function Costs() {
 }
 
 const styles = {
-  header: {
+  container: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '20px',
+  },
+  undoToast: {
+    position: 'fixed',
+    bottom: '24px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    backgroundColor: '#333',
+    color: '#fff',
+    padding: '12px 24px',
+    borderRadius: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+    border: '1px solid rgba(255,255,255,0.1)',
+    zIndex: 1001,
+    animation: 'toastSlideIn 0.3s ease-out',
+  },
+  undoButton: {
+    backgroundColor: '#4e73df',
+    color: '#fff',
+    border: 'none',
+    padding: '6px 16px',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: '500',
+  },
+  topBar: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '24px',
   },
   pageTitle: {
     fontSize: '24px',
     fontWeight: '600',
-    color: '#333',
+    color: '#1a1a2e',
+    margin: 0,
+  },
+  topActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
   },
   addButton: {
     padding: '10px 20px',
     backgroundColor: '#4e73df',
     color: '#fff',
     border: 'none',
-    borderRadius: '4px',
+    borderRadius: '6px',
     cursor: 'pointer',
     fontSize: '14px',
+    fontWeight: '500',
+    transition: 'background-color 0.2s',
   },
   summaryCards: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
     gap: '16px',
-    marginBottom: '24px',
   },
   summaryCard: {
     backgroundColor: '#FFFFFF',
@@ -214,16 +376,17 @@ const styles = {
     border: '1px solid #E8ECF1',
   },
   summaryLabel: {
-    fontSize: '14px',
-    color: '#5a6a85',
+    fontSize: '13px',
+    color: '#6B7280',
     marginBottom: '8px',
+    fontWeight: '500',
   },
   summaryValue: {
     fontSize: '24px',
     fontWeight: '700',
-    color: '#333',
+    color: '#111827',
   },
-  tableContainer: {
+  tableCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: '8px',
     border: '1px solid #E8ECF1',
@@ -237,39 +400,60 @@ const styles = {
     backgroundColor: '#FAFBFC',
   },
   th: {
-    padding: '16px',
+    padding: '14px 20px',
     textAlign: 'left',
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#5a6a85',
+    fontSize: '13px',
+    fontWeight: '500',
+    color: '#6B7280',
     borderBottom: '1px solid #E8ECF1',
   },
   tableRow: {
     borderBottom: '1px solid #E8ECF1',
+    transition: 'background-color 0.15s',
   },
   td: {
-    padding: '16px',
+    padding: '14px 20px',
     fontSize: '14px',
     color: '#333',
   },
+  tdSecondary: {
+    padding: '14px 20px',
+    fontSize: '14px',
+    color: '#6B7280',
+  },
+  productName: {
+    fontSize: '16px',
+    fontWeight: '600',
+    color: '#111827',
+  },
+  tdPrice: {
+    padding: '14px 20px',
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#2563EB',
+  },
   editButton: {
-    padding: '6px 12px',
-    backgroundColor: '#4e73df',
-    color: '#fff',
+    padding: '6px 14px',
+    backgroundColor: '#EEF2FF',
+    color: '#4e73df',
     border: 'none',
     borderRadius: '4px',
     cursor: 'pointer',
-    fontSize: '12px',
+    fontSize: '13px',
+    fontWeight: '500',
     marginRight: '8px',
+    transition: 'background-color 0.2s',
   },
   deleteButton: {
-    padding: '6px 12px',
-    backgroundColor: '#e74a3b',
-    color: '#fff',
+    padding: '6px 14px',
+    backgroundColor: '#FEF2F2',
+    color: '#e74a3b',
     border: 'none',
     borderRadius: '4px',
     cursor: 'pointer',
-    fontSize: '12px',
+    fontSize: '13px',
+    fontWeight: '500',
+    transition: 'background-color 0.2s',
   },
   modalOverlay: {
     position: 'fixed',
@@ -285,56 +469,92 @@ const styles = {
   },
   modal: {
     backgroundColor: '#FFFFFF',
-    padding: '32px',
-    borderRadius: '8px',
+    padding: '0',
+    borderRadius: '12px',
     border: '1px solid #E8ECF1',
-    width: '400px',
+    width: '480px',
     maxWidth: '90%',
+    maxHeight: '90vh',
+    display: 'flex',
+    flexDirection: 'column',
   },
   modalTitle: {
-    fontSize: '20px',
+    fontSize: '18px',
     fontWeight: '600',
-    marginBottom: '24px',
-    color: '#333',
+    padding: '20px 24px',
+    margin: 0,
+    color: '#111827',
+    borderBottom: '1px solid #E8ECF1',
+    backgroundColor: '#FAFBFC',
+    flexShrink: 0,
+  },
+  formScroll: {
+    flex: 1,
+    overflowY: 'auto',
+  },
+  formSection: {
+    padding: '20px 24px',
+  },
+  sectionTitle: {
+    fontSize: '13px',
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: '16px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
   },
   formGroup: {
     marginBottom: '16px',
+  },
+  formRow: {
+    display: 'flex',
+    gap: '16px',
   },
   label: {
     display: 'block',
     marginBottom: '8px',
     fontSize: '14px',
+    fontWeight: '500',
     color: '#5a6a85',
   },
   input: {
     width: '100%',
-    padding: '10px',
+    padding: '10px 14px',
     border: '1px solid #E8ECF1',
-    borderRadius: '4px',
+    borderRadius: '6px',
     fontSize: '14px',
+    backgroundColor: '#FFFFFF',
+    transition: 'border-color 0.2s',
   },
   modalButtons: {
     display: 'flex',
     justifyContent: 'flex-end',
     gap: '12px',
-    marginTop: '24px',
+    padding: '16px 24px',
+    backgroundColor: '#FAFBFC',
+    borderTop: '1px solid #E8ECF1',
+    flexShrink: 0,
   },
   cancelButton: {
-    padding: '10px 20px',
-    backgroundColor: '#6c757d',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '4px',
+    padding: '10px 24px',
+    backgroundColor: '#FFFFFF',
+    color: '#374151',
+    border: '1px solid #D1D5DB',
+    borderRadius: '6px',
     cursor: 'pointer',
     fontSize: '14px',
+    fontWeight: '500',
+    transition: 'all 0.15s',
   },
   submitButton: {
-    padding: '10px 20px',
-    backgroundColor: '#4e73df',
+    padding: '10px 24px',
+    backgroundColor: '#2563EB',
     color: '#fff',
     border: 'none',
-    borderRadius: '4px',
+    borderRadius: '6px',
     cursor: 'pointer',
     fontSize: '14px',
+    fontWeight: '500',
+    transition: 'background-color 0.15s',
   },
 }
