@@ -1,5 +1,7 @@
 import { useState, useRef } from 'react'
 
+const API_URL = 'http://localhost:3001/api'
+
 const modalAnimationStyles = `
   @keyframes modalFadeIn {
     from {
@@ -44,11 +46,11 @@ const modalAnimationStyles = `
   @keyframes toastSlideIn {
     from {
       opacity: 0;
-      transform: translateX(-50%) translateY(20px);
+      transform: translateX(20px);
     }
     to {
       opacity: 1;
-      transform: translateX(-50%) translateY(0);
+      transform: translateX(0);
     }
   }
 `
@@ -115,13 +117,35 @@ export default function TaxesUnits() {
       setUnits(prev => prev.filter(u => u.id !== item.id))
     }
     setShowUndoToast(true)
-    
+
     deleteTimerRef.current = setTimeout(() => {
-      confirmDelete()
+      confirmDelete(item, type)
     }, 5000)
   }
 
-  const confirmDelete = () => {
+  const addToRecycleBin = async (item, type) => {
+    try {
+      await fetch(`${API_URL}/recycle-bin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          itemType: type,
+          itemId: item.id,
+          itemData: item,
+        }),
+      })
+      window.dispatchEvent(new CustomEvent('recycleBin-updated'))
+    } catch (error) {
+      console.error('添加到回收站失败:', error)
+    }
+  }
+
+  const confirmDelete = async (item, type) => {
+    const itemToDelete = item || deletedItem
+    const typeToDelete = type || deletedType
+    if (itemToDelete) {
+      await addToRecycleBin(itemToDelete, typeToDelete)
+    }
     setDeletedItem(null)
     setDeletedType(null)
     setShowUndoToast(false)
@@ -171,15 +195,34 @@ export default function TaxesUnits() {
   return (
     <div style={styles.container}>
       {showUndoToast && (
-        <div style={styles.undoToast}>
+        <div
+          style={styles.undoToast}
+          onMouseEnter={() => deleteTimerRef.current && clearTimeout(deleteTimerRef.current)}
+          onMouseLeave={() => {
+            if (deletedItem && !showUndoToast) return
+            deleteTimerRef.current = setTimeout(() => {
+              confirmDelete()
+            }, 5000)
+          }}
+        >
           <style>{modalAnimationStyles}</style>
-          <span>{deletedType === 'taxes' ? '税费已删除' : '计量单位已删除'}</span>
+          <div style={styles.undoToastContent}>
+            <div style={styles.undoToastIcon}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm4 10.4H4c-.4 0-.8-.4-.8-.8s.4-.8.8-.8h8c.4 0 .8.4.8.8s-.4.8-.8.8z" fill="#10B981" />
+              </svg>
+            </div>
+            <div style={styles.undoToastText}>
+              <div style={styles.undoToastTitle}>{deletedType === 'taxes' ? '税费已删除' : '计量单位已删除'}</div>
+              <div style={styles.undoToastDesc}>5秒后自动消失</div>
+            </div>
+          </div>
           <button style={styles.undoButton} onClick={handleUndoDelete}>
             撤销
           </button>
         </div>
       )}
-      
+
       <div style={styles.topBar}>
         <h2 style={styles.pageTitle}>税费与计量单位</h2>
       </div>
@@ -340,19 +383,19 @@ export default function TaxesUnits() {
       )}
 
       {showModal && (
-        <div 
+        <div
           style={{
             ...styles.modalOverlay,
             animation: isClosing ? 'modalFadeOut 0.2s ease-out forwards' : 'modalFadeIn 0.2s ease-out forwards',
-          }} 
+          }}
           onClick={handleCloseModal}
         >
           <style>{modalAnimationStyles}</style>
-          <div 
+          <div
             style={{
               ...styles.modal,
               animation: isClosing ? 'modalSlideOut 0.2s ease-out forwards' : 'modalSlideIn 0.2s ease-out forwards',
-            }} 
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             <h3 style={styles.modalTitle}>
@@ -499,33 +542,63 @@ const styles = {
   container: {
     display: 'flex',
     flexDirection: 'column',
+    boxShadow: 'var(--shadow-xl)',
     gap: '20px',
   },
   undoToast: {
     position: 'fixed',
-    bottom: '24px',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    backgroundColor: '#333',
-    color: '#fff',
-    padding: '12px 24px',
-    borderRadius: '8px',
+    top: '24px',
+    right: '24px',
+    backgroundColor: 'var(--bg-secondary)',
+    borderRadius: 'var(--radius-xl)',
+    padding: '16px 20px',
     display: 'flex',
     alignItems: 'center',
     gap: '16px',
-    border: '1px solid rgba(255,255,255,0.1)',
+    border: '1px solid var(--border)',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
     zIndex: 1001,
     animation: 'toastSlideIn 0.3s ease-out',
   },
+  undoToastContent: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  undoToastIcon: {
+    width: '32px',
+    height: '32px',
+    borderRadius: '50%',
+    backgroundColor: '#ECFDF5',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  undoToastText: {
+    display: 'flex',
+    flexDirection: 'column',
+    boxShadow: 'var(--shadow-xl)',
+    gap: '2px',
+  },
+  undoToastTitle: {
+    fontSize: '14px',
+    fontWeight: '500',
+    color: 'var(--text-primary)',
+  },
+  undoToastDesc: {
+    fontSize: '12px',
+    color: 'var(--text-tertiary)',
+  },
   undoButton: {
-    backgroundColor: '#4e73df',
-    color: '#fff',
+    backgroundColor: 'transparent',
+    color: 'var(--primary)',
     border: 'none',
-    padding: '6px 16px',
-    borderRadius: '4px',
+    padding: '8px 16px',
+    borderRadius: 'var(--radius-sm)',
     cursor: 'pointer',
     fontSize: '14px',
     fontWeight: '500',
+    transition: 'all var(--transition-fast)',
   },
   topBar: {
     display: 'flex',
@@ -533,9 +606,9 @@ const styles = {
     alignItems: 'center',
   },
   pageTitle: {
-    fontSize: '24px',
-    fontWeight: '600',
-    color: '#1a1a2e',
+    fontSize: '26px',
+    fontWeight: '700',
+    color: 'var(--text-primary)',
     margin: 0,
   },
   tabs: {
@@ -543,23 +616,23 @@ const styles = {
     gap: '4px',
     backgroundColor: '#F3F4F6',
     padding: '4px',
-    borderRadius: '8px',
+    borderRadius: 'var(--radius-lg)',
     width: 'fit-content',
   },
   tab: {
     padding: '10px 20px',
     backgroundColor: 'transparent',
     border: 'none',
-    borderRadius: '6px',
+    borderRadius: 'var(--radius-sm)',
     cursor: 'pointer',
     fontSize: '14px',
     fontWeight: '500',
-    color: '#6B7280',
-    transition: 'all 0.15s',
+    color: 'var(--text-tertiary)',
+    transition: 'all var(--transition-fast)',
   },
   tabActive: {
-    backgroundColor: '#FFFFFF',
-    color: '#111827',
+    backgroundColor: 'var(--bg-secondary)',
+    color: 'var(--text-primary)',
     boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
   },
   summaryCards: {
@@ -568,21 +641,21 @@ const styles = {
     gap: '16px',
   },
   summaryCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'var(--bg-secondary)',
     padding: '20px',
-    borderRadius: '8px',
-    border: '1px solid #E8ECF1',
+    borderRadius: 'var(--radius-lg)',
+    border: '1px solid var(--border)',
   },
   summaryLabel: {
     fontSize: '13px',
-    color: '#6B7280',
+    color: 'var(--text-tertiary)',
     marginBottom: '8px',
     fontWeight: '500',
   },
   summaryValue: {
-    fontSize: '24px',
+    fontSize: '26px',
     fontWeight: '700',
-    color: '#111827',
+    color: 'var(--text-primary)',
   },
   sectionHeader: {
     display: 'flex',
@@ -591,70 +664,71 @@ const styles = {
   },
   sectionTitle: {
     fontSize: '16px',
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: '700',
+    color: 'var(--text-primary)',
     margin: 0,
   },
   addButton: {
     padding: '10px 20px',
-    backgroundColor: '#4e73df',
+    background: 'var(--gradient-primary)',
     color: '#fff',
     border: 'none',
-    borderRadius: '6px',
+    borderRadius: 'var(--radius-sm)',
     cursor: 'pointer',
     fontSize: '14px',
     fontWeight: '500',
-    transition: 'background-color 0.2s',
+    transition: 'all var(--transition-fast)',
   },
   tableCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: '8px',
-    border: '1px solid #E8ECF1',
+    backgroundColor: 'var(--bg-secondary)',
+    borderRadius: 'var(--radius-lg)',
+    border: '1px solid var(--border)',
     overflow: 'hidden',
+    boxShadow: 'var(--shadow-card)',
   },
   table: {
     width: '100%',
     borderCollapse: 'collapse',
   },
   tableHeader: {
-    backgroundColor: '#FAFBFC',
+    backgroundColor: 'var(--bg-tertiary)',
   },
   th: {
     padding: '14px 20px',
     textAlign: 'left',
     fontSize: '13px',
     fontWeight: '500',
-    color: '#6B7280',
-    borderBottom: '1px solid #E8ECF1',
+    color: 'var(--text-tertiary)',
+    borderBottom: '1px solid var(--border)',
   },
   tableRow: {
-    borderBottom: '1px solid #E8ECF1',
-    transition: 'background-color 0.15s',
+    borderBottom: '1px solid var(--border)',
+    transition: 'all var(--transition-fast)',
   },
   td: {
     padding: '14px 20px',
     fontSize: '14px',
-    color: '#333',
+    color: 'var(--text-primary)',
   },
   tdSecondary: {
     padding: '14px 20px',
     fontSize: '14px',
-    color: '#6B7280',
+    color: 'var(--text-tertiary)',
   },
   productName: {
     fontSize: '16px',
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: '700',
+    color: 'var(--text-primary)',
   },
   tdPrice: {
     padding: '14px 20px',
     fontSize: '14px',
-    fontWeight: '600',
-    color: '#2563EB',
+    fontWeight: '700',
+    color: 'var(--primary)',
   },
   defaultBadge: {
     padding: '4px 12px',
-    borderRadius: '4px',
+    borderRadius: 'var(--radius-sm)',
     backgroundColor: '#1cc88a',
     color: '#fff',
     fontSize: '12px',
@@ -662,9 +736,9 @@ const styles = {
   },
   categoryBadge: {
     padding: '4px 12px',
-    borderRadius: '4px',
+    borderRadius: 'var(--radius-sm)',
     backgroundColor: '#DBEAFE',
-    color: '#2563EB',
+    color: 'var(--primary)',
     fontSize: '12px',
     fontWeight: '500',
   },
@@ -673,33 +747,33 @@ const styles = {
     backgroundColor: '#FEF3C7',
     color: '#D97706',
     border: 'none',
-    borderRadius: '4px',
+    borderRadius: 'var(--radius-sm)',
     cursor: 'pointer',
     fontSize: '12px',
     fontWeight: '500',
   },
   editButton: {
     padding: '6px 14px',
-    backgroundColor: '#EEF2FF',
-    color: '#4e73df',
+    backgroundColor: 'var(--primary-bg)',
+    color: 'var(--primary)',
     border: 'none',
-    borderRadius: '4px',
+    borderRadius: 'var(--radius-sm)',
     cursor: 'pointer',
     fontSize: '13px',
     fontWeight: '500',
     marginRight: '8px',
-    transition: 'background-color 0.2s',
+    transition: 'all var(--transition-fast)',
   },
   deleteButton: {
     padding: '6px 14px',
     backgroundColor: '#FEF2F2',
-    color: '#e74a3b',
+    color: '#EF4444',
     border: 'none',
-    borderRadius: '4px',
+    borderRadius: 'var(--radius-sm)',
     cursor: 'pointer',
     fontSize: '13px',
     fontWeight: '500',
-    transition: 'background-color 0.2s',
+    transition: 'all var(--transition-fast)',
   },
   modalOverlay: {
     position: 'fixed',
@@ -707,31 +781,33 @@ const styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    backdropFilter: 'blur(4px)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1000,
   },
   modal: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'var(--bg-secondary)',
     padding: '0',
-    borderRadius: '12px',
-    border: '1px solid #E8ECF1',
+    borderRadius: 'var(--radius-xl)',
+    border: '1px solid var(--border)',
     width: '480px',
     maxWidth: '90%',
     maxHeight: '90vh',
     display: 'flex',
     flexDirection: 'column',
+    boxShadow: 'var(--shadow-xl)',
   },
   modalTitle: {
     fontSize: '18px',
-    fontWeight: '600',
+    fontWeight: '700',
     padding: '20px 24px',
     margin: 0,
-    color: '#111827',
-    borderBottom: '1px solid #E8ECF1',
-    backgroundColor: '#FAFBFC',
+    color: 'var(--text-primary)',
+    borderBottom: '1px solid var(--border)',
+    backgroundColor: 'var(--bg-tertiary)',
     flexShrink: 0,
   },
   formScroll: {
@@ -743,8 +819,8 @@ const styles = {
   },
   sectionTitle: {
     fontSize: '13px',
-    fontWeight: '600',
-    color: '#6B7280',
+    fontWeight: '700',
+    color: 'var(--text-tertiary)',
     marginBottom: '16px',
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
@@ -761,16 +837,16 @@ const styles = {
     marginBottom: '8px',
     fontSize: '14px',
     fontWeight: '500',
-    color: '#5a6a85',
+    color: 'var(--text-secondary)',
   },
   input: {
     width: '100%',
     padding: '10px 14px',
-    border: '1px solid #E8ECF1',
-    borderRadius: '6px',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-sm)',
     fontSize: '14px',
-    backgroundColor: '#FFFFFF',
-    transition: 'border-color 0.2s',
+    backgroundColor: 'var(--bg-secondary)',
+    transition: 'all var(--transition-fast)',
   },
   checkboxGroup: {
     display: 'flex',
@@ -779,37 +855,37 @@ const styles = {
   },
   checkboxLabel: {
     fontSize: '14px',
-    color: '#5a6a85',
+    color: 'var(--text-secondary)',
   },
   modalButtons: {
     display: 'flex',
     justifyContent: 'flex-end',
     gap: '12px',
     padding: '16px 24px',
-    backgroundColor: '#FAFBFC',
-    borderTop: '1px solid #E8ECF1',
+    backgroundColor: 'var(--bg-tertiary)',
+    borderTop: '1px solid var(--border)',
     flexShrink: 0,
   },
   cancelButton: {
     padding: '10px 24px',
-    backgroundColor: '#FFFFFF',
-    color: '#374151',
-    border: '1px solid #D1D5DB',
-    borderRadius: '6px',
+    backgroundColor: 'var(--bg-secondary)',
+    color: 'var(--text-secondary)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-sm)',
     cursor: 'pointer',
     fontSize: '14px',
     fontWeight: '500',
-    transition: 'all 0.15s',
+    transition: 'all var(--transition-fast)',
   },
   submitButton: {
     padding: '10px 24px',
-    backgroundColor: '#2563EB',
+    background: 'var(--gradient-primary)',
     color: '#fff',
     border: 'none',
-    borderRadius: '6px',
+    borderRadius: 'var(--radius-sm)',
     cursor: 'pointer',
     fontSize: '14px',
     fontWeight: '500',
-    transition: 'background-color 0.15s',
+    transition: 'all var(--transition-fast)',
   },
 }

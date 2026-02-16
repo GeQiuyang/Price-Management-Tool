@@ -1,5 +1,7 @@
 import { useState, useRef } from 'react'
 
+const API_URL = 'http://localhost:3001/api'
+
 const modalAnimationStyles = `
   @keyframes modalFadeIn {
     from {
@@ -44,11 +46,11 @@ const modalAnimationStyles = `
   @keyframes toastSlideIn {
     from {
       opacity: 0;
-      transform: translateX(-50%) translateY(20px);
+      transform: translateX(20px);
     }
     to {
       opacity: 1;
-      transform: translateX(-50%) translateY(0);
+      transform: translateX(0);
     }
   }
 `
@@ -100,13 +102,34 @@ export default function Costs() {
     setDeletedCost(cost)
     setCosts(prev => prev.filter(c => c.id !== cost.id))
     setShowUndoToast(true)
-    
+
     deleteTimerRef.current = setTimeout(() => {
-      confirmDelete()
+      confirmDelete(cost)
     }, 5000)
   }
 
-  const confirmDelete = () => {
+  const addToRecycleBin = async (item, type) => {
+    try {
+      await fetch(`${API_URL}/recycle-bin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          itemType: type,
+          itemId: item.id,
+          itemData: item,
+        }),
+      })
+      window.dispatchEvent(new CustomEvent('recycleBin-updated'))
+    } catch (error) {
+      console.error('添加到回收站失败:', error)
+    }
+  }
+
+  const confirmDelete = async (cost) => {
+    const itemToDelete = cost || deletedCost
+    if (itemToDelete) {
+      await addToRecycleBin(itemToDelete, 'costs')
+    }
     setDeletedCost(null)
     setShowUndoToast(false)
   }
@@ -137,15 +160,34 @@ export default function Costs() {
   return (
     <div style={styles.container}>
       {showUndoToast && (
-        <div style={styles.undoToast}>
+        <div
+          style={styles.undoToast}
+          onMouseEnter={() => deleteTimerRef.current && clearTimeout(deleteTimerRef.current)}
+          onMouseLeave={() => {
+            if (deletedCost && !showUndoToast) return
+            deleteTimerRef.current = setTimeout(() => {
+              confirmDelete()
+            }, 5000)
+          }}
+        >
           <style>{modalAnimationStyles}</style>
-          <span>成本数据已删除</span>
+          <div style={styles.undoToastContent}>
+            <div style={styles.undoToastIcon}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm4 10.4H4c-.4 0-.8-.4-.8-.8s.4-.8.8-.8h8c.4 0 .8.4.8.8s-.4.8-.8.8z" fill="#10B981" />
+              </svg>
+            </div>
+            <div style={styles.undoToastText}>
+              <div style={styles.undoToastTitle}>成本数据已删除</div>
+              <div style={styles.undoToastDesc}>5秒后自动消失</div>
+            </div>
+          </div>
           <button style={styles.undoButton} onClick={handleUndoDelete}>
             撤销
           </button>
         </div>
       )}
-      
+
       <div style={styles.topBar}>
         <h2 style={styles.pageTitle}>成本数据管理</h2>
         <div style={styles.topActions}>
@@ -213,19 +255,19 @@ export default function Costs() {
       </div>
 
       {showModal && (
-        <div 
+        <div
           style={{
             ...styles.modalOverlay,
             animation: isClosing ? 'modalFadeOut 0.2s ease-out forwards' : 'modalFadeIn 0.2s ease-out forwards',
-          }} 
+          }}
           onClick={handleCloseModal}
         >
           <style>{modalAnimationStyles}</style>
-          <div 
+          <div
             style={{
               ...styles.modal,
               animation: isClosing ? 'modalSlideOut 0.2s ease-out forwards' : 'modalSlideIn 0.2s ease-out forwards',
-            }} 
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             <h3 style={styles.modalTitle}>{editingCost ? '编辑成本数据' : '添加成本数据'}</h3>
@@ -310,32 +352,61 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '20px',
+    animation: 'fadeInUp 0.4s ease forwards',
   },
   undoToast: {
     position: 'fixed',
-    bottom: '24px',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    backgroundColor: '#333',
-    color: '#fff',
-    padding: '12px 24px',
-    borderRadius: '8px',
+    top: '24px',
+    right: '24px',
+    backgroundColor: 'var(--bg-secondary)',
+    borderRadius: 'var(--radius-lg)',
+    padding: '16px 20px',
     display: 'flex',
     alignItems: 'center',
     gap: '16px',
-    border: '1px solid rgba(255,255,255,0.1)',
+    border: '1px solid var(--border)',
+    boxShadow: 'var(--shadow-lg)',
     zIndex: 1001,
     animation: 'toastSlideIn 0.3s ease-out',
   },
+  undoToastContent: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  undoToastIcon: {
+    width: '32px',
+    height: '32px',
+    borderRadius: '50%',
+    backgroundColor: '#ECFDF5',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  undoToastText: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+  },
+  undoToastTitle: {
+    fontSize: '14px',
+    fontWeight: '500',
+    color: 'var(--text-primary)',
+  },
+  undoToastDesc: {
+    fontSize: '12px',
+    color: 'var(--text-tertiary)',
+  },
   undoButton: {
-    backgroundColor: '#4e73df',
-    color: '#fff',
+    backgroundColor: 'transparent',
+    color: 'var(--primary)',
     border: 'none',
-    padding: '6px 16px',
-    borderRadius: '4px',
+    padding: '8px 16px',
+    borderRadius: 'var(--radius-sm)',
     cursor: 'pointer',
     fontSize: '14px',
     fontWeight: '500',
+    transition: 'all var(--transition-fast)',
   },
   topBar: {
     display: 'flex',
@@ -343,10 +414,11 @@ const styles = {
     alignItems: 'center',
   },
   pageTitle: {
-    fontSize: '24px',
-    fontWeight: '600',
-    color: '#1a1a2e',
+    fontSize: '26px',
+    fontWeight: '700',
+    color: 'var(--text-primary)',
     margin: 0,
+    letterSpacing: '-0.5px',
   },
   topActions: {
     display: 'flex',
@@ -354,15 +426,16 @@ const styles = {
     gap: '12px',
   },
   addButton: {
-    padding: '10px 20px',
-    backgroundColor: '#4e73df',
+    padding: '10px 22px',
+    background: 'var(--gradient-primary)',
     color: '#fff',
     border: 'none',
-    borderRadius: '6px',
+    borderRadius: 'var(--radius-md)',
     cursor: 'pointer',
     fontSize: '14px',
-    fontWeight: '500',
-    transition: 'background-color 0.2s',
+    fontWeight: '600',
+    transition: 'all var(--transition-fast)',
+    boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)',
   },
   summaryCards: {
     display: 'grid',
@@ -370,90 +443,96 @@ const styles = {
     gap: '16px',
   },
   summaryCard: {
-    backgroundColor: '#FFFFFF',
-    padding: '20px',
-    borderRadius: '8px',
-    border: '1px solid #E8ECF1',
+    backgroundColor: 'var(--bg-secondary)',
+    padding: '22px',
+    borderRadius: 'var(--radius-lg)',
+    border: '1px solid var(--border)',
+    boxShadow: 'var(--shadow-card)',
+    transition: 'all var(--transition-base)',
   },
   summaryLabel: {
     fontSize: '13px',
-    color: '#6B7280',
+    color: 'var(--text-tertiary)',
     marginBottom: '8px',
     fontWeight: '500',
   },
   summaryValue: {
-    fontSize: '24px',
-    fontWeight: '700',
-    color: '#111827',
+    fontSize: '28px',
+    fontWeight: '800',
+    color: 'var(--text-primary)',
+    letterSpacing: '-0.5px',
   },
   tableCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: '8px',
-    border: '1px solid #E8ECF1',
+    backgroundColor: 'var(--bg-secondary)',
+    borderRadius: 'var(--radius-lg)',
+    border: '1px solid var(--border)',
     overflow: 'hidden',
+    boxShadow: 'var(--shadow-card)',
   },
   table: {
     width: '100%',
     borderCollapse: 'collapse',
   },
   tableHeader: {
-    backgroundColor: '#FAFBFC',
+    backgroundColor: 'var(--bg-tertiary)',
   },
   th: {
     padding: '14px 20px',
     textAlign: 'left',
-    fontSize: '13px',
-    fontWeight: '500',
-    color: '#6B7280',
-    borderBottom: '1px solid #E8ECF1',
+    fontSize: '12px',
+    fontWeight: '600',
+    color: 'var(--text-tertiary)',
+    borderBottom: '1px solid var(--border)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
   },
   tableRow: {
-    borderBottom: '1px solid #E8ECF1',
-    transition: 'background-color 0.15s',
+    borderBottom: '1px solid var(--border-light)',
+    transition: 'background-color var(--transition-fast)',
   },
   td: {
-    padding: '14px 20px',
+    padding: '16px 20px',
     fontSize: '14px',
-    color: '#333',
+    color: 'var(--text-primary)',
   },
   tdSecondary: {
-    padding: '14px 20px',
+    padding: '16px 20px',
     fontSize: '14px',
-    color: '#6B7280',
+    color: 'var(--text-secondary)',
   },
   productName: {
-    fontSize: '16px',
+    fontSize: '15px',
     fontWeight: '600',
-    color: '#111827',
+    color: 'var(--text-primary)',
   },
   tdPrice: {
-    padding: '14px 20px',
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#2563EB',
+    padding: '16px 20px',
+    fontSize: '15px',
+    fontWeight: '700',
+    color: 'var(--primary)',
   },
   editButton: {
-    padding: '6px 14px',
-    backgroundColor: '#EEF2FF',
-    color: '#4e73df',
-    border: 'none',
-    borderRadius: '4px',
+    padding: '7px 16px',
+    backgroundColor: 'var(--primary-bg)',
+    color: 'var(--primary)',
+    border: '1px solid transparent',
+    borderRadius: 'var(--radius-sm)',
     cursor: 'pointer',
     fontSize: '13px',
     fontWeight: '500',
     marginRight: '8px',
-    transition: 'background-color 0.2s',
+    transition: 'all var(--transition-fast)',
   },
   deleteButton: {
-    padding: '6px 14px',
+    padding: '7px 16px',
     backgroundColor: '#FEF2F2',
-    color: '#e74a3b',
-    border: 'none',
-    borderRadius: '4px',
+    color: '#EF4444',
+    border: '1px solid transparent',
+    borderRadius: 'var(--radius-sm)',
     cursor: 'pointer',
     fontSize: '13px',
     fontWeight: '500',
-    transition: 'background-color 0.2s',
+    transition: 'all var(--transition-fast)',
   },
   modalOverlay: {
     position: 'fixed',
@@ -461,32 +540,35 @@ const styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    backdropFilter: 'blur(4px)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1000,
   },
   modal: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'var(--bg-secondary)',
     padding: '0',
-    borderRadius: '12px',
-    border: '1px solid #E8ECF1',
+    borderRadius: 'var(--radius-xl)',
+    border: '1px solid var(--border)',
     width: '480px',
     maxWidth: '90%',
     maxHeight: '90vh',
     display: 'flex',
     flexDirection: 'column',
+    boxShadow: 'var(--shadow-xl)',
   },
   modalTitle: {
     fontSize: '18px',
     fontWeight: '600',
     padding: '20px 24px',
     margin: 0,
-    color: '#111827',
-    borderBottom: '1px solid #E8ECF1',
-    backgroundColor: '#FAFBFC',
+    color: 'var(--text-primary)',
+    borderBottom: '1px solid var(--border)',
+    backgroundColor: 'var(--bg-tertiary)',
     flexShrink: 0,
+    borderRadius: 'var(--radius-xl) var(--radius-xl) 0 0',
   },
   formScroll: {
     flex: 1,
@@ -498,7 +580,7 @@ const styles = {
   sectionTitle: {
     fontSize: '13px',
     fontWeight: '600',
-    color: '#6B7280',
+    color: 'var(--text-tertiary)',
     marginBottom: '16px',
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
@@ -515,46 +597,49 @@ const styles = {
     marginBottom: '8px',
     fontSize: '14px',
     fontWeight: '500',
-    color: '#5a6a85',
+    color: 'var(--text-secondary)',
   },
   input: {
     width: '100%',
     padding: '10px 14px',
-    border: '1px solid #E8ECF1',
-    borderRadius: '6px',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-sm)',
     fontSize: '14px',
-    backgroundColor: '#FFFFFF',
-    transition: 'border-color 0.2s',
+    backgroundColor: 'var(--bg-secondary)',
+    transition: 'all var(--transition-fast)',
   },
   modalButtons: {
     display: 'flex',
     justifyContent: 'flex-end',
     gap: '12px',
     padding: '16px 24px',
-    backgroundColor: '#FAFBFC',
-    borderTop: '1px solid #E8ECF1',
+    backgroundColor: 'var(--bg-tertiary)',
+    borderTop: '1px solid var(--border)',
     flexShrink: 0,
+    borderRadius: '0 0 var(--radius-xl) var(--radius-xl)',
   },
   cancelButton: {
     padding: '10px 24px',
-    backgroundColor: '#FFFFFF',
-    color: '#374151',
-    border: '1px solid #D1D5DB',
-    borderRadius: '6px',
+    backgroundColor: 'var(--bg-secondary)',
+    color: 'var(--text-secondary)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-md)',
     cursor: 'pointer',
     fontSize: '14px',
     fontWeight: '500',
-    transition: 'all 0.15s',
+    transition: 'all var(--transition-fast)',
   },
   submitButton: {
     padding: '10px 24px',
-    backgroundColor: '#2563EB',
+    background: 'var(--gradient-primary)',
     color: '#fff',
     border: 'none',
-    borderRadius: '6px',
+    borderRadius: 'var(--radius-md)',
     cursor: 'pointer',
     fontSize: '14px',
-    fontWeight: '500',
-    transition: 'background-color 0.15s',
+    fontWeight: '600',
+    transition: 'all var(--transition-fast)',
+    boxShadow: '0 2px 8px rgba(79, 70, 229, 0.3)',
   },
 }
+

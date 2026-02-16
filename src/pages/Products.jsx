@@ -46,11 +46,11 @@ const modalAnimationStyles = `
   @keyframes toastSlideIn {
     from {
       opacity: 0;
-      transform: translateX(-50%) translateY(20px);
+      transform: translateX(20px);
     }
     to {
       opacity: 1;
-      transform: translateX(-50%) translateY(0);
+      transform: translateX(0);
     }
   }
 `
@@ -74,12 +74,46 @@ export default function Products() {
     description: '',
     status: 'active',
   })
+  const [hoveredTemplate, setHoveredTemplate] = useState(null)
 
   const categories = [
     { id: '钻具类', name: '钻具类' },
     { id: '导管类', name: '导管类' },
     { id: '配件类', name: '配件类' },
   ]
+
+  const productTemplates = {
+    '导管类': [
+      { name: '300尖丝导管', sku: '300JSDG', description: '300尖丝导管，长度{m}，厚度3mm', price: 300 },
+      { name: '260方丝导管', sku: '260FSDG', description: '260方丝导管，长度{m}，厚度3.5mm', price: 200 },
+      { name: '273母扣接头', sku: '273CT', description: '273母扣', price: 80 },
+      { name: '钢丝绳', sku: 'SR-', description: '钢丝绳，长度{m}米', price: 50 },
+      { name: '密封圈', sku: '260-O-ring', description: '260密封圈，线径8mm', price: 1 },
+      { name: '料斗', sku: 'HP-1200-', description: '容积1.2立方米，壁厚3.5mm', price: 1500 },
+    ],
+    '钻具类': [
+      { name: '赛迈斯宝石截齿60', sku: 'SMSCCBS60', description: '合金直径28mm', price: 270 },
+      { name: '捞沙斗', sku: 'DB', description: '{size}mm', price: 6500 },
+      { name: '筒钻', sku: 'CB', description: '{size}mm', price: 13000 },
+      { name: '螺旋钻头', sku: 'LZZT', description: '{size}mm高效螺旋钻头', price: 800 },
+    ],
+    '配件类': [
+      { name: '泥浆管', sku: 'MT', description: '口径4英寸，长度18米', price: 330 },
+      { name: '泥浆泵', sku: 'MP', description: '{power}千瓦', price: 6500 },
+      { name: '钻杆', sku: 'ZG', description: '钻杆，长度{m}米', price: 400 },
+      { name: '加重钻杆', sku: 'JZZG', description: '加重钻杆，长度{m}米', price: 600 },
+    ],
+  }
+
+  const applyTemplate = (template) => {
+    setFormData({
+      ...formData,
+      name: template.name,
+      sku: template.sku,
+      description: template.description,
+      price: template.price,
+    })
+  }
 
   useEffect(() => {
     fetchProducts()
@@ -123,18 +157,37 @@ export default function Products() {
     setDeletedProduct(product)
     setProducts(prev => prev.filter(p => p.id !== product.id))
     setShowUndoToast(true)
-    
+
     deleteTimerRef.current = setTimeout(() => {
-      confirmDelete()
+      confirmDelete(product)
     }, 5000)
   }
 
-  const confirmDelete = async () => {
-    if (deletedProduct) {
+  const addToRecycleBin = async (item, type) => {
+    try {
+      await fetch(`${API_URL}/recycle-bin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          itemType: type,
+          itemId: item.id,
+          itemData: item,
+        }),
+      })
+      window.dispatchEvent(new CustomEvent('recycleBin-updated'))
+    } catch (error) {
+      console.error('添加到回收站失败:', error)
+    }
+  }
+
+  const confirmDelete = async (product) => {
+    const itemToDelete = product || deletedProduct
+    if (itemToDelete) {
       try {
-        await fetch(`${API_URL}/products/${deletedProduct.id}`, {
+        await fetch(`${API_URL}/products/${itemToDelete.id}`, {
           method: 'DELETE',
         })
+        await addToRecycleBin(itemToDelete, 'products')
       } catch (error) {
         console.error('删除产品失败:', error)
       }
@@ -190,20 +243,16 @@ export default function Products() {
     return products.filter((p) => p.category === category)
   }
 
-  const searchProducts = (productList, query) => {
-    if (!query.trim()) return productList
-    
-    const lowerQuery = query.toLowerCase()
-    return productList.filter((p) => 
-      p.sku.toLowerCase().includes(lowerQuery) ||
-      p.name.toLowerCase().includes(lowerQuery) ||
-      (p.description && p.description.toLowerCase().includes(lowerQuery))
-    )
-  }
-
   const getDisplayProducts = () => {
-    const categoryProducts = getProductsByCategory(activeCategory)
-    return searchProducts(categoryProducts, searchQuery)
+    if (searchQuery.trim()) {
+      const lowerQuery = searchQuery.toLowerCase()
+      return products.filter((p) =>
+        p.sku.toLowerCase().includes(lowerQuery) ||
+        p.name.toLowerCase().includes(lowerQuery) ||
+        (p.description && p.description.toLowerCase().includes(lowerQuery))
+      )
+    }
+    return getProductsByCategory(activeCategory)
   }
 
   if (loading) {
@@ -213,15 +262,34 @@ export default function Products() {
   return (
     <div style={styles.container}>
       {showUndoToast && (
-        <div style={styles.undoToast}>
+        <div
+          style={styles.undoToast}
+          onMouseEnter={() => deleteTimerRef.current && clearTimeout(deleteTimerRef.current)}
+          onMouseLeave={() => {
+            if (deletedProduct && !showUndoToast) return
+            deleteTimerRef.current = setTimeout(() => {
+              confirmDelete()
+            }, 5000)
+          }}
+        >
           <style>{modalAnimationStyles}</style>
-          <span>产品已删除</span>
+          <div style={styles.undoToastContent}>
+            <div style={styles.undoToastIcon}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm4 10.4H4c-.4 0-.8-.4-.8-.8s.4-.8.8-.8h8c.4 0 .8.4.8.8s-.4.8-.8.8z" fill="#10B981" />
+              </svg>
+            </div>
+            <div style={styles.undoToastText}>
+              <div style={styles.undoToastTitle}>产品已删除</div>
+              <div style={styles.undoToastDesc}>5秒后自动消失</div>
+            </div>
+          </div>
           <button style={styles.undoButton} onClick={handleUndoDelete}>
             撤销
           </button>
         </div>
       )}
-      
+
       <div style={styles.topBar}>
         <h2 style={styles.pageTitle}>产品目录管理</h2>
         <div style={styles.topActions}>
@@ -268,7 +336,7 @@ export default function Products() {
           </thead>
           <tbody>
             {getDisplayProducts().map((product) => (
-                <tr key={product.id} style={styles.tableRow}>
+              <tr key={product.id} style={styles.tableRow}>
                 <td style={styles.tdSecondary}>{product.sku}</td>
                 <td style={styles.td}>
                   <span style={styles.productName}>{product.name}</span>
@@ -290,22 +358,44 @@ export default function Products() {
       </div>
 
       {showModal && (
-        <div 
+        <div
           style={{
             ...styles.modalOverlay,
             animation: isClosing ? 'modalFadeOut 0.2s ease-out forwards' : 'modalFadeIn 0.2s ease-out forwards',
-          }} 
+          }}
           onClick={handleCloseModal}
         >
           <style>{modalAnimationStyles}</style>
-          <div 
+          <div
             style={{
               ...styles.modal,
               animation: isClosing ? 'modalSlideOut 0.2s ease-out forwards' : 'modalSlideIn 0.2s ease-out forwards',
-            }} 
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             <h3 style={styles.modalTitle}>{editingProduct ? '编辑产品' : '添加产品'}</h3>
+            {!editingProduct && (
+              <div style={styles.templateSection}>
+                <div style={styles.templateTitle}>快速添加模板</div>
+                <div style={styles.templateList}>
+                  {productTemplates[formData.category]?.map((template, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      style={{
+                        ...styles.templateButton,
+                        ...(hoveredTemplate === index ? styles.templateButtonHover : {}),
+                      }}
+                      onClick={() => applyTemplate(template)}
+                      onMouseEnter={() => setHoveredTemplate(index)}
+                      onMouseLeave={() => setHoveredTemplate(null)}
+                    >
+                      {template.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div style={styles.formScroll}>
               <form onSubmit={handleSubmit}>
                 <div style={styles.formSection}>
@@ -334,7 +424,10 @@ export default function Products() {
                       <select
                         style={styles.input}
                         value={formData.category}
-                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                        onChange={(e) => {
+                          const newCategory = e.target.value
+                          setFormData({ ...formData, category: newCategory, name: '', sku: '', description: '', price: '' })
+                        }}
                       >
                         {categories.map((cat) => (
                           <option key={cat.id} value={cat.id}>{cat.name}</option>
@@ -395,36 +488,64 @@ export default function Products() {
 }
 
 const styles = {
-    container: {
+  container: {
     display: 'flex',
     flexDirection: 'column',
     gap: '20px',
   },
   undoToast: {
     position: 'fixed',
-    bottom: '24px',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    backgroundColor: '#333',
-    color: '#fff',
-    padding: '12px 24px',
-    borderRadius: '8px',
+    top: '24px',
+    right: '24px',
+    backgroundColor: '#FFFFFF',
+    borderRadius: '12px',
+    padding: '16px 20px',
     display: 'flex',
     alignItems: 'center',
     gap: '16px',
-    border: '1px solid rgba(255,255,255,0.1)',
+    border: '1px solid #E5E7EB',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
     zIndex: 1001,
     animation: 'toastSlideIn 0.3s ease-out',
   },
+  undoToastContent: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  undoToastIcon: {
+    width: '32px',
+    height: '32px',
+    borderRadius: '50%',
+    backgroundColor: '#ECFDF5',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  undoToastText: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+  },
+  undoToastTitle: {
+    fontSize: '14px',
+    fontWeight: '500',
+    color: '#111827',
+  },
+  undoToastDesc: {
+    fontSize: '12px',
+    color: '#9CA3AF',
+  },
   undoButton: {
-    backgroundColor: '#4e73df',
-    color: '#fff',
+    backgroundColor: 'transparent',
+    color: 'var(--primary)',
     border: 'none',
-    padding: '6px 16px',
-    borderRadius: '4px',
+    padding: '8px 16px',
+    borderRadius: 'var(--radius-sm)',
     cursor: 'pointer',
     fontSize: '14px',
     fontWeight: '500',
+    transition: 'all var(--transition-fast)',
   },
   loading: {
     display: 'flex',
@@ -432,18 +553,20 @@ const styles = {
     alignItems: 'center',
     height: '200px',
     fontSize: '16px',
-    color: '#666',
+    color: 'var(--text-secondary)',
   },
-  topBar: {
+  header: {
     display: 'flex',
+    marginBottom: '28px',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   pageTitle: {
-    fontSize: '24px',
-    fontWeight: '600',
-    color: '#1a1a2e',
+    fontSize: '26px',
+    fontWeight: '700',
+    color: 'var(--text-primary)',
     margin: 0,
+    letterSpacing: '-0.5px',
   },
   topActions: {
     display: 'flex',
@@ -452,130 +575,141 @@ const styles = {
   },
   searchInput: {
     padding: '10px 16px',
-    border: '1px solid #E8ECF1',
-    borderRadius: '6px',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-md)',
     fontSize: '14px',
     width: '260px',
     outline: 'none',
-    backgroundColor: '#FFFFFF',
-    transition: 'border-color 0.2s',
+    backgroundColor: 'var(--bg-secondary)',
+    transition: 'all var(--transition-fast)',
+    boxShadow: 'var(--shadow-sm)',
   },
   addButton: {
-    padding: '10px 20px',
-    backgroundColor: '#4e73df',
+    padding: '10px 22px',
+    background: 'var(--gradient-primary)',
     color: '#fff',
     border: 'none',
-    borderRadius: '6px',
+    borderRadius: 'var(--radius-md)',
     cursor: 'pointer',
     fontSize: '14px',
-    fontWeight: '500',
-    transition: 'background-color 0.2s',
+    fontWeight: '600',
+    transition: 'all var(--transition-fast)',
+    boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)',
+    letterSpacing: '-0.1px',
   },
   tabsContainer: {
     display: 'flex',
     gap: '4px',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'var(--bg-secondary)',
     padding: '6px',
-    borderRadius: '8px',
-    border: '1px solid #E8ECF1',
+    borderRadius: 'var(--radius-md)',
+    border: '1px solid var(--border)',
+    boxShadow: 'var(--shadow-sm)',
   },
   tab: {
     padding: '10px 20px',
     backgroundColor: 'transparent',
     border: 'none',
-    borderRadius: '6px',
+    borderRadius: '8px',
     cursor: 'pointer',
     fontSize: '14px',
     fontWeight: '500',
-    color: '#5a6a85',
+    color: 'var(--text-secondary)',
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    transition: 'all 0.2s',
+    transition: 'all var(--transition-fast)',
   },
   tabActive: {
-    backgroundColor: '#4e73df',
+    background: 'var(--gradient-primary)',
     color: '#fff',
+    boxShadow: '0 2px 8px rgba(79, 70, 229, 0.3)',
   },
   tabCount: {
     fontSize: '12px',
     padding: '2px 8px',
     borderRadius: '10px',
-    backgroundColor: 'rgba(0,0,0,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.2)',
   },
   tableCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: '8px',
-    border: '1px solid #E8ECF1',
+    backgroundColor: 'var(--bg-secondary)',
+    borderRadius: 'var(--radius-lg)',
+    border: '1px solid var(--border)',
     overflow: 'hidden',
+    boxShadow: 'var(--shadow-card)',
+    transition: 'box-shadow var(--transition-base)',
   },
   table: {
     width: '100%',
     borderCollapse: 'collapse',
   },
   tableHeader: {
-    backgroundColor: '#FAFBFC',
+    backgroundColor: 'var(--bg-tertiary)',
   },
   th: {
     padding: '14px 20px',
     textAlign: 'left',
-    fontSize: '13px',
-    fontWeight: '500',
-    color: '#6B7280',
-    borderBottom: '1px solid #E8ECF1',
+    fontSize: '12px',
+    fontWeight: '600',
+    color: 'var(--text-tertiary)',
+    borderBottom: '1px solid var(--border)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
   },
   tableRow: {
-    borderBottom: '1px solid #E8ECF1',
-    transition: 'background-color 0.15s',
+    borderBottom: '1px solid var(--border-light)',
+    transition: 'background-color var(--transition-fast)',
+    cursor: 'default',
   },
   td: {
-    padding: '14px 20px',
+    padding: '16px 20px',
     fontSize: '14px',
-    color: '#333',
+    color: 'var(--text-primary)',
   },
   tdSecondary: {
-    padding: '14px 20px',
+    padding: '16px 20px',
     fontSize: '14px',
-    color: '#6B7280',
+    color: 'var(--text-secondary)',
   },
   productName: {
-    fontSize: '16px',
+    fontSize: '15px',
     fontWeight: '600',
-    color: '#111827',
+    color: 'var(--text-primary)',
   },
   productDesc: {
-    fontSize: '14px',
+    fontSize: '13px',
     fontWeight: '400',
-    color: '#6B7280',
+    color: 'var(--text-tertiary)',
+    marginTop: '2px',
   },
   tdPrice: {
-    padding: '14px 20px',
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#2563EB',
+    padding: '16px 20px',
+    fontSize: '15px',
+    fontWeight: '700',
+    color: 'var(--primary)',
   },
   editButton: {
-    padding: '6px 14px',
-    backgroundColor: '#EEF2FF',
-    color: '#4e73df',
-    border: 'none',
-    borderRadius: '4px',
+    padding: '7px 16px',
+    backgroundColor: 'var(--primary-bg)',
+    color: 'var(--primary)',
+    border: '1px solid transparent',
+    borderRadius: 'var(--radius-sm)',
     cursor: 'pointer',
     fontSize: '13px',
     fontWeight: '500',
     marginRight: '8px',
-    transition: 'background-color 0.2s',
+    transition: 'all var(--transition-fast)',
   },
   deleteButton: {
-    padding: '6px 14px',
+    padding: '7px 16px',
     backgroundColor: '#FEF2F2',
-    color: '#e74a3b',
-    border: 'none',
-    borderRadius: '4px',
+    color: '#EF4444',
+    border: '1px solid transparent',
+    borderRadius: 'var(--radius-sm)',
     cursor: 'pointer',
     fontSize: '13px',
     fontWeight: '500',
-    transition: 'background-color 0.2s',
+    transition: 'all var(--transition-fast)',
   },
   modalOverlay: {
     position: 'fixed',
@@ -583,36 +717,72 @@ const styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    backdropFilter: 'blur(4px)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1000,
   },
   modal: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'var(--bg-secondary)',
     padding: '0',
-    borderRadius: '12px',
-    border: '1px solid #E8ECF1',
+    borderRadius: 'var(--radius-xl)',
+    border: '1px solid var(--border)',
     width: '480px',
     maxWidth: '90%',
     maxHeight: '90vh',
     display: 'flex',
     flexDirection: 'column',
+    boxShadow: 'var(--shadow-xl)',
   },
   modalTitle: {
     fontSize: '18px',
     fontWeight: '600',
     padding: '20px 24px',
     margin: 0,
-    color: '#111827',
-    borderBottom: '1px solid #E8ECF1',
-    backgroundColor: '#FAFBFC',
+    color: 'var(--text-primary)',
+    borderBottom: '1px solid var(--border)',
+    backgroundColor: 'var(--bg-tertiary)',
     flexShrink: 0,
+    borderRadius: 'var(--radius-xl) var(--radius-xl) 0 0',
   },
   formScroll: {
     flex: 1,
     overflowY: 'auto',
+  },
+  templateSection: {
+    padding: '16px 24px',
+    backgroundColor: 'var(--bg-tertiary)',
+    borderBottom: '1px solid var(--border)',
+  },
+  templateTitle: {
+    fontSize: '12px',
+    fontWeight: '600',
+    color: 'var(--text-tertiary)',
+    marginBottom: '10px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+  },
+  templateList: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+  },
+  templateButton: {
+    padding: '6px 12px',
+    backgroundColor: 'var(--bg-secondary)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-sm)',
+    cursor: 'pointer',
+    fontSize: '12px',
+    color: 'var(--text-secondary)',
+    transition: 'all var(--transition-fast)',
+  },
+  templateButtonHover: {
+    backgroundColor: 'var(--primary-bg)',
+    borderColor: 'var(--primary)',
+    color: 'var(--primary)',
   },
   formSection: {
     padding: '20px 24px',
@@ -620,7 +790,7 @@ const styles = {
   sectionTitle: {
     fontSize: '13px',
     fontWeight: '600',
-    color: '#6B7280',
+    color: 'var(--text-tertiary)',
     marginBottom: '16px',
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
@@ -637,46 +807,48 @@ const styles = {
     marginBottom: '8px',
     fontSize: '14px',
     fontWeight: '500',
-    color: '#5a6a85',
+    color: 'var(--text-secondary)',
   },
   input: {
     width: '100%',
     padding: '10px 14px',
-    border: '1px solid #E8ECF1',
-    borderRadius: '6px',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-sm)',
     fontSize: '14px',
-    backgroundColor: '#FFFFFF',
-    transition: 'border-color 0.2s',
+    backgroundColor: 'var(--bg-secondary)',
+    transition: 'all var(--transition-fast)',
   },
   modalButtons: {
     display: 'flex',
     justifyContent: 'flex-end',
     gap: '12px',
     padding: '16px 24px',
-    backgroundColor: '#FAFBFC',
-    borderTop: '1px solid #E8ECF1',
+    backgroundColor: 'var(--bg-tertiary)',
+    borderTop: '1px solid var(--border)',
     flexShrink: 0,
+    borderRadius: '0 0 var(--radius-xl) var(--radius-xl)',
   },
   cancelButton: {
     padding: '10px 24px',
-    backgroundColor: '#FFFFFF',
-    color: '#374151',
-    border: '1px solid #D1D5DB',
-    borderRadius: '6px',
+    backgroundColor: 'var(--bg-secondary)',
+    color: 'var(--text-secondary)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-md)',
     cursor: 'pointer',
     fontSize: '14px',
     fontWeight: '500',
-    transition: 'all 0.15s',
+    transition: 'all var(--transition-fast)',
   },
   submitButton: {
     padding: '10px 24px',
-    backgroundColor: '#2563EB',
+    background: 'var(--gradient-primary)',
     color: '#fff',
     border: 'none',
-    borderRadius: '6px',
+    borderRadius: 'var(--radius-md)',
     cursor: 'pointer',
     fontSize: '14px',
-    fontWeight: '500',
-    transition: 'background-color 0.15s',
+    fontWeight: '600',
+    transition: 'all var(--transition-fast)',
+    boxShadow: '0 2px 8px rgba(79, 70, 229, 0.3)',
   },
 }
