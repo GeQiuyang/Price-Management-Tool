@@ -56,23 +56,29 @@ const modalAnimationStyles = `
 `
 
 export default function Currencies() {
-  const [currencies, setCurrencies] = useState(() => {
-    const saved = localStorage.getItem('currencies')
-    if (saved) {
-      return JSON.parse(saved)
-    }
-    return [
-      { id: 1, code: 'CNY', name: '人民币', symbol: '¥', exchangeRate: 1.00, isDefault: true },
-      { id: 2, code: 'USD', name: '美元', symbol: '$', exchangeRate: 0.14, isDefault: false },
-      { id: 3, code: 'EUR', name: '欧元', symbol: '€', exchangeRate: 0.13, isDefault: false },
-      { id: 4, code: 'VND', name: '越南盾', symbol: '₫', exchangeRate: 3450.00, isDefault: false },
-    ]
-  })
+  const [currencies, setCurrencies] = useState([])
 
   useEffect(() => {
-    localStorage.setItem('currencies', JSON.stringify(currencies))
-    window.dispatchEvent(new CustomEvent('currencies-updated', { detail: currencies }))
-  }, [currencies])
+    fetchCurrencies()
+  }, [])
+
+  const fetchCurrencies = async () => {
+    try {
+      const res = await fetch(`${API_URL}/currencies`)
+      const data = await res.json()
+      const mapped = data.map(c => ({
+        id: c.id,
+        code: c.code,
+        name: c.name,
+        symbol: c.symbol,
+        exchangeRate: c.exchange_rate,
+        isDefault: !!c.is_default,
+      }))
+      setCurrencies(mapped)
+    } catch (err) {
+      console.error('获取货币失败:', err)
+    }
+  }
 
   const [showModal, setShowModal] = useState(false)
   const [isClosing, setIsClosing] = useState(false)
@@ -144,7 +150,12 @@ export default function Currencies() {
   const confirmDelete = async (currency) => {
     const itemToDelete = currency || deletedCurrency
     if (itemToDelete) {
-      await addToRecycleBin(itemToDelete, 'currencies')
+      try {
+        await fetch(`${API_URL}/currencies/${itemToDelete.id}`, { method: 'DELETE' })
+        await addToRecycleBin(itemToDelete, 'currencies')
+      } catch (err) {
+        console.error('删除失败:', err)
+      }
     }
     setDeletedCurrency(null)
     setShowUndoToast(false)
@@ -161,21 +172,50 @@ export default function Currencies() {
     }
   }
 
-  const handleSetDefault = (id) => {
+  const handleSetDefault = async (id) => {
     setCurrencies(currencies.map((c) => ({ ...c, isDefault: c.id === id })))
+    // Update on backend
+    for (const c of currencies) {
+      await fetch(`${API_URL}/currencies/${c.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: c.code, name: c.name, symbol: c.symbol,
+          exchange_rate: c.exchangeRate,
+          is_default: c.id === id,
+        }),
+      })
+    }
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    if (formData.isDefault) {
-      setCurrencies(currencies.map((c) => ({ ...c, isDefault: false })))
+    const payload = {
+      code: formData.code,
+      name: formData.name,
+      symbol: formData.symbol,
+      exchange_rate: Number(formData.exchangeRate),
+      is_default: formData.isDefault,
     }
-    if (editingCurrency) {
-      setCurrencies(currencies.map((c) => (c.id === editingCurrency.id ? { ...formData, id: c.id } : c)))
-    } else {
-      setCurrencies([...currencies, { ...formData, id: Date.now() }])
+    try {
+      if (editingCurrency) {
+        await fetch(`${API_URL}/currencies/${editingCurrency.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+      } else {
+        await fetch(`${API_URL}/currencies`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+      }
+      await fetchCurrencies()
+      setShowModal(false)
+    } catch (err) {
+      console.error('保存货币失败:', err)
     }
-    setShowModal(false)
   }
 
   const getConvertedAmount = (targetCurrency) => {

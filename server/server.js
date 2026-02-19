@@ -45,10 +45,11 @@ async function initDB() {
   db.run(`
     CREATE TABLE IF NOT EXISTS customers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      discount REAL DEFAULT 0,
-      description TEXT,
-      customer_count INTEGER DEFAULT 0,
+      customer_type TEXT NOT NULL,
+      country TEXT NOT NULL,
+      city TEXT NOT NULL,
+      contact TEXT,
+      deal_count INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
@@ -151,6 +152,36 @@ async function initDB() {
     )
   `)
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS quote_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sku TEXT NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT,
+      price REAL NOT NULL,
+      quantity INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS quote_imported_data (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sheet_name TEXT,
+      data_json TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS system_settings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      key TEXT UNIQUE NOT NULL,
+      value TEXT NOT NULL,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
   const initCostTypes = db.exec('SELECT COUNT(*) as count FROM cost_types')
   if (initCostTypes[0]?.values[0]?.[0] === 0) {
     const defaultCostTypes = [
@@ -245,14 +276,29 @@ async function initDB() {
   const initCustomers = db.exec('SELECT COUNT(*) as count FROM customers')
   if (initCustomers[0]?.values[0]?.[0] === 0) {
     const defaultCustomers = [
-      ['VIP客户', 15, '高价值客户，享受15%折扣', 45],
-      ['企业客户', 10, '企业采购客户，享受10%折扣', 128],
-      ['普通客户', 0, '标准定价客户', 1250],
-      ['新客户', 5, '首次购买客户，享受5%折扣', 89],
+      ['终端', '中国', '上海', '13800138001', 12],
+      ['经销商', '马来西亚', '吉隆坡', '+60-123456789', 8],
+      ['终端', '越南', '胡志明市', '+84-901234567', 5],
+      ['经销商', '中国', '广州', '13900139002', 20],
     ]
 
     defaultCustomers.forEach(c => {
-      db.run('INSERT INTO customers (name, discount, description, customer_count) VALUES (?, ?, ?, ?)', c)
+      db.run('INSERT INTO customers (customer_type, country, city, contact, deal_count) VALUES (?, ?, ?, ?, ?)', c)
+    })
+  }
+
+  const initSettings = db.exec('SELECT COUNT(*) as count FROM system_settings')
+  if (initSettings[0]?.values[0]?.[0] === 0) {
+    const defaults = [
+      ['companyName', 'SalesForce'],
+      ['defaultCurrency', 'CNY'],
+      ['language', 'zh-CN'],
+      ['timezone', 'Asia/Shanghai'],
+      ['decimalPlaces', '2'],
+      ['autoSave', 'true'],
+    ]
+    defaults.forEach(([k, v]) => {
+      db.run('INSERT INTO system_settings (key, value) VALUES (?, ?)', [k, v])
     })
   }
 
@@ -287,8 +333,10 @@ function queryOne(sql, params = []) {
 
 function runSQL(sql, params = []) {
   db.run(sql, params)
+  const lastIdResult = db.exec('SELECT last_insert_rowid()')
+  const lastId = lastIdResult[0].values[0][0]
   saveDB()
-  return { lastInsertRowid: db.exec('SELECT last_insert_rowid()')[0].values[0][0] }
+  return { lastInsertRowid: Number(lastId) }
 }
 
 app.get('/api/products', (req, res) => {
@@ -366,39 +414,39 @@ app.get('/api/customers', (req, res) => {
 })
 
 app.post('/api/customers', (req, res) => {
-  const { name, discount, description, customer_count } = req.body
+  const { customer_type, country, city, contact, deal_count } = req.body
 
   try {
     const result = runSQL(
-      'INSERT INTO customers (name, discount, description, customer_count) VALUES (?, ?, ?, ?)',
-      [name, discount, description, customer_count || 0]
+      'INSERT INTO customers (customer_type, country, city, contact, deal_count) VALUES (?, ?, ?, ?, ?)',
+      [customer_type, country, city, contact, deal_count || 0]
     )
 
     const newCustomer = queryOne('SELECT * FROM customers WHERE id = ?', [result.lastInsertRowid])
     res.status(201).json(newCustomer)
   } catch (error) {
-    res.status(500).json({ error: '创建客户分段失败' })
+    res.status(500).json({ error: '创建客户失败' })
   }
 })
 
 app.put('/api/customers/:id', (req, res) => {
-  const { name, discount, description, customer_count } = req.body
+  const { customer_type, country, city, contact, deal_count } = req.body
 
   try {
     db.run(
-      'UPDATE customers SET name = ?, discount = ?, description = ?, customer_count = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [name, discount, description, customer_count, req.params.id]
+      'UPDATE customers SET customer_type = ?, country = ?, city = ?, contact = ?, deal_count = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [customer_type, country, city, contact, deal_count, req.params.id]
     )
     saveDB()
 
     const updatedCustomer = queryOne('SELECT * FROM customers WHERE id = ?', [req.params.id])
     if (!updatedCustomer) {
-      return res.status(404).json({ error: '客户分段不存在' })
+      return res.status(404).json({ error: '客户不存在' })
     }
 
     res.json(updatedCustomer)
   } catch (error) {
-    res.status(500).json({ error: '更新客户分段失败' })
+    res.status(500).json({ error: '更新客户失败' })
   }
 })
 
@@ -406,7 +454,7 @@ app.delete('/api/customers/:id', (req, res) => {
   const customer = queryOne('SELECT * FROM customers WHERE id = ?', [req.params.id])
 
   if (!customer) {
-    return res.status(404).json({ error: '客户分段不存在' })
+    return res.status(404).json({ error: '客户不存在' })
   }
 
   db.run('DELETE FROM customers WHERE id = ?', [req.params.id])
@@ -715,8 +763,8 @@ app.post('/api/recycle-bin/:id/restore', (req, res) => {
     )
   } else if (targetTable === 'customers') {
     db.run(
-      'INSERT INTO customers (name, discount, description, customer_count) VALUES (?, ?, ?, ?)',
-      [itemData.name, itemData.discount, itemData.description, itemData.customer_count]
+      'INSERT INTO customers (customer_type, country, city, contact, deal_count) VALUES (?, ?, ?, ?, ?)',
+      [itemData.customer_type, itemData.country, itemData.city, itemData.contact, itemData.deal_count]
     )
   } else if (targetTable === 'taxes') {
     db.run(
@@ -962,6 +1010,109 @@ app.post('/api/freight/calculate', (req, res) => {
     })
   } catch (error) {
     res.status(500).json({ error: '计算失败: ' + error.message })
+  }
+})
+
+// ─── Quote Items API ───
+app.get('/api/quote-items', (req, res) => {
+  const items = queryAll('SELECT * FROM quote_items ORDER BY id ASC')
+  res.json(items)
+})
+
+app.post('/api/quote-items', (req, res) => {
+  const { sku, name, description, price, quantity } = req.body
+  try {
+    const result = runSQL(
+      'INSERT INTO quote_items (sku, name, description, price, quantity) VALUES (?, ?, ?, ?, ?)',
+      [sku, name, description || '', price, quantity || 1]
+    )
+    const item = queryOne('SELECT * FROM quote_items WHERE id = ?', [result.lastInsertRowid])
+    res.status(201).json(item)
+  } catch (error) {
+    res.status(500).json({ error: '添加报价项失败' })
+  }
+})
+
+app.put('/api/quote-items/:id', (req, res) => {
+  const { price, quantity } = req.body
+  try {
+    db.run('UPDATE quote_items SET price = ?, quantity = ? WHERE id = ?', [price, quantity, req.params.id])
+    saveDB()
+    const item = queryOne('SELECT * FROM quote_items WHERE id = ?', [req.params.id])
+    res.json(item)
+  } catch (error) {
+    res.status(500).json({ error: '更新报价项失败' })
+  }
+})
+
+app.delete('/api/quote-items/:id', (req, res) => {
+  db.run('DELETE FROM quote_items WHERE id = ?', [req.params.id])
+  saveDB()
+  res.json({ message: '删除成功' })
+})
+
+app.delete('/api/quote-items', (req, res) => {
+  db.run('DELETE FROM quote_items')
+  saveDB()
+  res.json({ message: '清空成功' })
+})
+
+// ─── Quote Imported Data API ───
+app.get('/api/quote-imported-data', (req, res) => {
+  const rows = queryAll('SELECT * FROM quote_imported_data ORDER BY id ASC')
+  const parsed = rows.map(r => ({ ...JSON.parse(r.data_json), _dbId: r.id, sheetName: r.sheet_name }))
+  res.json(parsed)
+})
+
+app.post('/api/quote-imported-data', (req, res) => {
+  const { items } = req.body // array of { sheetName, ...data }
+  try {
+    const inserted = []
+    items.forEach(item => {
+      const { sheetName, ...data } = item
+      const result = runSQL(
+        'INSERT INTO quote_imported_data (sheet_name, data_json) VALUES (?, ?)',
+        [sheetName || '', JSON.stringify(data)]
+      )
+      inserted.push({ ...data, _dbId: result.lastInsertRowid, sheetName })
+    })
+    res.status(201).json(inserted)
+  } catch (error) {
+    res.status(500).json({ error: '保存导入数据失败' })
+  }
+})
+
+app.delete('/api/quote-imported-data', (req, res) => {
+  db.run('DELETE FROM quote_imported_data')
+  saveDB()
+  res.json({ message: '清空成功' })
+})
+
+// ─── System Settings API ───
+app.get('/api/system-settings', (req, res) => {
+  const rows = queryAll('SELECT * FROM system_settings')
+  const settings = {}
+  rows.forEach(r => {
+    settings[r.key] = r.value === 'true' ? true : r.value === 'false' ? false : (isNaN(r.value) ? r.value : Number(r.value))
+  })
+  res.json(settings)
+})
+
+app.put('/api/system-settings', (req, res) => {
+  const settings = req.body
+  try {
+    Object.entries(settings).forEach(([key, value]) => {
+      const exists = queryOne('SELECT id FROM system_settings WHERE key = ?', [key])
+      if (exists) {
+        db.run('UPDATE system_settings SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?', [String(value), key])
+      } else {
+        db.run('INSERT INTO system_settings (key, value) VALUES (?, ?)', [key, String(value)])
+      }
+    })
+    saveDB()
+    res.json({ message: '设置已保存' })
+  } catch (error) {
+    res.status(500).json({ error: '保存设置失败' })
   }
 })
 

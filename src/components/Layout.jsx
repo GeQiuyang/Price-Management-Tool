@@ -154,14 +154,16 @@ export default function Layout({ children }) {
   const location = useLocation()
 
   const navItems = [
-    { path: '/', label: '总览', icon: '📊', section: '主菜单' },
-    { path: '/products', label: '产品目录', icon: '📦' },
-    { path: '/costs', label: '成本数据', icon: '💰' },
-    { path: '/customers', label: '客户分段', icon: '👥' },
-    { path: '/currencies', label: '货币管理', icon: '💱' },
-    { path: '/taxes-units', label: '税费与计量单位', icon: '📐', section: '系统设置' },
+    { path: '/', label: '总览', icon: '📊', section: '业务管理' },
+    { path: '/products', label: '产品管理', icon: '📦' },
+    { path: '/costs', label: '成本与定价', icon: '💰' },
+    { path: '/customers', label: '客户管理', icon: '👥' },
     { path: '/markets-channels', label: '市场与渠道', icon: '🌍' },
-    { path: '/freight-simulator', label: '海运费模拟', icon: '🚢' },
+    { path: '/freight-simulator', label: '海运费模拟', icon: '�', section: '业务工具' },
+    { path: '/quote-generator', label: '报价生成器', icon: '📋' },
+    { path: '/currencies', label: '货币与汇率', icon: '�', section: '系统设置' },
+    { path: '/tax-rules', label: '税费规则', icon: '📐' },
+    { path: '/system-settings', label: '系统参数', icon: '⚙️' },
     { path: '/recycle-bin', label: '回收站', icon: '🗑️', section: '其他' },
   ]
 

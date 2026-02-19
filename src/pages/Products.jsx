@@ -84,24 +84,24 @@ export default function Products() {
 
   const productTemplates = {
     '导管类': [
-      { name: '300尖丝导管', sku: '300JSDG', description: '300尖丝导管，长度{m}，厚度3mm', price: 300 },
-      { name: '260方丝导管', sku: '260FSDG', description: '260方丝导管，长度{m}，厚度3.5mm', price: 200 },
-      { name: '273母扣接头', sku: '273CT', description: '273母扣', price: 80 },
-      { name: '钢丝绳', sku: 'SR-', description: '钢丝绳，长度{m}米', price: 50 },
-      { name: '密封圈', sku: '260-O-ring', description: '260密封圈，线径8mm', price: 1 },
-      { name: '料斗', sku: 'HP-1200-', description: '容积1.2立方米，壁厚3.5mm', price: 1500 },
+      { name: '300尖丝导管', sku: 'TP300-3-3m-S', description: '300尖丝导管，长度{m}，厚度3mm', price: 300 },
+      { name: '260方丝导管', sku: 'TP260-3.5-3m-Q', description: '260方丝导管，长度{m}，厚度3.5mm', price: 200 },
+      { name: '273母扣接头', sku: 'TP273-0-0m-S', description: '273母扣', price: 80 },
+      { name: '钢丝绳', sku: 'SR-{m}', description: '钢丝绳，长度{m}', price: 50 },
+      { name: '密封圈', sku: 'TP260-8-0m-S', description: '260密封圈，线径8mm', price: 1 },
+      { name: '料斗', sku: 'TP1200-3.5-0m-Q', description: '容积1.2m³，壁厚3.5mm', price: 1500 },
     ],
     '钻具类': [
-      { name: '赛迈斯宝石截齿60', sku: 'SMSCCBS60', description: '合金直径28mm', price: 270 },
-      { name: '捞沙斗', sku: 'DB', description: '{size}mm', price: 6500 },
-      { name: '筒钻', sku: 'CB', description: '{size}mm', price: 13000 },
-      { name: '螺旋钻头', sku: 'LZZT', description: '{size}mm高效螺旋钻头', price: 800 },
+      { name: '赛迈斯宝石截齿60', sku: 'BT-60-60-24', description: '合金直径28mm', price: 270 },
+      { name: '捞沙斗', sku: 'DB-{size}-{thickness}', description: '{size}mm，壁厚{thickness}mm', price: 6500 },
+      { name: '筒钻', sku: 'CB-{size}-{thickness}', description: '{size}mm，壁厚{thickness}mm', price: 13000 },
+      { name: '螺旋钻头', sku: 'LZZT-{size}-{thickness}', description: '{size}mm，壁厚{thickness}mm高效螺旋钻头', price: 800 },
     ],
     '配件类': [
-      { name: '泥浆管', sku: 'MT', description: '口径4英寸，长度18米', price: 330 },
-      { name: '泥浆泵', sku: 'MP', description: '{power}千瓦', price: 6500 },
-      { name: '钻杆', sku: 'ZG', description: '钻杆，长度{m}米', price: 400 },
-      { name: '加重钻杆', sku: 'JZZG', description: '加重钻杆，长度{m}米', price: 600 },
+      { name: '泥浆管', sku: 'MT-18-4', description: '口径4英寸，长度18m', price: 330 },
+      { name: '泥浆泵', sku: 'MP-{power}', description: '{power}千瓦', price: 6500 },
+      { name: '钻杆', sku: 'ZG-{m}-{diameter}', description: '钻杆，长度{m}，直径{diameter}mm', price: 400 },
+      { name: '加重钻杆', sku: 'JZZG-{m}-{diameter}', description: '加重钻杆，长度{m}，直径{diameter}mm', price: 600 },
     ],
   }
 
@@ -205,6 +205,106 @@ export default function Products() {
       setDeletedProduct(null)
       setShowUndoToast(false)
     }
+  }
+
+  const parseSKU = (sku) => {
+    if (!sku) return null
+    
+    const parts = sku.split('-')
+    const prefix = parts[0]
+    
+    if (prefix.startsWith('TP')) {
+      return {
+        type: 'pipe',
+        model: parts[1] || '',
+        thickness: parts[2] || '',
+        length: parts[3] || '',
+        thread: parts[4] || '',
+      }
+    } else if (prefix.startsWith('BT')) {
+      return {
+        type: 'bit',
+        series: parts[1] || '',
+        model: parts[2] || '',
+      }
+    } else if (prefix === 'DB' || prefix === 'CB' || prefix.startsWith('LZZT')) {
+      return {
+        type: 'tool',
+        code: prefix,
+        size: parts[1] || '',
+        thickness: parts[2] || '',
+      }
+    } else if (prefix === 'SR' || prefix === 'MT' || prefix === 'MP' || prefix === 'ZG' || prefix === 'JZZG') {
+      return {
+        type: 'accessory',
+        code: prefix,
+        param1: parts[1] || '',
+        param2: parts[2] || '',
+      }
+    }
+    return null
+  }
+
+  const updateSKUFromDescription = (description, currentSKU) => {
+    if (!currentSKU) return currentSKU
+    
+    const parsed = parseSKU(currentSKU)
+    if (!parsed) return currentSKU
+    
+    let newSKU = currentSKU
+    
+    if (parsed.type === 'pipe') {
+      const thicknessMatch = description.match(/厚度(\d+(?:\.\d+)?)mm/)
+      const lengthMatch = description.match(/长度(\d+(?:\.\d+)?)m/)
+      
+      if (thicknessMatch || lengthMatch) {
+        const thickness = thicknessMatch ? thicknessMatch[1] : parsed.thickness
+        const length = lengthMatch ? lengthMatch[1] : parsed.length
+        newSKU = `TP${parsed.model}-${thickness}-${length}m-${parsed.thread}`
+      }
+    } else if (parsed.type === 'tool') {
+      const thicknessMatch = description.match(/壁厚(\d+(?:\.\d+)?)mm/)
+      
+      if (thicknessMatch) {
+        const thickness = thicknessMatch[1]
+        newSKU = `${parsed.code}-${parsed.size}-${thickness}`
+      }
+    } else if (parsed.type === 'accessory') {
+      if (parsed.code === 'SR') {
+        const lengthMatch = description.match(/长度(\d+(?:\.\d+)?)m/)
+        if (lengthMatch) {
+          newSKU = `SR-${lengthMatch[1]}`
+        }
+      } else if (parsed.code === 'MT') {
+        const lengthMatch = description.match(/长度(\d+(?:\.\d+)?)m/)
+        const diameterMatch = description.match(/直径(\d+(?:\.\d+)?)mm/)
+        if (lengthMatch || diameterMatch) {
+          const length = lengthMatch ? lengthMatch[1] : parsed.param1
+          const diameter = diameterMatch ? diameterMatch[1] : parsed.param2
+          newSKU = `MT-${length}-${diameter}`
+        }
+      } else if (parsed.code === 'MP') {
+        const powerMatch = description.match(/(\d+(?:\.\d+)?)千瓦/)
+        if (powerMatch) {
+          newSKU = `MP-${powerMatch[1]}`
+        }
+      } else if (parsed.code === 'ZG' || parsed.code === 'JZZG') {
+        const lengthMatch = description.match(/长度(\d+(?:\.\d+)?)m/)
+        const diameterMatch = description.match(/直径(\d+(?:\.\d+)?)mm/)
+        if (lengthMatch || diameterMatch) {
+          const length = lengthMatch ? lengthMatch[1] : parsed.param1
+          const diameter = diameterMatch ? diameterMatch[1] : parsed.param2
+          newSKU = `${parsed.code}-${length}-${diameter}`
+        }
+      }
+    }
+    
+    return newSKU
+  }
+
+  const handleDescriptionChange = (value) => {
+    const newSKU = updateSKUFromDescription(value, formData.sku)
+    setFormData({ ...formData, description: value, sku: newSKU })
   }
 
   const handleSubmit = async (e) => {
@@ -455,7 +555,7 @@ export default function Products() {
                     <input
                       style={styles.input}
                       value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      onChange={(e) => handleDescriptionChange(e.target.value)}
                     />
                   </div>
                   <div style={styles.formGroup}>

@@ -9,6 +9,8 @@ import TaxesUnits from './pages/TaxesUnits'
 import MarketsChannels from './pages/MarketsChannels'
 import RecycleBin from './pages/RecycleBin'
 import FreightSimulator from './pages/FreightSimulator'
+import QuoteGenerator from './pages/QuoteGenerator'
+import SystemSettings from './pages/SystemSettings'
 
 function App() {
   return (
@@ -20,10 +22,12 @@ function App() {
           <Route path="/costs" element={<Costs />} />
           <Route path="/customers" element={<Customers />} />
           <Route path="/currencies" element={<Currencies />} />
-          <Route path="/taxes-units" element={<TaxesUnits />} />
+          <Route path="/tax-rules" element={<TaxesUnits />} />
           <Route path="/markets-channels" element={<MarketsChannels />} />
           <Route path="/recycle-bin" element={<RecycleBin />} />
           <Route path="/freight-simulator" element={<FreightSimulator />} />
+          <Route path="/quote-generator" element={<QuoteGenerator />} />
+          <Route path="/system-settings" element={<SystemSettings />} />
         </Routes>
       </Layout>
     </Router>
