@@ -23,10 +23,18 @@ const modalAnimationStyles = `
   @keyframes spin {
     to { transform: rotate(360deg); }
   }
+  @keyframes warningPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
   .quote-product-row:hover {
     background: var(--bg-tertiary) !important;
   }
   .quote-search-input:focus {
+    border-color: #4F46E5 !important;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1) !important;
+  }
+  .product-quantity-input:focus {
     border-color: #4F46E5 !important;
     box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1) !important;
   }
@@ -53,6 +61,9 @@ export default function QuoteGenerator() {
     // Tab 切换
     const [activeTab, setActiveTab] = useState('products') // 'products' | 'import'
     const fileInputRef = useRef(null)
+    // 清除确认对话框
+    const [showClearModal, setShowClearModal] = useState(false)
+    const [isClearClosing, setIsClearClosing] = useState(false)
 
     // 初始化加载
     useEffect(() => {
@@ -125,6 +136,61 @@ export default function QuoteGenerator() {
         }
     }
 
+    const handleIncreaseFromModal = (product, e) => {
+        e.stopPropagation()
+        const existing = quoteItems.find(item => item.sku === product.sku)
+        if (existing) {
+            const newQty = existing.quantity + 1
+            setQuoteItems(quoteItems.map(item =>
+                item.sku === product.sku ? { ...item, quantity: newQty } : item
+            ))
+            fetch(`${API_URL}/quote-items/${existing.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ price: existing.price, quantity: newQty }),
+            })
+        }
+    }
+
+    const handleDecreaseFromModal = (product, e) => {
+        e.stopPropagation()
+        const existing = quoteItems.find(item => item.sku === product.sku)
+        if (existing && existing.quantity > 1) {
+            const newQty = existing.quantity - 1
+            setQuoteItems(quoteItems.map(item =>
+                item.sku === product.sku ? { ...item, quantity: newQty } : item
+            ))
+            fetch(`${API_URL}/quote-items/${existing.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ price: existing.price, quantity: newQty }),
+            })
+        }
+    }
+
+    const handleQuantityInputChange = (product, value, e) => {
+        e.stopPropagation()
+        setQuoteItems(quoteItems.map(item =>
+            item.sku === product.sku ? { ...item, qtyInput: value } : item
+        ))
+    }
+
+    const handleQuantityInputBlur = (product, value, e) => {
+        e.stopPropagation()
+        const existing = quoteItems.find(item => item.sku === product.sku)
+        if (existing) {
+            const num = Math.max(1, parseInt(value) || 1)
+            setQuoteItems(quoteItems.map(item =>
+                item.sku === product.sku ? { ...item, quantity: num, qtyInput: undefined } : item
+            ))
+            fetch(`${API_URL}/quote-items/${existing.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ price: existing.price, quantity: num }),
+            })
+        }
+    }
+
     const handleQuantityChange = (id, value) => {
         setQuoteItems(quoteItems.map(item =>
             item.id === id ? { ...item, qtyInput: value } : item
@@ -142,6 +208,36 @@ export default function QuoteGenerator() {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ price: item.price, quantity: num }),
+            })
+        }
+    }
+
+    const handleIncreaseQuantity = (id) => {
+        const item = quoteItems.find(i => i.id === id)
+        if (item) {
+            const newQty = item.quantity + 1
+            setQuoteItems(quoteItems.map(i =>
+                i.id === id ? { ...i, quantity: newQty } : i
+            ))
+            fetch(`${API_URL}/quote-items/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ price: item.price, quantity: newQty }),
+            })
+        }
+    }
+
+    const handleDecreaseQuantity = (id) => {
+        const item = quoteItems.find(i => i.id === id)
+        if (item && item.quantity > 1) {
+            const newQty = item.quantity - 1
+            setQuoteItems(quoteItems.map(i =>
+                i.id === id ? { ...i, quantity: newQty } : i
+            ))
+            fetch(`${API_URL}/quote-items/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ price: item.price, quantity: newQty }),
             })
         }
     }
@@ -170,6 +266,26 @@ export default function QuoteGenerator() {
     const handleRemoveItem = (id) => {
         setQuoteItems(quoteItems.filter(item => item.id !== id))
         fetch(`${API_URL}/quote-items/${id}`, { method: 'DELETE' })
+    }
+
+    const handleClearAll = () => {
+        setShowClearModal(true)
+    }
+
+    const handleConfirmClear = () => {
+        quoteItems.forEach(item => {
+            fetch(`${API_URL}/quote-items/${item.id}`, { method: 'DELETE' })
+        })
+        setQuoteItems([])
+        handleCloseClearModal()
+    }
+
+    const handleCloseClearModal = () => {
+        setIsClearClosing(true)
+        setTimeout(() => {
+            setShowClearModal(false)
+            setIsClearClosing(false)
+        }, 200)
     }
 
     const totalAmount = quoteItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
@@ -299,7 +415,10 @@ export default function QuoteGenerator() {
                 <h2 style={styles.pageTitle}>报价生成器</h2>
                 <div style={styles.topActions}>
                     {quoteItems.length > 0 && (
-                        <button style={styles.exportButton} onClick={handleExportQuote}>📥 导出报价单</button>
+                        <>
+                            <button style={styles.clearButton} onClick={handleClearAll}>🗑️ 清除所有</button>
+                            <button style={styles.exportButton} onClick={handleExportQuote}>📥 导出报价单</button>
+                        </>
                     )}
                     <button style={styles.importButton} onClick={() => fileInputRef.current?.click()}>
                         📂 导入 Excel
@@ -388,14 +507,29 @@ export default function QuoteGenerator() {
                                         />
                                     </td>
                                     <td style={styles.td}>
-                                        <input
-                                            type="number"
-                                            min="1"
-                                            style={styles.inlineInput}
-                                            value={item.qtyInput !== undefined ? item.qtyInput : item.quantity}
-                                            onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                                            onBlur={(e) => handleQuantityBlur(item.id, e.target.value)}
-                                        />
+                                        <div style={styles.quantityControl}>
+                                            <button
+                                                style={styles.quantityBtn}
+                                                onClick={() => handleDecreaseQuantity(item.id)}
+                                                disabled={item.quantity <= 1}
+                                            >
+                                                −
+                                            </button>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                style={styles.inlineInput}
+                                                value={item.qtyInput !== undefined ? item.qtyInput : item.quantity}
+                                                onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                                                onBlur={(e) => handleQuantityBlur(item.id, e.target.value)}
+                                            />
+                                            <button
+                                                style={styles.quantityBtn}
+                                                onClick={() => handleIncreaseQuantity(item.id)}
+                                            >
+                                                ＋
+                                            </button>
+                                        </div>
                                     </td>
                                     <td style={styles.tdTotal}>¥{(item.price * item.quantity).toLocaleString()}</td>
                                     <td style={styles.td}>
@@ -544,8 +678,34 @@ export default function QuoteGenerator() {
                                             </div>
                                             <div style={styles.productRight}>
                                                 <div style={styles.productPrice}>¥{product.price.toLocaleString()}</div>
-                                                {inQuote && (
-                                                    <span style={styles.addedBadge}>已添加 ×{inQuote.quantity}</span>
+                                                {inQuote ? (
+                                                    <div style={styles.productActions}>
+                                                        <button
+                                                            style={styles.productActionBtn}
+                                                            onClick={(e) => handleDecreaseFromModal(product, e)}
+                                                            disabled={inQuote.quantity <= 1}
+                                                        >
+                                                            −
+                                                        </button>
+                                                        <input
+                                                            type="number"
+                                                            min="1"
+                                                            className="product-quantity-input"
+                                                            style={styles.productQuantityInput}
+                                                            value={inQuote.qtyInput !== undefined ? inQuote.qtyInput : inQuote.quantity}
+                                                            onChange={(e) => handleQuantityInputChange(product, e.target.value, e)}
+                                                            onBlur={(e) => handleQuantityInputBlur(product, e.target.value, e)}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        />
+                                                        <button
+                                                            style={styles.productActionBtn}
+                                                            onClick={(e) => handleIncreaseFromModal(product, e)}
+                                                        >
+                                                            ＋
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <span style={styles.addBadge}>添加</span>
                                                 )}
                                             </div>
                                         </div>
@@ -634,6 +794,68 @@ export default function QuoteGenerator() {
                     </div>
                 </div>
             )}
+
+            {/* ─── 清除确认对话框 ─── */}
+            {showClearModal && (
+                <div
+                    style={{
+                        ...styles.modalOverlay,
+                        animation: isClearClosing ? 'modalFadeOut 0.2s ease-out forwards' : 'modalFadeIn 0.2s ease-out forwards',
+                    }}
+                    onClick={handleCloseClearModal}
+                >
+                    <div
+                        style={{
+                            ...styles.clearModal,
+                            animation: isClearClosing ? 'modalSlideOut 0.2s ease-out forwards' : 'modalSlideIn 0.2s ease-out forwards',
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div style={styles.clearModalIcon}>
+                            <svg width="64" height="64" viewBox="0 0 64 64">
+                                <circle
+                                    cx="32"
+                                    cy="32"
+                                    r="28"
+                                    fill="none"
+                                    stroke="#DC2626"
+                                    strokeWidth="3"
+                                    style={{ animation: 'warningPulse 2s ease-in-out infinite' }}
+                                />
+                                <path
+                                    d="M20 32 L44 32"
+                                    stroke="#DC2626"
+                                    strokeWidth="3"
+                                    strokeLinecap="round"
+                                />
+                            </svg>
+                        </div>
+                        <h3 style={styles.clearModalTitle}>确认清除</h3>
+                        <p style={styles.clearModalMessage}>
+                            确定要清除所有报价信息吗？此操作不可撤销，所有数据将被永久删除。
+                        </p>
+                        <div style={styles.clearModalStats}>
+                            <div style={styles.statItem}>
+                                <div style={styles.statValue}>{quoteItems.length}</div>
+                                <div style={styles.statLabel}>产品项</div>
+                            </div>
+                            <div style={styles.statDivider}></div>
+                            <div style={styles.statItem}>
+                                <div style={styles.statValue}>¥{totalAmount.toLocaleString()}</div>
+                                <div style={styles.statLabel}>总金额</div>
+                            </div>
+                        </div>
+                        <div style={styles.clearModalButtons}>
+                            <button style={styles.clearModalCancel} onClick={handleCloseClearModal}>
+                                取消
+                            </button>
+                            <button style={styles.clearModalConfirm} onClick={handleConfirmClear}>
+                                确认清除
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
@@ -654,6 +876,10 @@ const styles = {
     exportButton: {
         padding: '10px 20px', backgroundColor: '#ECFDF5', color: '#059669',
         border: '1px solid #A7F3D0', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '14px', fontWeight: '500',
+    },
+    clearButton: {
+        padding: '10px 20px', backgroundColor: '#FEF2F2', color: '#DC2626',
+        border: '1px solid #FECACA', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '14px', fontWeight: '500',
     },
     summaryCards: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' },
     summaryCard: { backgroundColor: 'var(--bg-secondary)', padding: '20px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)' },
@@ -682,6 +908,12 @@ const styles = {
     inlineInput: {
         width: '80px', padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
         fontSize: '14px', backgroundColor: 'var(--bg-primary)', textAlign: 'right', boxSizing: 'border-box',
+    },
+    quantityControl: { display: 'flex', alignItems: 'center', gap: '4px' },
+    quantityBtn: {
+        width: '28px', height: '28px', padding: '0', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+        backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '14px',
+        fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
     },
     removeBtn: {
         width: '28px', height: '28px', border: 'none', borderRadius: '50%', backgroundColor: '#FEF2F2',
@@ -712,7 +944,18 @@ const styles = {
     productSku: { fontSize: '12px', color: 'var(--text-tertiary)', fontFamily: 'monospace' },
     productRight: { display: 'flex', alignItems: 'center', gap: '10px' },
     productPrice: { fontSize: '15px', fontWeight: '700', color: '#059669' },
-    addedBadge: { fontSize: '11px', color: '#4F46E5', backgroundColor: 'rgba(79,70,229,0.1)', padding: '2px 8px', borderRadius: '999px', fontWeight: '600' },
+    productActions: { display: 'flex', alignItems: 'center', gap: '4px' },
+    productActionBtn: {
+        width: '24px', height: '24px', padding: '0', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+        backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '14px',
+        fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
+    },
+    productQuantityInput: {
+        width: '60px', height: '24px', padding: '0 4px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+        backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px', fontWeight: '600',
+        textAlign: 'center', outline: 'none', transition: 'all 0.15s', boxSizing: 'border-box',
+    },
+    addBadge: { fontSize: '11px', color: '#4F46E5', backgroundColor: 'rgba(79,70,229,0.1)', padding: '4px 10px', borderRadius: '999px', fontWeight: '600' },
     noResult: { padding: '40px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '14px' },
     // Preview
     sheetBadge: { fontSize: '12px', color: '#4F46E5', backgroundColor: 'rgba(79,70,229,0.1)', padding: '3px 10px', borderRadius: '999px', fontWeight: '600' },
@@ -728,4 +971,17 @@ const styles = {
     modalButtons: { display: 'flex', justifyContent: 'flex-end', gap: '12px', padding: '16px 24px', backgroundColor: 'var(--bg-tertiary)', borderTop: '1px solid var(--border)', flexShrink: 0, borderRadius: '0 0 var(--radius-xl) var(--radius-xl)' },
     cancelButton: { padding: '10px 24px', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '14px', fontWeight: '500' },
     submitButton: { padding: '10px 24px', background: 'var(--gradient-primary)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '14px', fontWeight: '500' },
+    // Clear Modal
+    clearModal: { backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border)', width: '420px', maxWidth: '94%', padding: '32px', textAlign: 'center', boxShadow: 'var(--shadow-xl)' },
+    clearModalIcon: { marginBottom: '20px', display: 'flex', justifyContent: 'center' },
+    clearModalTitle: { fontSize: '20px', fontWeight: '700', color: 'var(--text-primary)', margin: '0 0 12px 0' },
+    clearModalMessage: { fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.6', margin: '0 0 24px 0' },
+    clearModalStats: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '24px', marginBottom: '28px', padding: '20px', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' },
+    statItem: { flex: 1 },
+    statValue: { fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '4px' },
+    statLabel: { fontSize: '12px', color: 'var(--text-tertiary)', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.5px' },
+    statDivider: { width: '1px', height: '40px', backgroundColor: 'var(--border)' },
+    clearModalButtons: { display: 'flex', gap: '12px', justifyContent: 'center' },
+    clearModalCancel: { flex: 1, padding: '12px 24px', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '14px', fontWeight: '500', transition: 'all 0.15s' },
+    clearModalConfirm: { flex: 1, padding: '12px 24px', backgroundColor: '#DC2626', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.15s' },
 }

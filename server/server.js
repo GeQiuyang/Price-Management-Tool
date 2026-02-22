@@ -4,6 +4,8 @@ import initSqlJs from 'sql.js'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import fs from 'fs'
+import jwt from 'jsonwebtoken'
+import bcrypt from 'bcryptjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -112,6 +114,62 @@ async function initDB() {
       item_data TEXT NOT NULL,
       deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       expires_at DATETIME NOT NULL
+    )
+  `)
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      full_name TEXT,
+      phone TEXT,
+      role TEXT DEFAULT 'viewer',
+      status TEXT DEFAULT 'active',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      action TEXT NOT NULL,
+      entity_type TEXT NOT NULL,
+      entity_id INTEGER,
+      old_data TEXT,
+      new_data TEXT,
+      ip_address TEXT,
+      user_agent TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+  `)
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS data_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      snapshot_name TEXT NOT NULL,
+      snapshot_data TEXT NOT NULL,
+      created_by INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (created_by) REFERENCES users(id)
+    )
+  `)
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS backup_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      backup_type TEXT NOT NULL,
+      backup_path TEXT NOT NULL,
+      file_size INTEGER,
+      status TEXT NOT NULL,
+      error_message TEXT,
+      created_by INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (created_by) REFERENCES users(id)
     )
   `)
 
@@ -339,6 +397,497 @@ function runSQL(sql, params = []) {
   return { lastInsertRowid: Number(lastId) }
 }
 
+const JWT_SECRET = 'your-secret-key-change-in-production'
+const JWT_EXPIRES_IN = '24h'
+
+function generateToken(user) {
+  return jwt.sign(
+    { id: user.id, username: user.username, role: user.role },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRES_IN }
+  )
+}
+
+function verifyToken(token) {
+  try {
+    return jwt.verify(token, JWT_SECRET)
+  } catch (error) {
+    return null
+  }
+}
+
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization']
+  const token = authHeader && authHeader.split(' ')[1]
+
+  if (!token) {
+    return res.status(401).json({ error: '未提供认证令牌' })
+  }
+
+  const decoded = verifyToken(token)
+  if (!decoded) {
+    return res.status(403).json({ error: '无效的认证令牌' })
+  }
+
+  req.user = decoded
+  next()
+}
+
+app.post('/api/auth/register', async (req, res) => {
+  const { username, email, password, full_name, phone } = req.body
+
+  if (!username || !email || !password) {
+    return res.status(400).json({ error: '用户名、邮箱和密码为必填项' })
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({ error: '密码长度至少为6个字符' })
+  }
+
+  try {
+    const existingUser = queryOne(
+      'SELECT id FROM users WHERE username = ? OR email = ?',
+      [username, email]
+    )
+
+    if (existingUser) {
+      return res.status(400).json({ error: '用户名或邮箱已存在' })
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10)
+    const result = runSQL(
+      'INSERT INTO users (username, email, password, full_name, phone) VALUES (?, ?, ?, ?, ?)',
+      [username, email, hashedPassword, full_name || null, phone || null]
+    )
+
+    const user = queryOne('SELECT * FROM users WHERE id = ?', [result.lastInsertRowid])
+    const { password: _, ...userWithoutPassword } = user
+    const token = generateToken(user)
+
+    res.status(201).json({
+      success: true,
+      data: {
+        user: userWithoutPassword,
+        token
+      }
+    })
+  } catch (error) {
+    console.error('注册错误:', error)
+    res.status(500).json({ error: '注册失败' })
+  }
+})
+
+app.post('/api/auth/login', async (req, res) => {
+  const { username, password } = req.body
+
+  if (!username || !password) {
+    return res.status(400).json({ error: '用户名和密码为必填项' })
+  }
+
+  try {
+    const user = queryOne(
+      'SELECT * FROM users WHERE username = ? OR email = ?',
+      [username, username]
+    )
+
+    if (!user) {
+      return res.status(401).json({ error: '用户名或密码错误' })
+    }
+
+    if (user.status !== 'active') {
+      return res.status(403).json({ error: '账户已被禁用' })
+    }
+
+    const isValidPassword = await bcrypt.compare(password, user.password)
+
+    if (!isValidPassword) {
+      return res.status(401).json({ error: '用户名或密码错误' })
+    }
+
+    const { password: _, ...userWithoutPassword } = user
+    const token = generateToken(user)
+
+    res.json({
+      success: true,
+      data: {
+        user: userWithoutPassword,
+        token
+      }
+    })
+  } catch (error) {
+    console.error('登录错误:', error)
+    res.status(500).json({ error: '登录失败' })
+  }
+})
+
+app.post('/api/auth/logout', authenticateToken, (req, res) => {
+  res.json({ success: true, message: '登出成功' })
+})
+
+app.get('/api/auth/me', authenticateToken, (req, res) => {
+  const user = queryOne('SELECT * FROM users WHERE id = ?', [req.user.id])
+
+  if (!user) {
+    return res.status(404).json({ error: '用户不存在' })
+  }
+
+  const { password: _, ...userWithoutPassword } = user
+  res.json({ success: true, data: { user: userWithoutPassword } })
+})
+
+app.post('/api/auth/change-password', authenticateToken, async (req, res) => {
+  const { currentPassword, newPassword } = req.body
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: '当前密码和新密码为必填项' })
+  }
+
+  if (newPassword.length < 6) {
+    return res.status(400).json({ error: '新密码长度至少为6个字符' })
+  }
+
+  try {
+    const user = queryOne('SELECT * FROM users WHERE id = ?', [req.user.id])
+
+    if (!user) {
+      return res.status(404).json({ error: '用户不存在' })
+    }
+
+    const isValidPassword = await bcrypt.compare(currentPassword, user.password)
+
+    if (!isValidPassword) {
+      return res.status(401).json({ error: '当前密码错误' })
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10)
+    db.run(
+      'UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [hashedPassword, req.user.id]
+    )
+    saveDB()
+
+    res.json({ success: true, message: '密码修改成功' })
+  } catch (error) {
+    console.error('修改密码错误:', error)
+    res.status(500).json({ error: '修改密码失败' })
+  }
+})
+
+function createAuditLog(userId, action, entityType, entityId, oldData, newData, req) {
+  try {
+    db.run(
+      `INSERT INTO audit_logs (user_id, action, entity_type, entity_id, old_data, new_data, ip_address, user_agent) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        userId,
+        action,
+        entityType,
+        entityId,
+        oldData ? JSON.stringify(oldData) : null,
+        newData ? JSON.stringify(newData) : null,
+        req?.ip || null,
+        req?.headers?.['user-agent'] || null
+      ]
+    )
+    saveDB()
+  } catch (error) {
+    console.error('创建审计日志失败:', error)
+  }
+}
+
+app.get('/api/audit-logs', authenticateToken, (req, res) => {
+  const { page = 1, limit = 20, entity_type, action, user_id } = req.query
+  const offset = (page - 1) * limit
+
+  let whereClause = ''
+  const params = []
+
+  if (entity_type) {
+    whereClause += ' AND entity_type = ?'
+    params.push(entity_type)
+  }
+
+  if (action) {
+    whereClause += ' AND action = ?'
+    params.push(action)
+  }
+
+  if (user_id) {
+    whereClause += ' AND user_id = ?'
+    params.push(user_id)
+  }
+
+  const logs = queryAll(
+    `SELECT al.*, u.username, u.full_name 
+     FROM audit_logs al 
+     LEFT JOIN users u ON al.user_id = u.id 
+     WHERE 1=1 ${whereClause} 
+     ORDER BY al.created_at DESC 
+     LIMIT ? OFFSET ?`,
+    [...params, limit, offset]
+  )
+
+  const totalCount = queryOne(
+    `SELECT COUNT(*) as count FROM audit_logs WHERE 1=1 ${whereClause}`,
+    params
+  )
+
+  res.json({
+    success: true,
+    data: {
+      logs,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: totalCount?.count || 0,
+        pages: Math.ceil((totalCount?.count || 0) / limit)
+      }
+    }
+  })
+})
+
+app.get('/api/audit-logs/:id', authenticateToken, (req, res) => {
+  const log = queryOne(
+    `SELECT al.*, u.username, u.full_name 
+     FROM audit_logs al 
+     LEFT JOIN users u ON al.user_id = u.id 
+     WHERE al.id = ?`,
+    [req.params.id]
+  )
+
+  if (!log) {
+    return res.status(404).json({ error: '审计日志不存在' })
+  }
+
+  res.json({ success: true, data: { log } })
+})
+
+app.post('/api/backup/create', authenticateToken, (req, res) => {
+  try {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+    const backupDir = join(__dirname, 'backups')
+    
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true })
+    }
+
+    const backupPath = join(backupDir, `backup-${timestamp}.db`)
+    const data = db.export()
+    const buffer = Buffer.from(data)
+    fs.writeFileSync(backupPath, buffer)
+
+    const fileSize = fs.statSync(backupPath).size
+
+    db.run(
+      `INSERT INTO backup_logs (backup_type, backup_path, file_size, status, created_by) 
+       VALUES (?, ?, ?, ?, ?)`,
+      ['full', backupPath, fileSize, 'success', req.user.id]
+    )
+    saveDB()
+
+    createAuditLog(
+      req.user.id,
+      'backup',
+      'database',
+      null,
+      null,
+      { backup_path: backupPath, file_size: fileSize },
+      req
+    )
+
+    res.json({
+      success: true,
+      data: {
+        backup_path: backupPath,
+        file_size: fileSize,
+        timestamp
+      }
+    })
+  } catch (error) {
+    console.error('创建备份失败:', error)
+    
+    db.run(
+      `INSERT INTO backup_logs (backup_type, backup_path, status, error_message, created_by) 
+       VALUES (?, ?, ?, ?, ?)`,
+      ['full', null, 'failed', error.message, req.user.id]
+    )
+    saveDB()
+
+    res.status(500).json({ error: '创建备份失败' })
+  }
+})
+
+app.get('/api/backups', authenticateToken, (req, res) => {
+  const backups = queryAll(
+    `SELECT bl.*, u.username, u.full_name 
+     FROM backup_logs bl 
+     LEFT JOIN users u ON bl.created_by = u.id 
+     ORDER BY bl.created_at DESC`
+  )
+
+  res.json({ success: true, data: { backups } })
+})
+
+app.post('/api/backup/restore', authenticateToken, async (req, res) => {
+  const { backup_path } = req.body
+
+  if (!backup_path) {
+    return res.status(400).json({ error: '备份路径为必填项' })
+  }
+
+  try {
+    if (!fs.existsSync(backup_path)) {
+      return res.status(404).json({ error: '备份文件不存在' })
+    }
+
+    const fileBuffer = fs.readFileSync(backup_path)
+    const SQL = await initSqlJs()
+    const restoredDb = new SQL.Database(fileBuffer)
+
+    const backupData = restoredDb.export()
+    const buffer = Buffer.from(backupData)
+    
+    const currentData = db.export()
+    const currentBuffer = Buffer.from(currentData)
+
+    db = new SQL.Database(fileBuffer)
+    saveDB()
+
+    createAuditLog(
+      req.user.id,
+      'restore',
+      'database',
+      null,
+      { backup_path },
+      { restored_at: new Date().toISOString() },
+      req
+    )
+
+    res.json({
+      success: true,
+      message: '数据恢复成功',
+      data: {
+        backup_path,
+        restored_at: new Date().toISOString()
+      }
+    })
+  } catch (error) {
+    console.error('恢复备份失败:', error)
+    res.status(500).json({ error: '恢复备份失败' })
+  }
+})
+
+app.post('/api/snapshots/create', authenticateToken, (req, res) => {
+  const { snapshot_name } = req.body
+
+  if (!snapshot_name) {
+    return res.status(400).json({ error: '快照名称为必填项' })
+  }
+
+  try {
+    const data = db.export()
+    const buffer = Buffer.from(data)
+    const snapshotData = buffer.toString('base64')
+
+    const result = runSQL(
+      'INSERT INTO data_snapshots (snapshot_name, snapshot_data, created_by) VALUES (?, ?, ?)',
+      [snapshot_name, snapshotData, req.user.id]
+    )
+
+    createAuditLog(
+      req.user.id,
+      'snapshot',
+      'database',
+      result.lastInsertRowid,
+      null,
+      { snapshot_name },
+      req
+    )
+
+    const snapshot = queryOne('SELECT * FROM data_snapshots WHERE id = ?', [result.lastInsertRowid])
+
+    res.status(201).json({
+      success: true,
+      data: { snapshot }
+    })
+  } catch (error) {
+    console.error('创建快照失败:', error)
+    res.status(500).json({ error: '创建快照失败' })
+  }
+})
+
+app.get('/api/snapshots', authenticateToken, (req, res) => {
+  const snapshots = queryAll(
+    `SELECT ds.*, u.username, u.full_name 
+     FROM data_snapshots ds 
+     LEFT JOIN users u ON ds.created_by = u.id 
+     ORDER BY ds.created_at DESC`
+  )
+
+  res.json({ success: true, data: { snapshots } })
+})
+
+app.post('/api/snapshots/:id/restore', authenticateToken, async (req, res) => {
+  try {
+    const snapshot = queryOne('SELECT * FROM data_snapshots WHERE id = ?', [req.params.id])
+
+    if (!snapshot) {
+      return res.status(404).json({ error: '快照不存在' })
+    }
+
+    const snapshotBuffer = Buffer.from(snapshot.snapshot_data, 'base64')
+    const SQL = await initSqlJs()
+    db = new SQL.Database(snapshotBuffer)
+    saveDB()
+
+    createAuditLog(
+      req.user.id,
+      'restore_snapshot',
+      'snapshot',
+      snapshot.id,
+      { snapshot_name: snapshot.snapshot_name },
+      { restored_at: new Date().toISOString() },
+      req
+    )
+
+    res.json({
+      success: true,
+      message: '快照恢复成功',
+      data: {
+        snapshot_id: snapshot.id,
+        snapshot_name: snapshot.snapshot_name,
+        restored_at: new Date().toISOString()
+      }
+    })
+  } catch (error) {
+    console.error('恢复快照失败:', error)
+    res.status(500).json({ error: '恢复快照失败' })
+  }
+})
+
+app.delete('/api/snapshots/:id', authenticateToken, (req, res) => {
+  const snapshot = queryOne('SELECT * FROM data_snapshots WHERE id = ?', [req.params.id])
+
+  if (!snapshot) {
+    return res.status(404).json({ error: '快照不存在' })
+  }
+
+  db.run('DELETE FROM data_snapshots WHERE id = ?', [req.params.id])
+  saveDB()
+
+  createAuditLog(
+    req.user.id,
+    'delete_snapshot',
+    'snapshot',
+    snapshot.id,
+    { snapshot_name: snapshot.snapshot_name },
+    null,
+    req
+  )
+
+  res.json({ success: true, message: '快照删除成功' })
+})
+
 app.get('/api/products', (req, res) => {
   const products = queryAll('SELECT * FROM products ORDER BY id DESC')
   res.json(products)
@@ -352,7 +901,7 @@ app.get('/api/products/:id', (req, res) => {
   res.json(product)
 })
 
-app.post('/api/products', (req, res) => {
+app.post('/api/products', authenticateToken, (req, res) => {
   const { name, category, sku, price, description, status } = req.body
 
   try {
@@ -362,6 +911,17 @@ app.post('/api/products', (req, res) => {
     )
 
     const newProduct = queryOne('SELECT * FROM products WHERE id = ?', [result.lastInsertRowid])
+    
+    createAuditLog(
+      req.user.id,
+      'create',
+      'products',
+      newProduct.id,
+      null,
+      newProduct,
+      req
+    )
+    
     res.status(201).json(newProduct)
   } catch (error) {
     if (error.message.includes('UNIQUE constraint failed')) {
@@ -371,10 +931,12 @@ app.post('/api/products', (req, res) => {
   }
 })
 
-app.put('/api/products/:id', (req, res) => {
+app.put('/api/products/:id', authenticateToken, (req, res) => {
   const { name, category, sku, price, description, status } = req.body
 
   try {
+    const oldProduct = queryOne('SELECT * FROM products WHERE id = ?', [req.params.id])
+    
     db.run(
       'UPDATE products SET name = ?, category = ?, sku = ?, price = ?, description = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [name, category, sku, price, description, status, req.params.id]
@@ -386,6 +948,16 @@ app.put('/api/products/:id', (req, res) => {
       return res.status(404).json({ error: '产品不存在' })
     }
 
+    createAuditLog(
+      req.user.id,
+      'update',
+      'products',
+      updatedProduct.id,
+      oldProduct,
+      updatedProduct,
+      req
+    )
+
     res.json(updatedProduct)
   } catch (error) {
     if (error.message.includes('UNIQUE constraint failed')) {
@@ -395,7 +967,7 @@ app.put('/api/products/:id', (req, res) => {
   }
 })
 
-app.delete('/api/products/:id', (req, res) => {
+app.delete('/api/products/:id', authenticateToken, (req, res) => {
   const product = queryOne('SELECT * FROM products WHERE id = ?', [req.params.id])
 
   if (!product) {
@@ -404,6 +976,16 @@ app.delete('/api/products/:id', (req, res) => {
 
   db.run('DELETE FROM products WHERE id = ?', [req.params.id])
   saveDB()
+
+  createAuditLog(
+    req.user.id,
+    'delete',
+    'products',
+    product.id,
+    product,
+    null,
+    req
+  )
 
   res.json({ message: '删除成功' })
 })
