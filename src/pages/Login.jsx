@@ -37,7 +37,13 @@ function Login() {
 
       if (data.success) {
         localStorage.setItem('token', data.data.token)
-        localStorage.setItem('refreshToken', data.data.refreshToken)
+
+        if (data.data.refreshToken) {
+          localStorage.setItem('refreshToken', data.data.refreshToken)
+        } else {
+          localStorage.removeItem('refreshToken')
+        }
+
         localStorage.setItem('user', JSON.stringify(data.data.user))
         navigate('/')
       } else {

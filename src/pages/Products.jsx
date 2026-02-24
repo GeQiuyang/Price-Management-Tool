@@ -86,6 +86,7 @@ export default function Products() {
   const categories = [
     { id: '钻具类', name: '钻具类' },
     { id: '导管类', name: '导管类' },
+    { id: '水泵类', name: '水泵类' },
     { id: '配件类', name: '配件类' },
   ]
 
@@ -158,6 +159,11 @@ export default function Products() {
       { name: '260导管 (尖丝)', sku: 'TP26-{thickness}-{length}m-S', description: '壁厚{thickness}mm，尖丝', price: 291 },
       { name: '260导管 (方丝)', sku: 'TP26-{thickness}-{length}m-Q', description: '壁厚{thickness}mm，方丝', price: 296 },
       { name: '273母扣接头', sku: 'TP27-0-0m-S', description: '母扣接头', price: 80 },
+    ],
+    '水泵类': [
+      { name: '潜水泵', sku: 'SP-{power}-{flow}', description: '功率{power}kW，流量{flow}m³/h', price: 5000 },
+      { name: '离心泵', sku: 'LP-{power}-{head}', description: '功率{power}kW，扬程{head}m', price: 3500 },
+      { name: '泥浆泵', sku: 'PMP-{power}', description: '{power}千瓦', price: 6500 },
     ],
     '钻具类': [
       { name: '捞沙斗', sku: 'DB-{size}-{thickness}', description: '{size}mm，壁厚{thickness}mm', price: 6500 },
@@ -326,7 +332,7 @@ export default function Products() {
         size: parts[1] || '',
         thickness: parts[2] || '',
       }
-    } else if (prefix === 'SR' || prefix === 'MT' || prefix === 'MP' || prefix === 'ZG' || prefix === 'JZZG') {
+    } else if (prefix === 'SR' || prefix === 'MT' || prefix === 'MP' || prefix === 'PMP' || prefix === 'ZG' || prefix === 'JZZG') {
       return {
         type: 'accessory',
         code: prefix,
@@ -375,10 +381,10 @@ export default function Products() {
           const diameter = diameterMatch ? diameterMatch[1] : parsed.param2
           newSKU = `MT-${length}-${diameter}`
         }
-      } else if (parsed.code === 'MP') {
+      } else if (parsed.code === 'MP' || parsed.code === 'PMP') {
         const powerMatch = description.match(/(\d+(?:\.\d+)?)千瓦/)
         if (powerMatch) {
-          newSKU = `MP-${powerMatch[1]}`
+          newSKU = `${parsed.code}-${powerMatch[1]}`
         }
       } else if (parsed.code === 'ZG' || parsed.code === 'JZZG') {
         const lengthMatch = description.match(/长度(\d+(?:\.\d+)?)m/)
@@ -402,8 +408,10 @@ export default function Products() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
+      let response
+
       if (editingProduct) {
-        const response = await fetch(`${API_URL}/products/${editingProduct.id}`, {
+        response = await fetch(`${API_URL}/products/${editingProduct.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -411,11 +419,8 @@ export default function Products() {
           },
           body: JSON.stringify(formData),
         })
-        if (response.ok) {
-          fetchProducts()
-        }
       } else {
-        const response = await fetch(`${API_URL}/products`, {
+        response = await fetch(`${API_URL}/products`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -423,13 +428,27 @@ export default function Products() {
           },
           body: JSON.stringify(formData),
         })
-        if (response.ok) {
-          fetchProducts()
-        }
       }
+
+      if (!response.ok) {
+        let errorMessage = '保存产品失败'
+        try {
+          const data = await response.json()
+          if (data?.error) {
+            errorMessage = data.error
+          }
+        } catch (parseError) {
+          // ignore json parse error and use default message
+        }
+        alert(errorMessage)
+        return
+      }
+
+      fetchProducts()
       handleCloseModal()
     } catch (error) {
       console.error('保存产品失败:', error)
+      alert('保存产品失败，请稍后重试')
     }
   }
 
