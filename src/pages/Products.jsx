@@ -83,6 +83,9 @@ export default function Products() {
   })
   const [hoveredTemplate, setHoveredTemplate] = useState(null)
 
+  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  const isReadOnly = user.role === 'foreign_trade'
+
   const categories = [
     { id: '钻具类', name: '钻具类' },
     { id: '导管类', name: '导管类' },
@@ -92,7 +95,7 @@ export default function Products() {
 
   const generateSKUTable = () => {
     const tableData = []
-    
+
     const pipeModels = [300, 260, 273]
     const pipeThicknesses = { 300: [3, 3.5, 4], 260: [3, 3.5, 4], 273: [0] }
     const pipeLengths = [1.5, 2, 2.5, 3, 4, 6]
@@ -103,7 +106,7 @@ export default function Products() {
       '260-Q': 285,
       '273-S': 80,
     }
-    
+
     pipeModels.forEach(model => {
       pipeThicknesses[model].forEach(thickness => {
         pipeLengths.forEach(length => {
@@ -114,7 +117,7 @@ export default function Products() {
             const productName = `${model}导管 (${threadName}) · ${length}m`
             const price = pipePrices[`${model}-${thread}`] || 0
             const specDescription = thickness > 0 ? `壁厚${thickness}mm，长度${length}m` : '母扣接头'
-            
+
             tableData.push({
               sku,
               product: productName,
@@ -125,13 +128,13 @@ export default function Products() {
         })
       })
     })
-    
+
     const bitTypes = [
       { sku: 'BT-60-60-24', product: '赛迈斯宝石截齿60 · 60-24', price: '¥270', specDescription: '合金直径28mm，适合土层' },
       { sku: 'BT-60-60-24-R', product: '赛迈斯宝石截齿60 · 60-24', price: '¥290', specDescription: '合金直径28mm，适合岩层' },
     ]
     tableData.push(...bitTypes)
-    
+
     const toolTypes = [
       { sku: 'DB-1200-20', product: '捞沙斗 · 1200mm', price: '¥6500', specDescription: '1200mm，壁厚20mm' },
       { sku: 'DB-1500-20', product: '捞沙斗 · 1500mm', price: '¥7500', specDescription: '1500mm，壁厚20mm' },
@@ -140,7 +143,7 @@ export default function Products() {
       { sku: 'LZZT-1200-20', product: '螺旋钻头 · 1200mm', price: '¥800', specDescription: '1200mm，壁厚20mm高效螺旋钻头' },
     ]
     tableData.push(...toolTypes)
-    
+
     const accessoryTypes = [
       { sku: 'MT-18-4', product: '泥浆管 · 18m', price: '¥330', specDescription: '口径4英寸，长度18m' },
       { sku: 'MP-75', product: '泥浆泵 · 75kW', price: '¥6500', specDescription: '75千瓦' },
@@ -148,7 +151,7 @@ export default function Products() {
       { sku: 'JZZG-3-89', product: '加重钻杆 · 3m', price: '¥600', specDescription: '加重钻杆，长度3m，直径89mm' },
     ]
     tableData.push(...accessoryTypes)
-    
+
     return tableData
   }
 
@@ -305,10 +308,10 @@ export default function Products() {
 
   const parseSKU = (sku) => {
     if (!sku) return null
-    
+
     const parts = sku.split('-')
     const prefix = parts[0]
-    
+
     if (prefix.startsWith('TP')) {
       const seriesCode = parts[1] || ''
       const modelMap = { '3': 300, '26': 260, '27': 273 }
@@ -345,16 +348,16 @@ export default function Products() {
 
   const updateSKUFromDescription = (description, currentSKU) => {
     if (!currentSKU) return currentSKU
-    
+
     const parsed = parseSKU(currentSKU)
     if (!parsed) return currentSKU
-    
+
     let newSKU = currentSKU
-    
+
     if (parsed.type === 'pipe') {
       const thicknessMatch = description.match(/壁厚(\d+(?:\.\d+)?)mm/)
       const lengthMatch = description.match(/长度(\d+(?:\.\d+)?)m/)
-      
+
       if (thicknessMatch || lengthMatch) {
         const thickness = thicknessMatch ? thicknessMatch[1] : parsed.thickness
         const length = lengthMatch ? lengthMatch[1] : parsed.length
@@ -362,7 +365,7 @@ export default function Products() {
       }
     } else if (parsed.type === 'tool') {
       const thicknessMatch = description.match(/壁厚(\d+(?:\.\d+)?)mm/)
-      
+
       if (thicknessMatch) {
         const thickness = thicknessMatch[1]
         newSKU = `${parsed.code}-${parsed.size}-${thickness}`
@@ -396,7 +399,7 @@ export default function Products() {
         }
       }
     }
-    
+
     return newSKU
   }
 
@@ -530,17 +533,19 @@ export default function Products() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <button 
-            type="button" 
-            style={styles.addButton}
-            onClick={(e) => { 
-              e.preventDefault();
-              e.stopPropagation();
-              handleAdd();
-            }}
-          >
-            添加产品
-          </button>
+          {!isReadOnly && (
+            <button
+              type="button"
+              style={styles.addButton}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleAdd();
+              }}
+            >
+              添加产品
+            </button>
+          )}
         </div>
       </div>
 
@@ -566,31 +571,32 @@ export default function Products() {
         <table style={styles.table}>
           <thead>
             <tr style={styles.tableHeader}>
-              <th style={styles.th}>SKU</th>
-              <th style={styles.th}>产品</th>
+              <th style={styles.th}>产品名称</th>
+              <th style={styles.th}>产品规格</th>
               <th style={styles.th}>价格</th>
-              <th style={styles.th}>操作</th>
+              {!isReadOnly && <th style={styles.th}>操作</th>}
             </tr>
           </thead>
           <tbody>
             {getDisplayProducts().map((product) => (
               <tr key={product.id} style={styles.tableRow}>
-                <td style={styles.tdSecondary}>{product.sku}</td>
                 <td style={styles.td}>
                   <span style={styles.productName}>{product.name}</span>
-                  {getCleanDescription(product) && (
-                    <span style={styles.productDesc}> · {getCleanDescription(product)}</span>
-                  )}
+                </td>
+                <td style={styles.tdSecondary}>
+                  {getCleanDescription(product) || product.description || '-'}
                 </td>
                 <td style={styles.tdPrice}>¥{Number(product.price).toLocaleString()}</td>
-                <td style={styles.td}>
-                  <button style={styles.editButton} onClick={() => handleEdit(product)}>
-                    编辑
-                  </button>
-                  <button style={styles.deleteButton} onClick={() => handleDelete(product)}>
-                    删除
-                  </button>
-                </td>
+                {!isReadOnly && (
+                  <td style={styles.td}>
+                    <button style={styles.editButton} onClick={() => handleEdit(product)}>
+                      编辑
+                    </button>
+                    <button style={styles.deleteButton} onClick={() => handleDelete(product)}>
+                      删除
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -598,235 +604,253 @@ export default function Products() {
       </div>
 
       {showModal && createPortal(
-        <div 
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            padding: '20px'
-          }} 
-          onClick={handleCloseModal}
-        >
-          <div 
+        <>
+          <style>{`
+          @keyframes modalOverlayIn {
+            from { opacity: 0; backdrop-filter: blur(0px); }
+            to { opacity: 1; backdrop-filter: blur(8px); }
+          }
+          @keyframes modalOverlayOut {
+            from { opacity: 1; backdrop-filter: blur(8px); }
+            to { opacity: 0; backdrop-filter: blur(0px); }
+          }
+          @keyframes modalSlideIn {
+            from { opacity: 0; transform: translateY(32px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+          }
+          @keyframes modalSlideOut {
+            from { opacity: 1; transform: translateY(0) scale(1); }
+            to { opacity: 0; transform: translateY(24px) scale(0.97); }
+          }
+          .product-template-chip {
+            transition: all 0.15s ease;
+          }
+          .product-template-chip:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-color: #9ca3af !important;
+          }
+          .product-template-chip:active {
+            transform: scale(0.97);
+          }
+        `}</style>
+          <div
             style={{
-              backgroundColor: 'white',
-              borderRadius: '16px',
-              width: '100%',
-              maxWidth: '600px',
-              maxHeight: '90vh',
-              overflow: 'auto',
-              boxShadow: '0 25px 50px rgba(0, 0, 0, 0.25)'
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 9999,
+              padding: '20px',
+              animation: isClosing ? 'modalOverlayOut 0.2s ease forwards' : 'modalOverlayIn 0.25s ease forwards'
             }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={handleCloseModal}
           >
-            <div style={{ padding: '24px 28px', borderBottom: '1px solid #e5e7eb' }}>
-              <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '600', color: '#111827' }}>
-                {editingProduct ? '编辑产品' : '添加产品'}
-              </h3>
-            </div>
-            
-            <div style={{ padding: '24px 28px' }}>
-              {!editingProduct && productTemplates[formData.category] && (
-                <div style={{ marginBottom: '24px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#6b7280', marginBottom: '12px', textTransform: 'uppercase' }}>
-                    快速添加模板
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {productTemplates[formData.category].map((template, index) => (
-                      <button
-                        key={index}
-                        type="button"
-                        style={{
-                          padding: '8px 12px',
-                          backgroundColor: hoveredTemplate === index ? '#f3f4f6' : 'white',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontSize: '13px',
-                          color: '#374151'
-                        }}
-                        onClick={() => applyTemplate(template)}
-                        onMouseEnter={() => setHoveredTemplate(index)}
-                        onMouseLeave={() => setHoveredTemplate(null)}
-                      >
-                        {template.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              <form onSubmit={handleSubmit}>
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-                    产品名称
-                  </label>
-                  <input
-                    type="text"
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '8px',
-                      fontSize: '14px'
-                    }}
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                  />
-                </div>
-                
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-                    SKU
-                  </label>
-                  <input
-                    type="text"
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '8px',
-                      fontSize: '14px'
-                    }}
-                    value={formData.sku}
-                    onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                    required
-                  />
-                </div>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-                      分类
-                    </label>
-                    <select
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        backgroundColor: 'white'
-                      }}
-                      value={formData.category}
-                      onChange={(e) => {
-                        const newCategory = e.target.value
-                        setFormData({ ...formData, category: newCategory, name: '', sku: '', description: '', price: '' })
-                      }}
-                    >
-                      {categories.map((cat) => (
-                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+            <div
+              style={{
+                backgroundColor: 'white',
+                borderRadius: '24px',
+                width: '100%',
+                maxWidth: '600px',
+                maxHeight: '90vh',
+                overflow: 'auto',
+                boxShadow: '0 25px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255,255,255,0.1)',
+                animation: isClosing ? 'modalSlideOut 0.2s ease forwards' : 'modalSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ padding: '24px 28px', borderBottom: '1px solid #e5e7eb' }}>
+                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '600', color: '#111827' }}>
+                  {editingProduct ? '编辑产品' : '添加产品'}
+                </h3>
+              </div>
+
+              <div style={{ padding: '24px 28px' }}>
+                {!editingProduct && productTemplates[formData.category] && (
+                  <div style={{ marginBottom: '24px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#6b7280', marginBottom: '12px', textTransform: 'uppercase' }}>
+                      快速添加模板
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {productTemplates[formData.category].map((template, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          className="product-template-chip"
+                          style={{
+                            padding: '8px 14px',
+                            backgroundColor: hoveredTemplate === index ? '#f3f4f6' : 'white',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '20px',
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            color: '#374151',
+                            fontWeight: '500'
+                          }}
+                          onClick={() => applyTemplate(template)}
+                          onMouseEnter={() => setHoveredTemplate(index)}
+                          onMouseLeave={() => setHoveredTemplate(null)}
+                        >
+                          {template.name}
+                        </button>
                       ))}
-                    </select>
+                    </div>
                   </div>
-                  <div>
+                )}
+
+                <form onSubmit={handleSubmit}>
+                  <div style={{ marginBottom: '20px' }}>
                     <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-                      状态
+                      产品名称
                     </label>
-                    <select
+                    <input
+                      type="text"
                       style={{
                         width: '100%',
                         padding: '10px 12px',
                         border: '1px solid #d1d5db',
                         borderRadius: '8px',
-                        fontSize: '14px',
-                        backgroundColor: 'white'
+                        fontSize: '14px'
                       }}
-                      value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    >
-                      <option value="active">启用</option>
-                      <option value="inactive">禁用</option>
-                    </select>
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      required
+                    />
                   </div>
-                </div>
-                
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-                    规格描述
-                  </label>
-                  <input
-                    type="text"
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '8px',
-                      fontSize: '14px'
-                    }}
-                    value={formData.description}
-                    onChange={(e) => handleDescriptionChange(e.target.value)}
-                  />
-                </div>
-                
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-                    价格
-                  </label>
-                  <input
-                    type="number"
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '8px',
-                      fontSize: '14px'
-                    }}
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    required
-                  />
-                </div>
-              </form>
-            </div>
-            
-            <div style={{ padding: '20px 28px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-              <button 
-                type="button" 
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: 'white',
-                  color: '#6b7280',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500'
-                }} 
-                onClick={handleCloseModal}
-              >
-                取消
-              </button>
-              <button 
-                type="button" 
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: '#D4AF37',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500'
-                }} 
-                onClick={handleSubmit}
-              >
-                {editingProduct ? '保存修改' : '添加'}
-              </button>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                        分类
+                      </label>
+                      <select
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          backgroundColor: 'white'
+                        }}
+                        value={formData.category}
+                        onChange={(e) => {
+                          const newCategory = e.target.value
+                          setFormData({ ...formData, category: newCategory, name: '', sku: '', description: '', price: '' })
+                        }}
+                      >
+                        {categories.map((cat) => (
+                          <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                        状态
+                      </label>
+                      <select
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          backgroundColor: 'white'
+                        }}
+                        value={formData.status}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      >
+                        <option value="active">启用</option>
+                        <option value="inactive">禁用</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                      规格描述
+                    </label>
+                    <input
+                      type="text"
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '14px'
+                      }}
+                      value={formData.description}
+                      onChange={(e) => handleDescriptionChange(e.target.value)}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                      价格
+                    </label>
+                    <input
+                      type="number"
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '14px'
+                      }}
+                      value={formData.price}
+                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                      required
+                    />
+                  </div>
+                </form>
+              </div>
+
+              <div style={{ padding: '20px 28px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                <button
+                  type="button"
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: 'white',
+                    color: '#6b7280',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500'
+                  }}
+                  onClick={handleCloseModal}
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: '#D4AF37',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500'
+                  }}
+                  onClick={handleSubmit}
+                >
+                  {editingProduct ? '保存修改' : '添加'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>,
+        </>,
         document.body
       )}
-    </div>
+    </div >
   )
 }
 

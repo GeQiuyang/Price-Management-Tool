@@ -19,6 +19,30 @@ function Login() {
     setError('')
   }
 
+  const handleQuickLogin = async (role) => {
+    setLoading(true)
+    setError('')
+    try {
+      const response = await fetch('http://localhost:3001/api/auth/quick-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role })
+      })
+      const data = await response.json()
+      if (data.success) {
+        localStorage.setItem('token', data.data.token)
+        localStorage.setItem('user', JSON.stringify(data.data.user))
+        navigate('/')
+      } else {
+        setError(data.error?.message || data.error || '登录失败')
+      }
+    } catch (err) {
+      setError('网络错误，请稍后重试')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -61,7 +85,17 @@ function Login() {
       <div className="auth-box">
         <div className="auth-header">
           <h1>欢迎回来</h1>
-          <p>登录到价格管理系统</p>
+          <p>请选择登录角色或使用账号密码登录</p>
+        </div>
+
+        <div className="quick-login-options" style={{ display: 'flex', gap: '10px', marginBottom: '20px', justifyContent: 'center' }}>
+          <button type="button" onClick={() => handleQuickLogin('admin')} className="auth-button" style={{ flex: 1, backgroundColor: '#4f46e5' }}>管理员</button>
+          <button type="button" onClick={() => handleQuickLogin('sales')} className="auth-button" style={{ flex: 1, backgroundColor: '#059669' }}>业务员</button>
+          <button type="button" onClick={() => handleQuickLogin('foreign_trade')} className="auth-button" style={{ flex: 1, backgroundColor: '#d97706' }}>外贸员</button>
+        </div>
+
+        <div style={{ textAlign: 'center', marginBottom: '20px', color: '#6b7280', fontSize: '14px' }}>
+          或
         </div>
 
         <form className="auth-form" onSubmit={handleSubmit}>

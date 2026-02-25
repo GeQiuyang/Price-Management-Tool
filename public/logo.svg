@@ -1,0 +1,39 @@
+<svg width="100%" height="100%" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#1E293B" />
+      <stop offset="100%" stopColor="#0B1121" />
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#FDE68A" />
+      <stop offset="30%" stopColor="#D4AF37" />
+      <stop offset="70%" stopColor="#D4AF37" />
+      <stop offset="100%" stopColor="#B38B22" />
+    </linearGradient>
+  </defs>
+  
+  <rect width="100" height="100" fill="url(#bg)" />
+  
+  <g stroke="url(#gold)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Outer Hex -->
+    <path d="M 38 75 L 14 65 V 20 L 50 5 L 86 20 V 65 L 62 75" />
+    <!-- Middle Hex -->
+    <path d="M 38 65 L 26 60 V 25 L 50 15 L 74 25 V 60 L 62 65" />
+    
+    <!-- Inner Roof -->
+    <path d="M 38 30 L 50 25 L 62 30" />
+    
+    <!-- H letter (Top part of drill shaft) -->
+    <path d="M 38 30 V 55" />
+    <path d="M 62 30 V 55" />
+    <path d="M 38 42 H 62" />
+    
+    <!-- Drill Bit Shaft Outline -->
+    <path d="M 38 55 V 85 L 50 95 L 62 85 V 55" />
+    
+    <!-- Auger spirals -->
+    <path d="M 38 65 L 62 55" />
+    <path d="M 38 75 L 62 65" />
+    <path d="M 38 85 L 62 75" />
+  </g>
+</svg>

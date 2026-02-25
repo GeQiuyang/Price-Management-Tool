@@ -360,6 +360,23 @@ async function initDB() {
     })
   }
 
+  const initUsers = db.exec('SELECT COUNT(*) as count FROM users')
+  if (initUsers[0]?.values[0]?.[0] === 0) {
+    const adminPass = await bcrypt.hash('AdminPassword@2026', 10)
+    const salesPass = await bcrypt.hash('SalesLogin#88', 10)
+    const tradePass = await bcrypt.hash('TradeSecure$99', 10)
+
+    const defaultUsers = [
+      ['admin_root', 'admin@sf.com', adminPass, '管理员', 'admin'],
+      ['sales_user', 'sales@sf.com', salesPass, '业务员', 'sales'],
+      ['trade_user', 'trade@sf.com', tradePass, '外贸员', 'foreign_trade'],
+    ]
+
+    defaultUsers.forEach(u => {
+      db.run('INSERT INTO users (username, email, password, full_name, role) VALUES (?, ?, ?, ?, ?)', u)
+    })
+  }
+
   saveDB()
 }
 
@@ -520,6 +537,43 @@ app.post('/api/auth/login', async (req, res) => {
   }
 })
 
+app.post('/api/auth/quick-login', async (req, res) => {
+  const { role } = req.body
+  const roleMap = {
+    'admin': { username: 'admin', full_name: '管理员' },
+    'sales': { username: 'sales', full_name: '业务员' },
+    'foreign_trade': { username: 'trade', full_name: '外贸员' }
+  }
+  const userInfo = roleMap[role]
+  if (!userInfo) return res.status(400).json({ error: '无效的角色' })
+
+  try {
+    let user = queryOne('SELECT * FROM users WHERE username = ?', [userInfo.username])
+    if (!user) {
+      const hashedPassword = await bcrypt.hash('123456', 10)
+      const result = runSQL(
+        'INSERT INTO users (username, email, password, full_name, role) VALUES (?, ?, ?, ?, ?)',
+        [userInfo.username, `${userInfo.username}@example.com`, hashedPassword, userInfo.full_name, role]
+      )
+      user = queryOne('SELECT * FROM users WHERE id = ?', [result.lastInsertRowid])
+    }
+
+    const { password: _, ...userWithoutPassword } = user
+    const token = generateToken(user)
+
+    res.json({
+      success: true,
+      data: {
+        user: userWithoutPassword,
+        token
+      }
+    })
+  } catch (error) {
+    console.error('快捷登录错误:', error)
+    res.status(500).json({ error: '快捷登录失败' })
+  }
+})
+
 app.post('/api/auth/logout', authenticateToken, (req, res) => {
   res.json({ success: true, message: '登出成功' })
 })
@@ -576,8 +630,8 @@ app.post('/api/auth/change-password', authenticateToken, async (req, res) => {
 function createAuditLog(userId, action, entityType, entityId, oldData, newData, req) {
   try {
     db.run(
-      `INSERT INTO audit_logs (user_id, action, entity_type, entity_id, old_data, new_data, ip_address, user_agent) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO audit_logs(user_id, action, entity_type, entity_id, old_data, new_data, ip_address, user_agent) 
+       VALUES(?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         userId,
         action,
@@ -621,14 +675,14 @@ app.get('/api/audit-logs', authenticateToken, (req, res) => {
     `SELECT al.*, u.username, u.full_name 
      FROM audit_logs al 
      LEFT JOIN users u ON al.user_id = u.id 
-     WHERE 1=1 ${whereClause} 
-     ORDER BY al.created_at DESC 
-     LIMIT ? OFFSET ?`,
+     WHERE 1 = 1 ${whereClause} 
+     ORDER BY al.created_at DESC
+      LIMIT ? OFFSET ? `,
     [...params, limit, offset]
   )
 
   const totalCount = queryOne(
-    `SELECT COUNT(*) as count FROM audit_logs WHERE 1=1 ${whereClause}`,
+    `SELECT COUNT(*) as count FROM audit_logs WHERE 1 = 1 ${whereClause} `,
     params
   )
 
@@ -651,7 +705,7 @@ app.get('/api/audit-logs/:id', authenticateToken, (req, res) => {
     `SELECT al.*, u.username, u.full_name 
      FROM audit_logs al 
      LEFT JOIN users u ON al.user_id = u.id 
-     WHERE al.id = ?`,
+     WHERE al.id = ? `,
     [req.params.id]
   )
 
@@ -666,12 +720,12 @@ app.post('/api/backup/create', authenticateToken, (req, res) => {
   try {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
     const backupDir = join(__dirname, 'backups')
-    
+
     if (!fs.existsSync(backupDir)) {
       fs.mkdirSync(backupDir, { recursive: true })
     }
 
-    const backupPath = join(backupDir, `backup-${timestamp}.db`)
+    const backupPath = join(backupDir, `backup - ${timestamp}.db`)
     const data = db.export()
     const buffer = Buffer.from(data)
     fs.writeFileSync(backupPath, buffer)
@@ -679,8 +733,8 @@ app.post('/api/backup/create', authenticateToken, (req, res) => {
     const fileSize = fs.statSync(backupPath).size
 
     db.run(
-      `INSERT INTO backup_logs (backup_type, backup_path, file_size, status, created_by) 
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO backup_logs(backup_type, backup_path, file_size, status, created_by)
+      VALUES(?, ?, ?, ?, ?)`,
       ['full', backupPath, fileSize, 'success', req.user.id]
     )
     saveDB()
@@ -705,10 +759,10 @@ app.post('/api/backup/create', authenticateToken, (req, res) => {
     })
   } catch (error) {
     console.error('创建备份失败:', error)
-    
+
     db.run(
-      `INSERT INTO backup_logs (backup_type, backup_path, status, error_message, created_by) 
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO backup_logs(backup_type, backup_path, status, error_message, created_by)
+      VALUES(?, ?, ?, ?, ?)`,
       ['full', null, 'failed', error.message, req.user.id]
     )
     saveDB()
@@ -746,7 +800,7 @@ app.post('/api/backup/restore', authenticateToken, async (req, res) => {
 
     const backupData = restoredDb.export()
     const buffer = Buffer.from(backupData)
-    
+
     const currentData = db.export()
     const currentBuffer = Buffer.from(currentData)
 
@@ -904,14 +958,17 @@ app.get('/api/products/:id', (req, res) => {
 app.post('/api/products', authenticateToken, (req, res) => {
   const { name, category, sku, price, description, status } = req.body
 
+  // Auto-generate SKU if not provided
+  const finalSku = sku || `P-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
+
   try {
     const result = runSQL(
       'INSERT INTO products (name, category, sku, price, description, status) VALUES (?, ?, ?, ?, ?, ?)',
-      [name, category, sku, price, description, status || 'active']
+      [name, category, finalSku, price, description, status || 'active']
     )
 
     const newProduct = queryOne('SELECT * FROM products WHERE id = ?', [result.lastInsertRowid])
-    
+
     createAuditLog(
       req.user.id,
       'create',
@@ -921,7 +978,7 @@ app.post('/api/products', authenticateToken, (req, res) => {
       newProduct,
       req
     )
-    
+
     res.status(201).json(newProduct)
   } catch (error) {
     if (error.message.includes('UNIQUE constraint failed')) {
@@ -936,10 +993,11 @@ app.put('/api/products/:id', authenticateToken, (req, res) => {
 
   try {
     const oldProduct = queryOne('SELECT * FROM products WHERE id = ?', [req.params.id])
-    
+    const finalSku = sku || oldProduct.sku
+
     db.run(
       'UPDATE products SET name = ?, category = ?, sku = ?, price = ?, description = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [name, category, sku, price, description, status, req.params.id]
+      [name, category, finalSku, price, description, status, req.params.id]
     )
     saveDB()
 

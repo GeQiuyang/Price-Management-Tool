@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import './AuditLogs.css'
 
 function AuditLogs() {
@@ -217,7 +218,7 @@ function AuditLogs() {
         </div>
       )}
 
-      {showDetail && selectedLog && (
+      {showDetail && selectedLog && createPortal(
         <div className="modal-overlay" onClick={() => setShowDetail(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
@@ -273,7 +274,8 @@ function AuditLogs() {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

@@ -1,5 +1,5 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 
 const sidebarStyles = `
   .sidebar {
@@ -37,49 +37,18 @@ const sidebarStyles = `
   .sidebar-logo {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 12px;
     text-decoration: none;
-  }
-  
-  .sidebar-logo-icon {
-    width: 42px;
-    height: 42px;
-    background: linear-gradient(135deg, #D4AF37 0%, #E8C547 50%, #D4AF37 100%);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    font-weight: 700;
-    color: #0F172A;
-    box-shadow: 0 4px 16px rgba(212, 175, 55, 0.35);
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .sidebar-logo-icon::after {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.3) 50%, transparent 60%);
-    animation: shimmer 3s infinite;
-  }
-  
-  @keyframes shimmer {
-    0% { transform: translateX(-100%) rotate(45deg); }
-    100% { transform: translateX(100%) rotate(45deg); }
+    transition: all 0.3s ease;
   }
   
   .sidebar-logo-text {
-    font-family: 'Playfair Display', serif;
-    font-size: 22px;
-    font-weight: 600;
+    font-family: 'Inter', -apple-system, sans-serif;
+    font-size: 20px;
+    font-weight: 800;
     letter-spacing: -0.5px;
     color: #FFFFFF;
-    background: linear-gradient(135deg, #FFFFFF 0%, #E8C547 50%, #D4AF37 100%);
+    background: linear-gradient(135deg, #FFFFFF 0%, #E8C547 60%, #D4AF37 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -294,103 +263,145 @@ const sidebarStyles = `
       transform: translateY(0); 
     }
   }
-`
+`;
 
 export default function Layout({ children }) {
-  const location = useLocation()
-  const navigate = useNavigate()
-  const [user, setUser] = useState(null)
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const userData = localStorage.getItem('user')
+    const userData = localStorage.getItem("user");
     if (userData) {
-      setUser(JSON.parse(userData))
+      setUser(JSON.parse(userData));
     }
-  }, [])
+  }, []);
 
   const handleLogout = async () => {
     try {
-      const token = localStorage.getItem('token')
-      await fetch('http://localhost:3001/api/auth/logout', {
-        method: 'POST',
+      const token = localStorage.getItem("token");
+      await fetch("http://localhost:3001/api/auth/logout", {
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+          Authorization: `Bearer ${token}`,
+        },
+      });
     } catch (error) {
-      console.error('登出失败:', error)
+      console.error("登出失败:", error);
     } finally {
-      localStorage.removeItem('token')
-      localStorage.removeItem('refreshToken')
-      localStorage.removeItem('user')
-      navigate('/login')
+      localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
+      navigate("/login");
     }
-  }
+  };
 
   const navItems = [
-    { path: '/products', label: '产品管理', section: '业务管理' },
-    { path: '/costs', label: '成本与定价' },
-    { path: '/customers', label: '客户管理' },
-    { path: '/markets-channels', label: '市场与渠道' },
-    { path: '/freight-simulator', label: '海运费模拟', section: '业务工具' },
-    { path: '/quote-generator', label: '报价生成器' },
-    { path: '/currencies', label: '货币与汇率', section: '系统设置' },
-    { path: '/tax-rules', label: '税费规则' },
-    { path: '/system-settings', label: '系统参数' },
-    { path: '/audit-logs', label: '审计日志', section: '数据管理' },
-    { path: '/backup-restore', label: '备份恢复' },
-    { path: '/recycle-bin', label: '回收站', section: '其他' },
-  ]
+    { path: "/products", label: "产品管理", section: "业务管理" },
+
+    { path: "/customers", label: "客户管理" },
+
+    { path: "/freight-simulator", label: "海运费模拟", section: "业务工具" },
+    { path: "/quote-generator", label: "报价生成器" },
+    { path: "/currencies", label: "货币与汇率", section: "系统设置" },
+    { path: "/tax-rules", label: "税费规则" },
+    { path: "/system-settings", label: "系统参数" },
+    { path: "/audit-logs", label: "审计日志", section: "数据管理" },
+    { path: "/backup-restore", label: "备份恢复" },
+    { path: "/recycle-bin", label: "回收站", section: "其他" },
+  ];
 
   const isActive = (path) => {
-    if (path === '/') return location.pathname === '/'
-    return location.pathname === path || location.pathname.startsWith(path + '/')
-  }
+    if (path === "/") return location.pathname === "/";
+    return (
+      location.pathname === path || location.pathname.startsWith(path + "/")
+    );
+  };
 
-  let currentSection = null
+  const getFilteredNavItems = () => {
+    if (!user) return [];
+    const role = user.role || "viewer";
+    if (role === "admin") return navItems;
+    if (role === "sales")
+      return navItems.filter((item) =>
+        ["/quote-generator", "/customers"].includes(item.path),
+      );
+    if (role === "foreign_trade")
+      return navItems.filter((item) =>
+        [
+          "/products",
+          "/quote-generator",
+          "/freight-simulator",
+          "/customers",
+        ].includes(item.path),
+      );
+    return [];
+  };
+
+  const filteredNavItems = getFilteredNavItems();
+
+  let currentSection = null;
+
+  const roleDisplayMap = {
+    admin: "管理员",
+    sales: "业务员",
+    foreign_trade: "外贸员",
+  };
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-primary)' }}>
+    <div
+      style={{
+        display: "flex",
+        minHeight: "100vh",
+        backgroundColor: "var(--bg-primary)",
+      }}
+    >
       <style>{sidebarStyles}</style>
       <aside className="sidebar">
         <div className="sidebar-header">
-          <div className="sidebar-logo">
-            <div className="sidebar-logo-icon">S</div>
+          <Link to="/" className="sidebar-logo">
             <span className="sidebar-logo-text">SalesForce</span>
-          </div>
+          </Link>
         </div>
         <nav>
-          {navItems.map((item) => {
-            const showSection = item.section && item.section !== currentSection
-            if (item.section) currentSection = item.section
+          {filteredNavItems.map((item) => {
+            const showSection = item.section && item.section !== currentSection;
+            if (item.section) currentSection = item.section;
             return (
               <div key={item.path}>
                 {showSection && (
                   <div className="nav-section-label">{item.section}</div>
                 )}
-                <ul className="nav-list" style={{ padding: showSection ? '0 16px' : undefined }}>
+                <ul
+                  className="nav-list"
+                  style={{ padding: showSection ? "0 16px" : undefined }}
+                >
                   <li>
                     <Link
                       to={item.path}
-                      className={`nav-link ${isActive(item.path) ? 'active' : ''}`}
+                      className={`nav-link ${isActive(item.path) ? "active" : ""}`}
                     >
                       {item.label}
                     </Link>
                   </li>
                 </ul>
               </div>
-            )
+            );
           })}
         </nav>
         <div className="sidebar-footer">
           {user && (
             <div className="user-info">
               <div className="user-avatar">
-                {user.full_name ? user.full_name.charAt(0).toUpperCase() : user.username.charAt(0).toUpperCase()}
+                {user.full_name
+                  ? user.full_name.charAt(0).toUpperCase()
+                  : user.username.charAt(0).toUpperCase()}
               </div>
               <div className="user-details">
                 <p className="user-name">{user.full_name || user.username}</p>
-                <p className="user-role">{user.role?.display_name || '用户'}</p>
+                <p className="user-role">
+                  {roleDisplayMap[user.role] || "用户"}
+                </p>
               </div>
             </div>
           )}
@@ -400,7 +411,9 @@ export default function Layout({ children }) {
           <div className="sidebar-footer-text">SalesForce v1.0</div>
         </div>
       </aside>
-      <main className="main-content" key={location.pathname}>{children}</main>
+      <main className="main-content" key={location.pathname}>
+        {children}
+      </main>
     </div>
-  )
+  );
 }

@@ -388,14 +388,13 @@ export default function QuoteGenerator() {
     const handleExportQuote = () => {
         if (quoteItems.length === 0) return
         const exportData = quoteItems.map(item => ({
-            SKU: item.sku,
-            产品: item.name,
-            产品描述: item.description || '',
+            产品名称: item.name,
+            产品规格: item.description || '',
             单价: item.price,
             数量: item.quantity,
             合计: item.price * item.quantity,
         }))
-        exportData.push({ SKU: '', 产品: '', 产品描述: '', 单价: '', 数量: '总计', 合计: totalAmount })
+        exportData.push({ 产品名称: '', 产品规格: '', 单价: '', 数量: '总计', 合计: totalAmount })
         const ws = XLSX.utils.json_to_sheet(exportData)
         const wb = XLSX.utils.book_new()
         XLSX.utils.book_append_sheet(wb, ws, '报价单')
@@ -480,9 +479,8 @@ export default function QuoteGenerator() {
                     <table style={styles.table}>
                         <thead>
                             <tr style={styles.tableHeader}>
-                                <th style={styles.th}>SKU</th>
-                                <th style={styles.th}>产品</th>
-                                <th style={styles.th}>产品描述</th>
+                                <th style={styles.th}>产品名称</th>
+                                <th style={styles.th}>产品规格</th>
                                 <th style={{ ...styles.th, width: '120px' }}>价格</th>
                                 <th style={{ ...styles.th, width: '100px' }}>数量</th>
                                 <th style={styles.th}>合计</th>
@@ -492,7 +490,6 @@ export default function QuoteGenerator() {
                         <tbody>
                             {quoteItems.map((item) => (
                                 <tr key={item.id} className="quote-product-row" style={styles.tableRow}>
-                                    <td style={styles.tdSku}>{item.sku}</td>
                                     <td style={styles.td}>{item.name}</td>
                                     <td style={styles.tdDesc}>{item.description || '-'}</td>
                                     <td style={styles.td}>
@@ -540,7 +537,7 @@ export default function QuoteGenerator() {
                         </tbody>
                         <tfoot>
                             <tr style={styles.totalRow}>
-                                <td colSpan="5" style={styles.totalLabel}>报价总额</td>
+                                <td colSpan="4" style={styles.totalLabel}>报价总额</td>
                                 <td style={styles.totalValue}>¥{totalAmount.toLocaleString()}</td>
                                 <td></td>
                             </tr>
