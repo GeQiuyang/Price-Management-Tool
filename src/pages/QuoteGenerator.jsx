@@ -38,6 +38,47 @@ const modalAnimationStyles = `
     border-color: #4F46E5 !important;
     box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1) !important;
   }
+  .quote-desc-cell {
+    position: relative;
+    cursor: default;
+  }
+  .quote-desc-tooltip {
+    visibility: hidden;
+    opacity: 0;
+    position: absolute;
+    left: 0;
+    top: 100%;
+    margin-top: 6px;
+    background: #1e293b;
+    color: #f1f5f9;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-all;
+    min-width: 160px;
+    max-width: 320px;
+    width: max-content;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    z-index: 1000;
+    pointer-events: none;
+    transition: opacity 0.15s ease, visibility 0.15s ease, transform 0.15s ease;
+    transform: translateY(4px);
+  }
+  .quote-desc-tooltip::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 20px;
+    border: 6px solid transparent;
+    border-bottom-color: #1e293b;
+  }
+  .quote-desc-cell:hover .quote-desc-tooltip {
+    visibility: visible;
+    opacity: 1;
+    transform: translateY(0);
+  }
 `
 
 export default function QuoteGenerator() {
@@ -49,6 +90,7 @@ export default function QuoteGenerator() {
     const [showProductModal, setShowProductModal] = useState(false)
     const [isClosing, setIsClosing] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
+    const [useDealerPrice, setUseDealerPrice] = useState(false)
     // Excel 导入相关
     const [importedData, setImportedData] = useState([])
     const [importedSheets, setImportedSheets] = useState([])
@@ -103,7 +145,15 @@ export default function QuoteGenerator() {
     }
 
     // ─── 产品报价相关 ───
+    const getProductPrice = (product) => {
+        if (useDealerPrice && product.dealer_price && product.category === '导管类') {
+            return product.dealer_price
+        }
+        return product.price
+    }
+
     const handleAddProduct = async (product) => {
+        const selectedPrice = getProductPrice(product)
         const existing = quoteItems.find(item => item.productId === product.id)
         if (existing) {
             const newQty = existing.quantity + 1
@@ -124,7 +174,7 @@ export default function QuoteGenerator() {
                         productId: product.id,
                         name: product.name,
                         description: product.description || '',
-                        price: product.price,
+                        price: selectedPrice,
                         quantity: 1,
                     }),
                 })
@@ -310,7 +360,7 @@ export default function QuoteGenerator() {
 
         // 导管类智能搜索（最高优先级）
         const parsePipeQuery = (kw) => {
-            const pipeTypeMatch = kw.match(/(300|260|273)/)
+            const pipeTypeMatch = kw.match(/(300|260|273|219)/)
             const pipeType = pipeTypeMatch ? pipeTypeMatch[1] : null
             let threadType = null
             if (/尖丝|尖/.test(kw)) threadType = '尖丝'
@@ -577,7 +627,12 @@ export default function QuoteGenerator() {
                             {quoteItems.map((item) => (
                                 <tr key={item.id} className="quote-product-row" style={styles.tableRow}>
                                     <td style={styles.td}>{item.name}</td>
-                                    <td style={styles.tdDesc}>{item.description || '-'}</td>
+                                    <td style={styles.tdDesc} className="quote-desc-cell">
+                                        {item.description || '-'}
+                                        {item.description && (
+                                            <div className="quote-desc-tooltip">{item.description}</div>
+                                        )}
+                                    </td>
                                     <td style={styles.td}>
                                         <input
                                             type="number"
@@ -735,12 +790,45 @@ export default function QuoteGenerator() {
                         <div style={styles.searchBox}>
                             <input
                                 className="quote-search-input"
-                                style={styles.searchInput}
+                                style={{ ...styles.searchInput, flex: 1 }}
                                 placeholder="搜索产品名称..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 autoFocus
                             />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px' }}>
+                                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>导管类价格：</span>
+                                <button
+                                    type="button"
+                                    style={{
+                                        padding: '5px 14px',
+                                        fontSize: '13px',
+                                        fontWeight: '500',
+                                        border: '1px solid',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        borderColor: !useDealerPrice ? '#4F46E5' : '#d1d5db',
+                                        backgroundColor: !useDealerPrice ? '#EEF2FF' : 'white',
+                                        color: !useDealerPrice ? '#4F46E5' : '#6b7280',
+                                    }}
+                                    onClick={() => setUseDealerPrice(false)}
+                                >终端价</button>
+                                <button
+                                    type="button"
+                                    style={{
+                                        padding: '5px 14px',
+                                        fontSize: '13px',
+                                        fontWeight: '500',
+                                        border: '1px solid',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        borderColor: useDealerPrice ? '#4F46E5' : '#d1d5db',
+                                        backgroundColor: useDealerPrice ? '#EEF2FF' : 'white',
+                                        color: useDealerPrice ? '#4F46E5' : '#6b7280',
+                                    }}
+                                    onClick={() => setUseDealerPrice(true)}
+                                >经销商价</button>
+                            </div>
                         </div>
 
                         <div style={styles.productList}>
@@ -760,7 +848,14 @@ export default function QuoteGenerator() {
                                                 <div style={styles.productSku}>{product.description || '-'}</div>
                                             </div>
                                             <div style={styles.productRight}>
-                                                <div style={styles.productPrice}>¥{product.price.toLocaleString()}</div>
+                                                <div style={styles.productPrice}>
+                                                    ¥{getProductPrice(product).toLocaleString()}
+                                                    {product.category === '导管类' && product.dealer_price && (
+                                                        <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '400', marginLeft: '4px' }}>
+                                                            ({useDealerPrice ? '经销' : '终端'})
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 {inQuote ? (
                                                     <div style={styles.productActions}>
                                                         <button

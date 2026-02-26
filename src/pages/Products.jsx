@@ -77,6 +77,7 @@ export default function Products() {
     name: '',
     category: '钻具类',
     price: '',
+    dealer_price: '',
     description: '',
     status: 'active',
   })
@@ -164,7 +165,7 @@ export default function Products() {
 
   const handleAdd = () => {
     setEditingProduct(null)
-    setFormData({ name: '', category: activeCategory, price: '', description: '', status: 'active' })
+    setFormData({ name: '', category: activeCategory, price: '', dealer_price: '', description: '', status: 'active' })
     setIsClosing(false)
     setShowModal(true)
   }
@@ -310,7 +311,7 @@ export default function Products() {
   // 导管类智能搜索：解析自然语言中的管型、丝型、长度、壁厚
   const parsePipeQuery = (keyword) => {
     // 管型：300/260/273
-    const pipeTypeMatch = keyword.match(/(300|260|273)/)
+    const pipeTypeMatch = keyword.match(/(300|260|273|219)/)
     const pipeType = pipeTypeMatch ? pipeTypeMatch[1] : null
 
     // 丝型：尖丝/方丝
@@ -519,7 +520,8 @@ export default function Products() {
             <tr style={styles.tableHeader}>
               <th style={styles.th}>产品名称</th>
               <th style={styles.th}>产品规格</th>
-              <th style={styles.th}>价格</th>
+              <th style={styles.th}>{activeCategory === '导管类' ? '终端价' : '价格'}</th>
+              {activeCategory === '导管类' && <th style={styles.th}>经销商价</th>}
               {!isReadOnly && <th style={styles.th}>操作</th>}
             </tr>
           </thead>
@@ -533,6 +535,11 @@ export default function Products() {
                   {getCleanDescription(product) || product.description || '-'}
                 </td>
                 <td style={styles.tdPrice}>¥{Number(product.price).toLocaleString()}</td>
+                {activeCategory === '导管类' && (
+                  <td style={styles.tdPrice}>
+                    {product.dealer_price ? `¥${Number(product.dealer_price).toLocaleString()}` : '-'}
+                  </td>
+                )}
                 {!isReadOnly && (
                   <td style={styles.td}>
                     <button style={styles.editButton} onClick={() => handleEdit(product)}>
@@ -694,7 +701,7 @@ export default function Products() {
 
                   <div style={{ marginBottom: '20px' }}>
                     <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-                      价格
+                      {formData.category === '导管类' ? '终端价' : '价格'}
                     </label>
                     <input
                       type="number"
@@ -710,6 +717,26 @@ export default function Products() {
                       required
                     />
                   </div>
+
+                  {formData.category === '导管类' && (
+                    <div style={{ marginBottom: '20px' }}>
+                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                        经销商价
+                      </label>
+                      <input
+                        type="number"
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '8px',
+                          fontSize: '14px'
+                        }}
+                        value={formData.dealer_price}
+                        onChange={(e) => setFormData({ ...formData, dealer_price: e.target.value })}
+                      />
+                    </div>
+                  )}
 
                   <div style={{ padding: '20px 0', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '4px' }}>
                     <button

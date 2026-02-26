@@ -37,12 +37,20 @@ async function initDB() {
       category TEXT NOT NULL,
       sku TEXT UNIQUE NOT NULL,
       price REAL NOT NULL,
+      dealer_price REAL,
       description TEXT,
       status TEXT DEFAULT 'active',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `)
+
+  // 兼容旧数据库：添加 dealer_price 列
+  try {
+    db.run('ALTER TABLE products ADD COLUMN dealer_price REAL')
+  } catch (e) {
+    // 列已存在则忽略
+  }
 
   db.run(`
     CREATE TABLE IF NOT EXISTS customers (
@@ -956,15 +964,15 @@ app.get('/api/products/:id', (req, res) => {
 })
 
 app.post('/api/products', authenticateToken, (req, res) => {
-  const { name, category, price, description, status } = req.body
+  const { name, category, price, dealer_price, description, status } = req.body
 
   // Auto-generate internal SKU
   const autoSku = `P-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
 
   try {
     const result = runSQL(
-      'INSERT INTO products (name, category, sku, price, description, status) VALUES (?, ?, ?, ?, ?, ?)',
-      [name, category, autoSku, price, description, status || 'active']
+      'INSERT INTO products (name, category, sku, price, dealer_price, description, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [name, category, autoSku, price, dealer_price || null, description, status || 'active']
     )
 
     const newProduct = queryOne('SELECT * FROM products WHERE id = ?', [result.lastInsertRowid])
@@ -986,14 +994,14 @@ app.post('/api/products', authenticateToken, (req, res) => {
 })
 
 app.put('/api/products/:id', authenticateToken, (req, res) => {
-  const { name, category, price, description, status } = req.body
+  const { name, category, price, dealer_price, description, status } = req.body
 
   try {
     const oldProduct = queryOne('SELECT * FROM products WHERE id = ?', [req.params.id])
 
     db.run(
-      'UPDATE products SET name = ?, category = ?, price = ?, description = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [name, category, price, description, status, req.params.id]
+      'UPDATE products SET name = ?, category = ?, price = ?, dealer_price = ?, description = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [name, category, price, dealer_price !== undefined ? dealer_price : null, description, status, req.params.id]
     )
     saveDB()
 
