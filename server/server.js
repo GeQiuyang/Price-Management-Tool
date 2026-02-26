@@ -956,15 +956,15 @@ app.get('/api/products/:id', (req, res) => {
 })
 
 app.post('/api/products', authenticateToken, (req, res) => {
-  const { name, category, sku, price, description, status } = req.body
+  const { name, category, price, description, status } = req.body
 
-  // Auto-generate SKU if not provided
-  const finalSku = sku || `P-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
+  // Auto-generate internal SKU
+  const autoSku = `P-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
 
   try {
     const result = runSQL(
       'INSERT INTO products (name, category, sku, price, description, status) VALUES (?, ?, ?, ?, ?, ?)',
-      [name, category, finalSku, price, description, status || 'active']
+      [name, category, autoSku, price, description, status || 'active']
     )
 
     const newProduct = queryOne('SELECT * FROM products WHERE id = ?', [result.lastInsertRowid])
@@ -981,23 +981,19 @@ app.post('/api/products', authenticateToken, (req, res) => {
 
     res.status(201).json(newProduct)
   } catch (error) {
-    if (error.message.includes('UNIQUE constraint failed')) {
-      return res.status(400).json({ error: 'SKU已存在' })
-    }
     res.status(500).json({ error: '创建产品失败' })
   }
 })
 
 app.put('/api/products/:id', authenticateToken, (req, res) => {
-  const { name, category, sku, price, description, status } = req.body
+  const { name, category, price, description, status } = req.body
 
   try {
     const oldProduct = queryOne('SELECT * FROM products WHERE id = ?', [req.params.id])
-    const finalSku = sku || oldProduct.sku
 
     db.run(
-      'UPDATE products SET name = ?, category = ?, sku = ?, price = ?, description = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [name, category, finalSku, price, description, status, req.params.id]
+      'UPDATE products SET name = ?, category = ?, price = ?, description = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [name, category, price, description, status, req.params.id]
     )
     saveDB()
 
@@ -1018,9 +1014,6 @@ app.put('/api/products/:id', authenticateToken, (req, res) => {
 
     res.json(updatedProduct)
   } catch (error) {
-    if (error.message.includes('UNIQUE constraint failed')) {
-      return res.status(400).json({ error: 'SKU已存在' })
-    }
     res.status(500).json({ error: '更新产品失败' })
   }
 })
@@ -1387,9 +1380,10 @@ app.post('/api/recycle-bin/:id/restore', (req, res) => {
   const itemData = JSON.parse(item.item_data)
 
   if (targetTable === 'products') {
+    const autoSku = `P-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
     const result = db.run(
       'INSERT INTO products (name, category, sku, price, description, status) VALUES (?, ?, ?, ?, ?, ?)',
-      [itemData.name, itemData.category, itemData.sku, itemData.price, itemData.description, itemData.status || 'active']
+      [itemData.name, itemData.category, autoSku, itemData.price, itemData.description, itemData.status || 'active']
     )
   } else if (targetTable === 'costs') {
     db.run(
@@ -1656,18 +1650,20 @@ app.post('/api/freight/calculate', (req, res) => {
 // ─── Quote Items API ───
 app.get('/api/quote-items', (req, res) => {
   const items = queryAll('SELECT * FROM quote_items ORDER BY id ASC')
-  res.json(items)
+  // Map sku field to productId for frontend
+  res.json(items.map(item => ({ ...item, productId: Number(item.sku) || null })))
 })
 
 app.post('/api/quote-items', (req, res) => {
-  const { sku, name, description, price, quantity } = req.body
+  const { productId, name, description, price, quantity } = req.body
   try {
     const result = runSQL(
       'INSERT INTO quote_items (sku, name, description, price, quantity) VALUES (?, ?, ?, ?, ?)',
-      [sku, name, description || '', price, quantity || 1]
+      [String(productId || ''), name, description || '', price, quantity || 1]
     )
     const item = queryOne('SELECT * FROM quote_items WHERE id = ?', [result.lastInsertRowid])
-    res.status(201).json(item)
+    // Map sku field to productId for frontend
+    res.status(201).json({ ...item, productId: Number(item.sku) || null })
   } catch (error) {
     res.status(500).json({ error: '添加报价项失败' })
   }

@@ -57,9 +57,9 @@ const modalAnimationStyles = `
 
 export default function Costs() {
   const [costs, setCosts] = useState([
-    { id: 1, productName: '智能手机 Pro', sku: 'SP-001', materialCost: 2800, laborCost: 800, overheadCost: 400, totalCost: 4000 },
-    { id: 2, productName: '无线耳机', sku: 'SP-002', materialCost: 350, laborCost: 100, overheadCost: 50, totalCost: 500 },
-    { id: 3, productName: '笔记本电脑', sku: 'SP-003', materialCost: 5200, laborCost: 1200, overheadCost: 800, totalCost: 7200 },
+    { id: 1, productName: '智能手机 Pro', materialCost: 2800, laborCost: 800, overheadCost: 400, totalCost: 4000 },
+    { id: 2, productName: '无线耳机', materialCost: 350, laborCost: 100, overheadCost: 50, totalCost: 500 },
+    { id: 3, productName: '笔记本电脑', materialCost: 5200, laborCost: 1200, overheadCost: 800, totalCost: 7200 },
   ])
 
   const [showModal, setShowModal] = useState(false)
@@ -70,7 +70,6 @@ export default function Costs() {
   const deleteTimerRef = useRef(null)
   const [formData, setFormData] = useState({
     productName: '',
-    sku: '',
     materialCost: '',
     laborCost: '',
     overheadCost: '',
@@ -78,7 +77,7 @@ export default function Costs() {
 
   const handleAdd = () => {
     setEditingCost(null)
-    setFormData({ productName: '', sku: '', materialCost: '', laborCost: '', overheadCost: '' })
+    setFormData({ productName: '', materialCost: '', laborCost: '', overheadCost: '' })
     setIsClosing(false)
     setShowModal(true)
   }
@@ -220,7 +219,6 @@ export default function Costs() {
         <table style={styles.table}>
           <thead>
             <tr style={styles.tableHeader}>
-              <th style={styles.th}>SKU</th>
               <th style={styles.th}>产品</th>
               <th style={styles.th}>材料成本</th>
               <th style={styles.th}>人工成本</th>
@@ -232,7 +230,6 @@ export default function Costs() {
           <tbody>
             {costs.map((cost) => (
               <tr key={cost.id} style={styles.tableRow}>
-                <td style={styles.tdSecondary}>{cost.sku}</td>
                 <td style={styles.td}>
                   <span style={styles.productName}>{cost.productName}</span>
                 </td>
@@ -284,15 +281,6 @@ export default function Costs() {
                       required
                     />
                   </div>
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>SKU</label>
-                    <input
-                      style={styles.input}
-                      value={formData.sku}
-                      onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                      required
-                    />
-                  </div>
                 </div>
 
                 <div style={styles.formSection}>
@@ -341,9 +329,10 @@ export default function Costs() {
               </button>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        </div >
+      )
+      }
+    </div >
   )
 }
 

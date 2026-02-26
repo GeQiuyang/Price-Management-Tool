@@ -104,11 +104,11 @@ export default function QuoteGenerator() {
 
     // ─── 产品报价相关 ───
     const handleAddProduct = async (product) => {
-        const existing = quoteItems.find(item => item.sku === product.sku)
+        const existing = quoteItems.find(item => item.productId === product.id)
         if (existing) {
             const newQty = existing.quantity + 1
             setQuoteItems(quoteItems.map(item =>
-                item.sku === product.sku ? { ...item, quantity: newQty } : item
+                item.productId === product.id ? { ...item, quantity: newQty } : item
             ))
             fetch(`${API_URL}/quote-items/${existing.id}`, {
                 method: 'PUT',
@@ -121,7 +121,7 @@ export default function QuoteGenerator() {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        sku: product.sku,
+                        productId: product.id,
                         name: product.name,
                         description: product.description || '',
                         price: product.price,
@@ -138,11 +138,11 @@ export default function QuoteGenerator() {
 
     const handleIncreaseFromModal = (product, e) => {
         e.stopPropagation()
-        const existing = quoteItems.find(item => item.sku === product.sku)
+        const existing = quoteItems.find(item => item.productId === product.id)
         if (existing) {
             const newQty = existing.quantity + 1
             setQuoteItems(quoteItems.map(item =>
-                item.sku === product.sku ? { ...item, quantity: newQty } : item
+                item.productId === product.id ? { ...item, quantity: newQty } : item
             ))
             fetch(`${API_URL}/quote-items/${existing.id}`, {
                 method: 'PUT',
@@ -154,11 +154,11 @@ export default function QuoteGenerator() {
 
     const handleDecreaseFromModal = (product, e) => {
         e.stopPropagation()
-        const existing = quoteItems.find(item => item.sku === product.sku)
+        const existing = quoteItems.find(item => item.productId === product.id)
         if (existing && existing.quantity > 1) {
             const newQty = existing.quantity - 1
             setQuoteItems(quoteItems.map(item =>
-                item.sku === product.sku ? { ...item, quantity: newQty } : item
+                item.productId === product.id ? { ...item, quantity: newQty } : item
             ))
             fetch(`${API_URL}/quote-items/${existing.id}`, {
                 method: 'PUT',
@@ -171,17 +171,17 @@ export default function QuoteGenerator() {
     const handleQuantityInputChange = (product, value, e) => {
         e.stopPropagation()
         setQuoteItems(quoteItems.map(item =>
-            item.sku === product.sku ? { ...item, qtyInput: value } : item
+            item.productId === product.id ? { ...item, qtyInput: value } : item
         ))
     }
 
     const handleQuantityInputBlur = (product, value, e) => {
         e.stopPropagation()
-        const existing = quoteItems.find(item => item.sku === product.sku)
+        const existing = quoteItems.find(item => item.productId === product.id)
         if (existing) {
             const num = Math.max(1, parseInt(value) || 1)
             setQuoteItems(quoteItems.map(item =>
-                item.sku === product.sku ? { ...item, quantity: num, qtyInput: undefined } : item
+                item.productId === product.id ? { ...item, quantity: num, qtyInput: undefined } : item
             ))
             fetch(`${API_URL}/quote-items/${existing.id}`, {
                 method: 'PUT',
@@ -299,10 +299,66 @@ export default function QuoteGenerator() {
         }, 200)
     }
 
-    const filteredProducts = products.filter(p =>
-        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.sku.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+    const filteredProducts = (() => {
+        if (!searchTerm.trim()) return products
+        const keyword = searchTerm.trim()
+        const lowerKeyword = keyword.toLowerCase()
+        const numbers = keyword.match(/\d+/g)
+        const chinesePart = keyword.replace(/[\d\s]+/g, '').toLowerCase()
+        const numberPart = numbers ? numbers.join('') : ''
+        const isNumericOnly = /^\d+$/.test(keyword)
+
+        // Level 0: 名称+型号组合精准匹配
+        const level0 = (chinesePart && numberPart)
+            ? products.filter(p => {
+                const nameMatch = p.name.toLowerCase().includes(chinesePart)
+                const specMatch = p.description && p.description.match(/(?:规格)?型号(\d+)/)
+                return nameMatch && specMatch && specMatch[1] === numberPart
+            })
+            : []
+
+        // Level 1: 纯数字 → 只匹配规格型号；否则精确匹配规格全文
+        const level1 = isNumericOnly
+            ? products.filter(p => {
+                const specMatch = p.description && p.description.match(/(?:规格)?型号(\d+)/)
+                return specMatch && specMatch[1] === keyword
+            })
+            : products.filter(p => p.description && p.description === keyword)
+
+        // Level 2: 名称+型号宽松匹配（数字匹配规格型号）
+        const level2 = (chinesePart && numberPart)
+            ? products.filter(p => {
+                const nameMatch = p.name.toLowerCase().includes(chinesePart)
+                const specMatch = p.description && p.description.match(/(?:规格)?型号(\d+)/)
+                return nameMatch && specMatch && specMatch[1] === numberPart
+            })
+            : []
+
+        // Level 3: 名称前缀匹配
+        const level3 = products.filter(p =>
+            p.name.toLowerCase().startsWith(lowerKeyword)
+        )
+
+        // Level 4: 全字段模糊匹配（纯数字时禁用）
+        const level4 = isNumericOnly
+            ? []
+            : products.filter(p =>
+                p.name.toLowerCase().includes(lowerKeyword) ||
+                (p.description && p.description.toLowerCase().includes(lowerKeyword))
+            )
+
+        const seen = new Set()
+        const result = []
+        for (const list of [level0, level1, level2, level3, level4]) {
+            for (const p of list) {
+                if (!seen.has(p.id)) {
+                    seen.add(p.id)
+                    result.push(p)
+                }
+            }
+        }
+        return result
+    })()
 
     // ─── Excel 导入相关 ───
     const processExcelFile = (file) => {
@@ -650,7 +706,7 @@ export default function QuoteGenerator() {
                             <input
                                 className="quote-search-input"
                                 style={styles.searchInput}
-                                placeholder="搜索产品名称或 SKU..."
+                                placeholder="搜索产品名称..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 autoFocus
@@ -662,7 +718,7 @@ export default function QuoteGenerator() {
                                 <div style={styles.noResult}>未找到匹配产品</div>
                             ) : (
                                 filteredProducts.map((product) => {
-                                    const inQuote = quoteItems.find(i => i.sku === product.sku)
+                                    const inQuote = quoteItems.find(i => i.productId === product.id)
                                     return (
                                         <div
                                             key={product.id}
@@ -671,7 +727,7 @@ export default function QuoteGenerator() {
                                         >
                                             <div style={styles.productInfo}>
                                                 <div style={styles.productName}>{product.name}</div>
-                                                <div style={styles.productSku}>{product.sku}</div>
+                                                <div style={styles.productSku}>{product.description || '-'}</div>
                                             </div>
                                             <div style={styles.productRight}>
                                                 <div style={styles.productPrice}>¥{product.price.toLocaleString()}</div>

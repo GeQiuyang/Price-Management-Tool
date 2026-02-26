@@ -94,10 +94,10 @@ export default function RecycleBin() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ targetTable }),
       })
-      
+
       await loadRecycleBin()
       window.dispatchEvent(new CustomEvent('recycleBin-updated'))
-      
+
       if (targetTable === 'products') {
         window.dispatchEvent(new CustomEvent('products-updated'))
       } else if (targetTable === 'costs') {
@@ -149,11 +149,11 @@ export default function RecycleBin() {
   const getDisplayData = (item) => {
     const data = item.item_data
     const type = item.item_type
-    
+
     if (type === 'products') {
-      return { title: data.name, subtitle: `SKU: ${data.sku}`, extra: `¥${Number(data.price).toLocaleString()}` }
+      return { title: data.name, subtitle: data.description || '-', extra: `¥${Number(data.price).toLocaleString()}` }
     } else if (type === 'costs') {
-      return { title: data.productName || data.cost_type, subtitle: `SKU: ${data.sku || '-'}`, extra: `¥${Number(data.amount || data.totalCost || 0).toLocaleString()}` }
+      return { title: data.productName || data.cost_type, subtitle: '', extra: `¥${Number(data.amount || data.totalCost || 0).toLocaleString()}` }
     } else if (type === 'currencies') {
       return { title: data.name, subtitle: `${data.code} (${data.symbol})`, extra: data.is_default ? '默认货币' : '' }
     } else if (type === 'customers') {
@@ -252,19 +252,19 @@ export default function RecycleBin() {
       )}
 
       {showModal && (
-        <div 
+        <div
           style={{
             ...styles.modalOverlay,
             animation: isClosing ? 'modalFadeOut 0.2s ease-out forwards' : 'modalFadeIn 0.2s ease-out forwards',
-          }} 
+          }}
           onClick={handleCloseModal}
         >
           <style>{modalAnimationStyles}</style>
-          <div 
+          <div
             style={{
               ...styles.modal,
               animation: isClosing ? 'modalSlideOut 0.2s ease-out forwards' : 'modalSlideIn 0.2s ease-out forwards',
-            }} 
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             <h3 style={styles.modalTitle}>确认永久删除</h3>

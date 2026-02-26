@@ -76,7 +76,6 @@ export default function Products() {
   const [formData, setFormData] = useState({
     name: '',
     category: '钻具类',
-    sku: '',
     price: '',
     description: '',
     status: 'active',
@@ -93,91 +92,31 @@ export default function Products() {
     { id: '配件类', name: '配件类' },
   ]
 
-  const generateSKUTable = () => {
-    const tableData = []
 
-    const pipeModels = [300, 260, 273]
-    const pipeThicknesses = { 300: [3, 3.5, 4], 260: [3, 3.5, 4], 273: [0] }
-    const pipeLengths = [1.5, 2, 2.5, 3, 4, 6]
-    const pipePrices = {
-      '300-S': 351,
-      '300-Q': 356,
-      '260-S': 280,
-      '260-Q': 285,
-      '273-S': 80,
-    }
-
-    pipeModels.forEach(model => {
-      pipeThicknesses[model].forEach(thickness => {
-        pipeLengths.forEach(length => {
-          const threadCodes = model === 273 ? ['S'] : ['S', 'Q']
-          threadCodes.forEach(thread => {
-            const sku = `TP${model}-${thickness}-${length}m-${thread}`
-            const threadName = thread === 'S' ? '尖丝' : '方丝'
-            const productName = `${model}导管 (${threadName}) · ${length}m`
-            const price = pipePrices[`${model}-${thread}`] || 0
-            const specDescription = thickness > 0 ? `壁厚${thickness}mm，长度${length}m` : '母扣接头'
-
-            tableData.push({
-              sku,
-              product: productName,
-              price: `¥${price}`,
-              specDescription,
-            })
-          })
-        })
-      })
-    })
-
-    const bitTypes = [
-      { sku: 'BT-60-60-24', product: '赛迈斯宝石截齿60 · 60-24', price: '¥270', specDescription: '合金直径28mm，适合土层' },
-      { sku: 'BT-60-60-24-R', product: '赛迈斯宝石截齿60 · 60-24', price: '¥290', specDescription: '合金直径28mm，适合岩层' },
-    ]
-    tableData.push(...bitTypes)
-
-    const toolTypes = [
-      { sku: 'DB-1200-20', product: '捞沙斗 · 1200mm', price: '¥6500', specDescription: '1200mm，壁厚20mm' },
-      { sku: 'DB-1500-20', product: '捞沙斗 · 1500mm', price: '¥7500', specDescription: '1500mm，壁厚20mm' },
-      { sku: 'CB-1200-20', product: '筒钻 · 1200mm', price: '¥13000', specDescription: '1200mm，壁厚20mm' },
-      { sku: 'CB-1500-20', product: '筒钻 · 1500mm', price: '¥15000', specDescription: '1500mm，壁厚20mm' },
-      { sku: 'LZZT-1200-20', product: '螺旋钻头 · 1200mm', price: '¥800', specDescription: '1200mm，壁厚20mm高效螺旋钻头' },
-    ]
-    tableData.push(...toolTypes)
-
-    const accessoryTypes = [
-      { sku: 'MT-18-4', product: '泥浆管 · 18m', price: '¥330', specDescription: '口径4英寸，长度18m' },
-      { sku: 'MP-75', product: '泥浆泵 · 75kW', price: '¥6500', specDescription: '75千瓦' },
-      { sku: 'ZG-3-89', product: '钻杆 · 3m', price: '¥400', specDescription: '钻杆，长度3m，直径89mm' },
-      { sku: 'JZZG-3-89', product: '加重钻杆 · 3m', price: '¥600', specDescription: '加重钻杆，长度3m，直径89mm' },
-    ]
-    tableData.push(...accessoryTypes)
-
-    return tableData
-  }
 
   const productTemplates = {
     '导管类': [
-      { name: '300导管 (尖丝)', sku: 'TP3-{thickness}-{length}m-S', description: '壁厚{thickness}mm，尖丝', price: 351 },
-      { name: '300导管 (方丝)', sku: 'TP3-{thickness}-{length}m-Q', description: '壁厚{thickness}mm，方丝', price: 356 },
-      { name: '260导管 (尖丝)', sku: 'TP26-{thickness}-{length}m-S', description: '壁厚{thickness}mm，尖丝', price: 291 },
-      { name: '260导管 (方丝)', sku: 'TP26-{thickness}-{length}m-Q', description: '壁厚{thickness}mm，方丝', price: 296 },
-      { name: '273母扣接头', sku: 'TP27-0-0m-S', description: '母扣接头', price: 80 },
+      { name: '300导管 (尖丝)', description: '壁厚{thickness}mm，尖丝', price: 351 },
+      { name: '300导管 (方丝)', description: '壁厚{thickness}mm，方丝', price: 356 },
+      { name: '260导管 (尖丝)', description: '壁厚{thickness}mm，尖丝', price: 291 },
+      { name: '260导管 (方丝)', description: '壁厚{thickness}mm，方丝', price: 296 },
+      { name: '273母扣接头', description: '母扣接头', price: 80 },
     ],
     '水泵类': [
-      { name: '潜水泵', sku: 'SP-{power}-{flow}', description: '功率{power}kW，流量{flow}m³/h', price: 5000 },
-      { name: '离心泵', sku: 'LP-{power}-{head}', description: '功率{power}kW，扬程{head}m', price: 3500 },
-      { name: '泥浆泵', sku: 'PMP-{power}', description: '{power}千瓦', price: 6500 },
+      { name: '潜水泵', description: '功率{power}kW，流量{flow}m³/h', price: 5000 },
+      { name: '离心泵', description: '功率{power}kW，扬程{head}m', price: 3500 },
+      { name: '泥浆泵', description: '{power}千瓦', price: 6500 },
     ],
     '钻具类': [
-      { name: '捞沙斗', sku: 'DB-{size}-{thickness}', description: '{size}mm，壁厚{thickness}mm', price: 6500 },
-      { name: '筒钻', sku: 'CB-{size}-{thickness}', description: '{size}mm，壁厚{thickness}mm', price: 13000 },
-      { name: '螺旋钻头', sku: 'LZZT-{size}-{thickness}', description: '{size}mm，壁厚{thickness}mm高效螺旋钻头', price: 800 },
+      { name: '捞沙斗', description: '{size}mm，壁厚{thickness}mm', price: 6500 },
+      { name: '筒钻', description: '{size}mm，壁厚{thickness}mm', price: 13000 },
+      { name: '螺旋钻头', description: '{size}mm，壁厚{thickness}mm高效螺旋钻头', price: 800 },
     ],
     '配件类': [
-      { name: '泥浆管', sku: 'MT-18-4', description: '口径4英寸，长度18m', price: 330 },
-      { name: '泥浆泵', sku: 'MP-{power}', description: '{power}千瓦', price: 6500 },
-      { name: '钻杆', sku: 'ZG-{m}-{diameter}', description: '钻杆，长度{m}，直径{diameter}mm', price: 400 },
-      { name: '加重钻杆', sku: 'JZZG-{m}-{diameter}', description: '加重钻杆，长度{m}，直径{diameter}mm', price: 600 },
+      { name: '泥浆管', description: '口径4英寸，长度18m', price: 330 },
+      { name: '泥浆泵', description: '{power}千瓦', price: 6500 },
+      { name: '钻杆', description: '钻杆，长度{m}，直径{diameter}mm', price: 400 },
+      { name: '加重钻杆', description: '加重钻杆，长度{m}，直径{diameter}mm', price: 600 },
     ],
   }
 
@@ -185,7 +124,6 @@ export default function Products() {
     setFormData({
       ...formData,
       name: template.name,
-      sku: template.sku,
       description: template.description,
       price: template.price,
     })
@@ -226,7 +164,7 @@ export default function Products() {
 
   const handleAdd = () => {
     setEditingProduct(null)
-    setFormData({ name: '', category: activeCategory, sku: '', price: '', description: '', status: 'active' })
+    setFormData({ name: '', category: activeCategory, price: '', description: '', status: 'active' })
     setIsClosing(false)
     setShowModal(true)
   }
@@ -306,110 +244,20 @@ export default function Products() {
     }
   }
 
-  const parseSKU = (sku) => {
-    if (!sku) return null
-
-    const parts = sku.split('-')
-    const prefix = parts[0]
-
-    if (prefix.startsWith('TP')) {
-      const seriesCode = parts[1] || ''
-      const modelMap = { '3': 300, '26': 260, '27': 273 }
-      return {
-        type: 'pipe',
-        model: modelMap[seriesCode] || seriesCode,
-        thickness: parts[2] || '',
-        length: parts[3] || '',
-        thread: parts[4] || '',
-      }
-    } else if (prefix.startsWith('BT')) {
-      return {
-        type: 'bit',
-        series: parts[1] || '',
-        model: parts[2] || '',
-      }
-    } else if (prefix === 'DB' || prefix === 'CB' || prefix.startsWith('LZZT')) {
-      return {
-        type: 'tool',
-        code: prefix,
-        size: parts[1] || '',
-        thickness: parts[2] || '',
-      }
-    } else if (prefix === 'SR' || prefix === 'MT' || prefix === 'MP' || prefix === 'PMP' || prefix === 'ZG' || prefix === 'JZZG') {
-      return {
-        type: 'accessory',
-        code: prefix,
-        param1: parts[1] || '',
-        param2: parts[2] || '',
-      }
-    }
-    return null
-  }
-
-  const updateSKUFromDescription = (description, currentSKU) => {
-    if (!currentSKU) return currentSKU
-
-    const parsed = parseSKU(currentSKU)
-    if (!parsed) return currentSKU
-
-    let newSKU = currentSKU
-
-    if (parsed.type === 'pipe') {
-      const thicknessMatch = description.match(/壁厚(\d+(?:\.\d+)?)mm/)
-      const lengthMatch = description.match(/长度(\d+(?:\.\d+)?)m/)
-
-      if (thicknessMatch || lengthMatch) {
-        const thickness = thicknessMatch ? thicknessMatch[1] : parsed.thickness
-        const length = lengthMatch ? lengthMatch[1] : parsed.length
-        newSKU = `TP${parsed.model}-${thickness}-${length}m-${parsed.thread}`
-      }
-    } else if (parsed.type === 'tool') {
-      const thicknessMatch = description.match(/壁厚(\d+(?:\.\d+)?)mm/)
-
-      if (thicknessMatch) {
-        const thickness = thicknessMatch[1]
-        newSKU = `${parsed.code}-${parsed.size}-${thickness}`
-      }
-    } else if (parsed.type === 'accessory') {
-      if (parsed.code === 'SR') {
-        const lengthMatch = description.match(/长度(\d+(?:\.\d+)?)m/)
-        if (lengthMatch) {
-          newSKU = `SR-${lengthMatch[1]}`
-        }
-      } else if (parsed.code === 'MT') {
-        const lengthMatch = description.match(/长度(\d+(?:\.\d+)?)m/)
-        const diameterMatch = description.match(/直径(\d+(?:\.\d+)?)mm/)
-        if (lengthMatch || diameterMatch) {
-          const length = lengthMatch ? lengthMatch[1] : parsed.param1
-          const diameter = diameterMatch ? diameterMatch[1] : parsed.param2
-          newSKU = `MT-${length}-${diameter}`
-        }
-      } else if (parsed.code === 'MP' || parsed.code === 'PMP') {
-        const powerMatch = description.match(/(\d+(?:\.\d+)?)千瓦/)
-        if (powerMatch) {
-          newSKU = `${parsed.code}-${powerMatch[1]}`
-        }
-      } else if (parsed.code === 'ZG' || parsed.code === 'JZZG') {
-        const lengthMatch = description.match(/长度(\d+(?:\.\d+)?)m/)
-        const diameterMatch = description.match(/直径(\d+(?:\.\d+)?)mm/)
-        if (lengthMatch || diameterMatch) {
-          const length = lengthMatch ? lengthMatch[1] : parsed.param1
-          const diameter = diameterMatch ? diameterMatch[1] : parsed.param2
-          newSKU = `${parsed.code}-${length}-${diameter}`
-        }
-      }
-    }
-
-    return newSKU
-  }
-
   const handleDescriptionChange = (value) => {
-    const newSKU = updateSKUFromDescription(value, formData.sku)
-    setFormData({ ...formData, description: value, sku: newSKU })
+    setFormData({ ...formData, description: value })
   }
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    if (e) e.preventDefault()
+    if (!formData.name || !formData.name.trim()) {
+      alert('请输入产品名称')
+      return
+    }
+    if (!formData.price && formData.price !== 0) {
+      alert('请输入价格')
+      return
+    }
     try {
       let response
 
@@ -461,12 +309,66 @@ export default function Products() {
 
   const getDisplayProducts = () => {
     if (searchQuery.trim()) {
-      const lowerQuery = searchQuery.toLowerCase()
-      return products.filter((p) =>
-        p.sku.toLowerCase().includes(lowerQuery) ||
-        p.name.toLowerCase().includes(lowerQuery) ||
-        (p.description && p.description.toLowerCase().includes(lowerQuery))
+      const keyword = searchQuery.trim()
+      const lowerKeyword = keyword.toLowerCase()
+      const numbers = keyword.match(/\d+/g)
+      // 提取中文部分和数字部分，用于组合匹配（如"截齿筒钻1200"或"1200截齿筒钻"）
+      const chinesePart = keyword.replace(/[\d\s]+/g, '').toLowerCase()
+      const numberPart = numbers ? numbers.join('') : ''
+
+      const isNumericOnly = /^\d+$/.test(keyword)
+
+      // Level 0: 名称+型号组合精准匹配（支持正反序）
+      const level0 = (chinesePart && numberPart)
+        ? products.filter((p) => {
+          const nameMatch = p.name.toLowerCase().includes(chinesePart)
+          const specMatch = p.description && p.description.match(/(?:规格)?型号(\d+)/)
+          return nameMatch && specMatch && specMatch[1] === numberPart
+        })
+        : []
+
+      // Level 1: 纯数字搜索 → 只匹配规格型号；否则精确匹配产品规格全文
+      const level1 = isNumericOnly
+        ? products.filter((p) => {
+          const specMatch = p.description && p.description.match(/(?:规格)?型号(\d+)/)
+          return specMatch && specMatch[1] === keyword
+        })
+        : products.filter((p) => p.description && p.description === keyword)
+
+      // Level 2: 名称+型号宽松匹配（数字匹配规格型号）
+      const level2 = (chinesePart && numberPart)
+        ? products.filter((p) => {
+          const nameMatch = p.name.toLowerCase().includes(chinesePart)
+          const specMatch = p.description && p.description.match(/(?:规格)?型号(\d+)/)
+          return nameMatch && specMatch && specMatch[1] === numberPart
+        })
+        : []
+
+      // Level 3: 名称前缀匹配
+      const level3 = products.filter((p) =>
+        p.name.toLowerCase().startsWith(lowerKeyword)
       )
+
+      // Level 4: 全字段模糊匹配（纯数字时仍只匹配型号）
+      const level4 = isNumericOnly
+        ? []
+        : products.filter((p) =>
+          p.name.toLowerCase().includes(lowerKeyword) ||
+          (p.description && p.description.toLowerCase().includes(lowerKeyword))
+        )
+
+      // 按优先级合并去重
+      const seen = new Set()
+      const result = []
+      for (const list of [level0, level1, level2, level3, level4]) {
+        for (const p of list) {
+          if (!seen.has(p.id)) {
+            seen.add(p.id)
+            result.push(p)
+          }
+        }
+      }
+      return result
     }
     return getProductsByCategory(activeCategory)
   }
@@ -529,7 +431,7 @@ export default function Products() {
           <input
             type="text"
             style={styles.searchInput}
-            placeholder="搜索SKU、产品名称..."
+            placeholder="搜索产品名称、规格型号..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -725,52 +627,8 @@ export default function Products() {
                     />
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-                        分类
-                      </label>
-                      <select
-                        style={{
-                          width: '100%',
-                          padding: '10px 12px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '8px',
-                          fontSize: '14px',
-                          backgroundColor: 'white'
-                        }}
-                        value={formData.category}
-                        onChange={(e) => {
-                          const newCategory = e.target.value
-                          setFormData({ ...formData, category: newCategory, name: '', sku: '', description: '', price: '' })
-                        }}
-                      >
-                        {categories.map((cat) => (
-                          <option key={cat.id} value={cat.id}>{cat.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-                        状态
-                      </label>
-                      <select
-                        style={{
-                          width: '100%',
-                          padding: '10px 12px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '8px',
-                          fontSize: '14px',
-                          backgroundColor: 'white'
-                        }}
-                        value={formData.status}
-                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                      >
-                        <option value="active">启用</option>
-                        <option value="inactive">禁用</option>
-                      </select>
-                    </div>
-                  </div>
+
+
 
                   <div style={{ marginBottom: '20px' }}>
                     <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
@@ -808,49 +666,48 @@ export default function Products() {
                       required
                     />
                   </div>
-                </form>
-              </div>
 
-              <div style={{ padding: '20px 28px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                <button
-                  type="button"
-                  style={{
-                    padding: '10px 20px',
-                    backgroundColor: 'white',
-                    color: '#6b7280',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '500'
-                  }}
-                  onClick={handleCloseModal}
-                >
-                  取消
-                </button>
-                <button
-                  type="button"
-                  style={{
-                    padding: '10px 20px',
-                    backgroundColor: '#D4AF37',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '500'
-                  }}
-                  onClick={handleSubmit}
-                >
-                  {editingProduct ? '保存修改' : '添加'}
-                </button>
+                  <div style={{ padding: '20px 0', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '4px' }}>
+                    <button
+                      type="button"
+                      style={{
+                        padding: '10px 20px',
+                        backgroundColor: 'white',
+                        color: '#6b7280',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '500'
+                      }}
+                      onClick={handleCloseModal}
+                    >
+                      取消
+                    </button>
+                    <button
+                      type="submit"
+                      style={{
+                        padding: '10px 20px',
+                        backgroundColor: '#D4AF37',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '500'
+                      }}
+                    >
+                      {editingProduct ? '保存修改' : '添加'}
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           </div>
         </>,
         document.body
       )}
-    </div >
+    </div>
   )
 }
 
