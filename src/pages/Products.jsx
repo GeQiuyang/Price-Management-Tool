@@ -307,6 +307,32 @@ export default function Products() {
     return products.filter((p) => p.category === category)
   }
 
+  // 导管类智能搜索：解析自然语言中的管型、丝型、长度、壁厚
+  const parsePipeQuery = (keyword) => {
+    // 管型：300/260/273
+    const pipeTypeMatch = keyword.match(/(300|260|273)/)
+    const pipeType = pipeTypeMatch ? pipeTypeMatch[1] : null
+
+    // 丝型：尖丝/方丝
+    let threadType = null
+    if (/尖丝|尖/.test(keyword)) threadType = '尖丝'
+    else if (/方丝|方/.test(keyword)) threadType = '方丝'
+
+    // 长度：支持 "1米"/"1m"/"0.5米"/"1.5m" 等
+    const lengthMatch = keyword.match(/(\d+\.?\d*)\s*(?:米|m)/i)
+    const length = lengthMatch ? lengthMatch[1] : null
+
+    // 壁厚：支持 "3.5厚"/"3.5壁厚"/"厚度3.5"/"壁厚3.5" 等
+    let thickness = null
+    const thickMatch1 = keyword.match(/(\d+\.?\d*)\s*(?:厚|壁厚)/)
+    const thickMatch2 = keyword.match(/(?:厚度|壁厚)\s*(\d+\.?\d*)/)
+    if (thickMatch1) thickness = thickMatch1[1]
+    else if (thickMatch2) thickness = thickMatch2[1]
+
+    const hasPipeKeywords = pipeType || (keyword.includes('导管'))
+    return { pipeType, threadType, length, thickness, hasPipeKeywords }
+  }
+
   const getDisplayProducts = () => {
     if (searchQuery.trim()) {
       const keyword = searchQuery.trim()
@@ -317,6 +343,24 @@ export default function Products() {
       const numberPart = numbers ? numbers.join('') : ''
 
       const isNumericOnly = /^\d+$/.test(keyword)
+
+      // 导管类智能搜索（最高优先级）
+      const pipeQuery = parsePipeQuery(keyword)
+      if (pipeQuery.hasPipeKeywords && (pipeQuery.pipeType || pipeQuery.threadType || pipeQuery.length || pipeQuery.thickness)) {
+        const pipeResults = products.filter((p) => {
+          if (p.category !== '导管类') return false
+          // 管型匹配：name中包含 "300导管"/"260导管"/"273导管"
+          if (pipeQuery.pipeType && !p.name.includes(`${pipeQuery.pipeType}导管`)) return false
+          // 丝型匹配：name中包含 "(尖丝)"/"(方丝)"
+          if (pipeQuery.threadType && !p.name.includes(pipeQuery.threadType)) return false
+          // 长度匹配：name中包含 "· Xm"
+          if (pipeQuery.length && !p.name.includes(`${pipeQuery.length}m`)) return false
+          // 壁厚匹配：description中包含 "壁厚Xmm"
+          if (pipeQuery.thickness && !(p.description && p.description.includes(`壁厚${pipeQuery.thickness}mm`))) return false
+          return true
+        })
+        if (pipeResults.length > 0) return pipeResults
+      }
 
       // Level 0: 名称+型号组合精准匹配（支持正反序）
       const level0 = (chinesePart && numberPart)
