@@ -144,9 +144,9 @@ export default function QuoteGenerator() {
         }
     }
 
-    // ─── 产品报价相关 ───
+    const dualPriceCategories = ['导管类', '水泵类']
     const getProductPrice = (product) => {
-        if (useDealerPrice && product.dealer_price && product.category === '导管类') {
+        if (useDealerPrice && product.dealer_price && dualPriceCategories.includes(product.category)) {
             return product.dealer_price
         }
         return product.price
@@ -351,7 +351,7 @@ export default function QuoteGenerator() {
 
     const filteredProducts = (() => {
         if (!searchTerm.trim()) return products
-        const keyword = searchTerm.trim()
+        const keyword = searchTerm.trim().replace(/-/g, '')
         const lowerKeyword = keyword.toLowerCase()
         const numbers = keyword.match(/\d+/g)
         const chinesePart = keyword.replace(/[\d\s]+/g, '').toLowerCase()
@@ -388,9 +388,25 @@ export default function QuoteGenerator() {
             if (pipeResults.length > 0) return pipeResults
         }
 
+        // 钻具类专有搜索规则：提取【产品名称】和【型号】，组合后作为搜索关键词
+        const drillKeyword = keyword.replace(/[\s\-]+/g, '').toLowerCase()
+        const drillSegments = drillKeyword.match(/[\u4e00-\u9fff]+|[a-zA-Z0-9]+/g) || [drillKeyword]
+
+        const levelDrill = products.filter(p => {
+            if (p.category !== '钻具类') return false
+
+            const specMatch = p.description && p.description.match(/(?:规格)?型号[：:]?\s*([a-zA-Z0-9\-]+)/)
+            const model = specMatch ? specMatch[1].replace(/[\s\-]+/g, '').toLowerCase() : ''
+            const productName = p.name.replace(/[\s\-]+/g, '').toLowerCase()
+            const targetString = productName + model
+
+            return drillSegments.every(seg => targetString.includes(seg))
+        })
+
         // Level 0: 名称+型号组合精准匹配
         const level0 = (chinesePart && numberPart)
             ? products.filter(p => {
+                if (p.category === '钻具类') return false
                 const nameMatch = p.name.toLowerCase().includes(chinesePart)
                 const specMatch = p.description && p.description.match(/(?:规格)?型号(\d+)/)
                 return nameMatch && specMatch && specMatch[1] === numberPart
@@ -400,14 +416,19 @@ export default function QuoteGenerator() {
         // Level 1: 纯数字 → 只匹配规格型号；否则精确匹配规格全文
         const level1 = isNumericOnly
             ? products.filter(p => {
+                if (p.category === '钻具类') return false
                 const specMatch = p.description && p.description.match(/(?:规格)?型号(\d+)/)
                 return specMatch && specMatch[1] === keyword
             })
-            : products.filter(p => p.description && p.description === keyword)
+            : products.filter(p => {
+                if (p.category === '钻具类') return false
+                return p.description && p.description === keyword
+            })
 
         // Level 2: 名称+型号宽松匹配（数字匹配规格型号）
         const level2 = (chinesePart && numberPart)
             ? products.filter(p => {
+                if (p.category === '钻具类') return false
                 const nameMatch = p.name.toLowerCase().includes(chinesePart)
                 const specMatch = p.description && p.description.match(/(?:规格)?型号(\d+)/)
                 return nameMatch && specMatch && specMatch[1] === numberPart
@@ -415,21 +436,23 @@ export default function QuoteGenerator() {
             : []
 
         // Level 3: 名称前缀匹配
-        const level3 = products.filter(p =>
-            p.name.toLowerCase().startsWith(lowerKeyword)
-        )
+        const level3 = products.filter(p => {
+            if (p.category === '钻具类') return false
+            return p.name.toLowerCase().startsWith(lowerKeyword)
+        })
 
         // Level 4: 全字段模糊匹配（纯数字时禁用）
         const level4 = isNumericOnly
             ? []
-            : products.filter(p =>
-                p.name.toLowerCase().includes(lowerKeyword) ||
-                (p.description && p.description.toLowerCase().includes(lowerKeyword))
-            )
+            : products.filter(p => {
+                if (p.category === '钻具类') return false
+                return p.name.toLowerCase().includes(lowerKeyword) ||
+                    (p.description && p.description.toLowerCase().includes(lowerKeyword))
+            })
 
         const seen = new Set()
         const result = []
-        for (const list of [level0, level1, level2, level3, level4]) {
+        for (const list of [levelDrill, level0, level1, level2, level3, level4]) {
             for (const p of list) {
                 if (!seen.has(p.id)) {
                     seen.add(p.id)
@@ -797,7 +820,7 @@ export default function QuoteGenerator() {
                                 autoFocus
                             />
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px' }}>
-                                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>导管类价格：</span>
+                                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>价格类型：</span>
                                 <button
                                     type="button"
                                     style={{
@@ -850,7 +873,7 @@ export default function QuoteGenerator() {
                                             <div style={styles.productRight}>
                                                 <div style={styles.productPrice}>
                                                     ¥{getProductPrice(product).toLocaleString()}
-                                                    {product.category === '导管类' && product.dealer_price && (
+                                                    {dualPriceCategories.includes(product.category) && product.dealer_price && (
                                                         <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '400', marginLeft: '4px' }}>
                                                             ({useDealerPrice ? '经销' : '终端'})
                                                         </span>

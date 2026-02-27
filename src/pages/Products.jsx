@@ -86,6 +86,10 @@ export default function Products() {
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const isReadOnly = user.role === 'foreign_trade'
 
+  // 支持双价格（终端价+经销商价）的分类
+  const dualPriceCategories = ['导管类', '水泵类']
+  const hasDualPrice = (cat) => dualPriceCategories.includes(cat)
+
   const categories = [
     { id: '钻具类', name: '钻具类' },
     { id: '导管类', name: '导管类' },
@@ -308,9 +312,9 @@ export default function Products() {
     return products.filter((p) => p.category === category)
   }
 
-  // 导管类智能搜索：解析自然语言中的管型、丝型、长度、壁厚
+  // 导管类智能搜索：解析自然语言中的管型、丝型、长度、壁厚、接头
   const parsePipeQuery = (keyword) => {
-    // 管型：300/260/273
+    // 管型：300/260/273/219
     const pipeTypeMatch = keyword.match(/(300|260|273|219)/)
     const pipeType = pipeTypeMatch ? pipeTypeMatch[1] : null
 
@@ -319,24 +323,35 @@ export default function Products() {
     if (/尖丝|尖/.test(keyword)) threadType = '尖丝'
     else if (/方丝|方/.test(keyword)) threadType = '方丝'
 
+    // 接头规格：公扣/母扣/衬套
+    let jointSpec = null
+    if (/公扣/.test(keyword)) jointSpec = '公扣'
+    else if (/母扣/.test(keyword)) jointSpec = '母扣'
+    else if (/衬套/.test(keyword)) jointSpec = '衬套'
+
+    // 接头识别：包含"接头"或包含接头规格关键字
+    const isJointQuery = /接头/.test(keyword) || jointSpec !== null
+
     // 长度：支持 "1米"/"1m"/"0.5米"/"1.5m" 等
     const lengthMatch = keyword.match(/(\d+\.?\d*)\s*(?:米|m)/i)
     const length = lengthMatch ? lengthMatch[1] : null
 
-    // 壁厚：支持 "3.5厚"/"3.5壁厚"/"厚度3.5"/"壁厚3.5" 等
+    // 壁厚：支持 "3.5厚"/"3.5壁厚"/"厚度3.5"/"壁厚3.5"/"3米2.75"(长度后跟壁厚) 等
     let thickness = null
     const thickMatch1 = keyword.match(/(\d+\.?\d*)\s*(?:厚|壁厚)/)
     const thickMatch2 = keyword.match(/(?:厚度|壁厚)\s*(\d+\.?\d*)/)
+    const thickMatch3 = keyword.match(/(?:米|m)\s*(\d+\.?\d*)\s*$/i)  // 长度后面直接跟的数字视为壁厚
     if (thickMatch1) thickness = thickMatch1[1]
     else if (thickMatch2) thickness = thickMatch2[1]
+    else if (thickMatch3) thickness = thickMatch3[1]
 
-    const hasPipeKeywords = pipeType || (keyword.includes('导管'))
-    return { pipeType, threadType, length, thickness, hasPipeKeywords }
+    const hasPipeKeywords = pipeType || keyword.includes('导管') || isJointQuery
+    return { pipeType, threadType, length, thickness, hasPipeKeywords, isJointQuery, jointSpec }
   }
 
   const getDisplayProducts = () => {
     if (searchQuery.trim()) {
-      const keyword = searchQuery.trim()
+      const keyword = searchQuery.trim().replace(/-/g, '')
       const lowerKeyword = keyword.toLowerCase()
       const numbers = keyword.match(/\d+/g)
       // 提取中文部分和数字部分，用于组合匹配（如"截齿筒钻1200"或"1200截齿筒钻"）
@@ -347,25 +362,48 @@ export default function Products() {
 
       // 导管类智能搜索（最高优先级）
       const pipeQuery = parsePipeQuery(keyword)
-      if (pipeQuery.hasPipeKeywords && (pipeQuery.pipeType || pipeQuery.threadType || pipeQuery.length || pipeQuery.thickness)) {
+      if (pipeQuery.hasPipeKeywords && (pipeQuery.pipeType || pipeQuery.threadType || pipeQuery.length || pipeQuery.thickness || pipeQuery.isJointQuery)) {
         const pipeResults = products.filter((p) => {
           if (p.category !== '导管类') return false
-          // 管型匹配：name中包含 "300导管"/"260导管"/"273导管"
+
+          // 接头搜索模式
+          if (pipeQuery.isJointQuery) {
+            if (!p.name.includes('接头')) return false
+            if (pipeQuery.pipeType && !p.name.includes(pipeQuery.pipeType)) return false
+            if (pipeQuery.threadType && !p.name.includes(pipeQuery.threadType)) return false
+            if (pipeQuery.jointSpec && !p.name.includes(pipeQuery.jointSpec)) return false
+            return true
+          }
+
+          // 导管搜索模式
           if (pipeQuery.pipeType && !p.name.includes(`${pipeQuery.pipeType}导管`)) return false
-          // 丝型匹配：name中包含 "(尖丝)"/"(方丝)"
           if (pipeQuery.threadType && !p.name.includes(pipeQuery.threadType)) return false
-          // 长度匹配：name中包含 "· Xm"
           if (pipeQuery.length && !p.name.includes(`${pipeQuery.length}m`)) return false
-          // 壁厚匹配：description中包含 "壁厚Xmm"
           if (pipeQuery.thickness && !(p.description && p.description.includes(`壁厚${pipeQuery.thickness}mm`))) return false
           return true
         })
         if (pipeResults.length > 0) return pipeResults
       }
 
+      // 钻具类专有搜索规则：提取【产品名称】和【型号】，组合后作为搜索关键词
+      const drillKeyword = keyword.replace(/[\s\-]+/g, '').toLowerCase()
+      const drillSegments = drillKeyword.match(/[\u4e00-\u9fff]+|[a-zA-Z0-9]+/g) || [drillKeyword]
+
+      const levelDrill = products.filter(p => {
+        if (p.category !== '钻具类') return false
+
+        const specMatch = p.description && p.description.match(/(?:规格)?型号[：:]?\s*([a-zA-Z0-9\-]+)/)
+        const model = specMatch ? specMatch[1].replace(/[\s\-]+/g, '').toLowerCase() : ''
+        const productName = p.name.replace(/[\s\-]+/g, '').toLowerCase()
+        const targetString = productName + model
+
+        return drillSegments.every(seg => targetString.includes(seg))
+      })
+
       // Level 0: 名称+型号组合精准匹配（支持正反序）
       const level0 = (chinesePart && numberPart)
         ? products.filter((p) => {
+          if (p.category === '钻具类') return false
           const nameMatch = p.name.toLowerCase().includes(chinesePart)
           const specMatch = p.description && p.description.match(/(?:规格)?型号(\d+)/)
           return nameMatch && specMatch && specMatch[1] === numberPart
@@ -375,14 +413,19 @@ export default function Products() {
       // Level 1: 纯数字搜索 → 只匹配规格型号；否则精确匹配产品规格全文
       const level1 = isNumericOnly
         ? products.filter((p) => {
+          if (p.category === '钻具类') return false
           const specMatch = p.description && p.description.match(/(?:规格)?型号(\d+)/)
           return specMatch && specMatch[1] === keyword
         })
-        : products.filter((p) => p.description && p.description === keyword)
+        : products.filter((p) => {
+          if (p.category === '钻具类') return false
+          return p.description && p.description === keyword
+        })
 
       // Level 2: 名称+型号宽松匹配（数字匹配规格型号）
       const level2 = (chinesePart && numberPart)
         ? products.filter((p) => {
+          if (p.category === '钻具类') return false
           const nameMatch = p.name.toLowerCase().includes(chinesePart)
           const specMatch = p.description && p.description.match(/(?:规格)?型号(\d+)/)
           return nameMatch && specMatch && specMatch[1] === numberPart
@@ -390,22 +433,34 @@ export default function Products() {
         : []
 
       // Level 3: 名称前缀匹配
-      const level3 = products.filter((p) =>
-        p.name.toLowerCase().startsWith(lowerKeyword)
-      )
+      const level3 = products.filter((p) => {
+        if (p.category === '钻具类') return false
+        return p.name.toLowerCase().startsWith(lowerKeyword)
+      })
 
       // Level 4: 全字段模糊匹配（纯数字时仍只匹配型号）
       const level4 = isNumericOnly
         ? []
-        : products.filter((p) =>
-          p.name.toLowerCase().includes(lowerKeyword) ||
-          (p.description && p.description.toLowerCase().includes(lowerKeyword))
-        )
+        : products.filter((p) => {
+          if (p.category === '钻具类') return false
+          return p.name.toLowerCase().includes(lowerKeyword) ||
+            (p.description && p.description.toLowerCase().includes(lowerKeyword))
+        })
+
+      // Level 5: 拆词匹配 — 将查询拆为多个片段，所有片段都在name+description中出现即命中
+      const segments = keyword.match(/[\u4e00-\u9fff]+|\d+[\-\.]\d+[\-\.\d]*|\d+/g) || []
+      const level5 = (segments.length > 1)
+        ? products.filter((p) => {
+          if (p.category === '钻具类') return false
+          const haystack = `${p.name} ${p.description || ''}`.toLowerCase()
+          return segments.every(seg => haystack.includes(seg.toLowerCase()))
+        })
+        : []
 
       // 按优先级合并去重
       const seen = new Set()
       const result = []
-      for (const list of [level0, level1, level2, level3, level4]) {
+      for (const list of [levelDrill, level0, level1, level2, level3, level4, level5]) {
         for (const p of list) {
           if (!seen.has(p.id)) {
             seen.add(p.id)
@@ -520,8 +575,8 @@ export default function Products() {
             <tr style={styles.tableHeader}>
               <th style={styles.th}>产品名称</th>
               <th style={styles.th}>产品规格</th>
-              <th style={styles.th}>{activeCategory === '导管类' ? '终端价' : '价格'}</th>
-              {activeCategory === '导管类' && <th style={styles.th}>经销商价</th>}
+              <th style={styles.th}>{hasDualPrice(activeCategory) ? '终端价' : '价格'}</th>
+              {hasDualPrice(activeCategory) && <th style={styles.th}>经销商价</th>}
               {!isReadOnly && <th style={styles.th}>操作</th>}
             </tr>
           </thead>
@@ -535,7 +590,7 @@ export default function Products() {
                   {getCleanDescription(product) || product.description || '-'}
                 </td>
                 <td style={styles.tdPrice}>¥{Number(product.price).toLocaleString()}</td>
-                {activeCategory === '导管类' && (
+                {hasDualPrice(activeCategory) && (
                   <td style={styles.tdPrice}>
                     {product.dealer_price ? `¥${Number(product.dealer_price).toLocaleString()}` : '-'}
                   </td>
@@ -701,7 +756,7 @@ export default function Products() {
 
                   <div style={{ marginBottom: '20px' }}>
                     <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-                      {formData.category === '导管类' ? '终端价' : '价格'}
+                      {hasDualPrice(formData.category) ? '终端价' : '价格'}
                     </label>
                     <input
                       type="number"
@@ -718,7 +773,7 @@ export default function Products() {
                     />
                   </div>
 
-                  {formData.category === '导管类' && (
+                  {hasDualPrice(formData.category) && (
                     <div style={{ marginBottom: '20px' }}>
                       <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
                         经销商价
