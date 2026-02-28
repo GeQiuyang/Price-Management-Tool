@@ -101,10 +101,10 @@ export default function Products() {
 
   const productTemplates = {
     '导管类': [
-      { name: '300导管 (尖丝)', description: '壁厚{thickness}mm，尖丝', price: 351 },
-      { name: '300导管 (方丝)', description: '壁厚{thickness}mm，方丝', price: 356 },
-      { name: '260导管 (尖丝)', description: '壁厚{thickness}mm，尖丝', price: 291 },
-      { name: '260导管 (方丝)', description: '壁厚{thickness}mm，方丝', price: 296 },
+      { name: '300尖丝导管', description: '壁厚{thickness}mm，尖丝', price: 351 },
+      { name: '300方丝导管', description: '壁厚{thickness}mm，方丝', price: 356 },
+      { name: '260尖丝导管', description: '壁厚{thickness}mm，尖丝', price: 291 },
+      { name: '260方丝导管', description: '壁厚{thickness}mm，方丝', price: 296 },
       { name: '273母扣接头', description: '母扣接头', price: 80 },
     ],
     '水泵类': [
@@ -312,41 +312,44 @@ export default function Products() {
     return products.filter((p) => p.category === category)
   }
 
-  // 导管类智能搜索：解析自然语言中的管型、丝型、长度、壁厚、接头
+  // 导管类智能搜索：将自然语言提取为结构化 JSON
   const parsePipeQuery = (keyword) => {
-    // 管型：300/260/273/219
+    // 提取型号与丝型
     const pipeTypeMatch = keyword.match(/(300|260|273|219)/)
     const pipeType = pipeTypeMatch ? pipeTypeMatch[1] : null
 
-    // 丝型：尖丝/方丝
     let threadType = null
     if (/尖丝|尖/.test(keyword)) threadType = '尖丝'
     else if (/方丝|方/.test(keyword)) threadType = '方丝'
 
-    // 接头规格：公扣/母扣/衬套
+    let name = null
+    if (pipeType && threadType) {
+      name = `${pipeType}${threadType}导管`
+    }
+
+    // 接头规格
     let jointSpec = null
     if (/公扣/.test(keyword)) jointSpec = '公扣'
     else if (/母扣/.test(keyword)) jointSpec = '母扣'
     else if (/衬套/.test(keyword)) jointSpec = '衬套'
-
-    // 接头识别：包含"接头"或包含接头规格关键字
     const isJointQuery = /接头/.test(keyword) || jointSpec !== null
 
-    // 长度：支持 "1米"/"1m"/"0.5米"/"1.5m" 等
-    const lengthMatch = keyword.match(/(\d+\.?\d*)\s*(?:米|m)/i)
-    const length = lengthMatch ? lengthMatch[1] : null
+    // 长度 (L)：支持 "1米"/"1m"/"0.5米"/"1.5m" 等 (排除了 mm)
+    const lengthMatch = keyword.match(/(\d+\.?\d*)\s*(?:m|米)(?!m|毫米)/i)
+    const L = lengthMatch ? parseFloat(lengthMatch[1]) : null
 
-    // 壁厚：支持 "3.5厚"/"3.5壁厚"/"厚度3.5"/"壁厚3.5"/"3米2.75"(长度后跟壁厚) 等
-    let thickness = null
-    const thickMatch1 = keyword.match(/(\d+\.?\d*)\s*(?:厚|壁厚)/)
+    // 壁厚 (T)：支持 "3.5mm"/"3.5毫米"/"3.5厚"/"3.5壁厚"/"厚度3.5"/"壁厚3.5" 等
+    let T = null
+    const thickMatch1 = keyword.match(/(\d+\.?\d*)\s*(?:mm|毫米|厚|壁厚)/i)
     const thickMatch2 = keyword.match(/(?:厚度|壁厚)\s*(\d+\.?\d*)/)
-    const thickMatch3 = keyword.match(/(?:米|m)\s*(\d+\.?\d*)\s*$/i)  // 长度后面直接跟的数字视为壁厚
-    if (thickMatch1) thickness = thickMatch1[1]
-    else if (thickMatch2) thickness = thickMatch2[1]
-    else if (thickMatch3) thickness = thickMatch3[1]
+    const thickMatch3 = keyword.match(/(?:(?:米|m)(?!m|毫米)[^+]*\+\s*|\+\s*)(\d+\.?\d*)\s*(?:mm|毫米)?\s*$/i)
 
-    const hasPipeKeywords = pipeType || keyword.includes('导管') || isJointQuery
-    return { pipeType, threadType, length, thickness, hasPipeKeywords, isJointQuery, jointSpec }
+    if (thickMatch1) T = parseFloat(thickMatch1[1])
+    else if (thickMatch2) T = parseFloat(thickMatch2[1])
+    else if (thickMatch3) T = parseFloat(thickMatch3[1])
+
+    const hasPipeKeywords = pipeType || keyword.includes('导管') || isJointQuery || L !== null || T !== null
+    return { name, pipeType, threadType, L, T, hasPipeKeywords, isJointQuery, jointSpec }
   }
 
   const getDisplayProducts = () => {
@@ -354,7 +357,7 @@ export default function Products() {
       const keyword = searchQuery.trim().replace(/-/g, '')
       const lowerKeyword = keyword.toLowerCase()
       const numbers = keyword.match(/\d+/g)
-      // 提取中文部分和数字部分，用于组合匹配（如"截齿筒钻1200"或"1200截齿筒钻"）
+      // 提取中文部分和数字部分，用于组合匹配
       const chinesePart = keyword.replace(/[\d\s]+/g, '').toLowerCase()
       const numberPart = numbers ? numbers.join('') : ''
 
@@ -362,24 +365,39 @@ export default function Products() {
 
       // 导管类智能搜索（最高优先级）
       const pipeQuery = parsePipeQuery(keyword)
-      if (pipeQuery.hasPipeKeywords && (pipeQuery.pipeType || pipeQuery.threadType || pipeQuery.length || pipeQuery.thickness || pipeQuery.isJointQuery)) {
+      if (pipeQuery.hasPipeKeywords && (pipeQuery.pipeType || pipeQuery.threadType || pipeQuery.L !== null || pipeQuery.T !== null || pipeQuery.isJointQuery)) {
         const pipeResults = products.filter((p) => {
           if (p.category !== '导管类') return false
 
+          // 严禁返回钻宝、SMS6系、钻金 (除非用户输入包含)
+          const excludeWords = ['钻宝', 'SMS6系', '钻金']
+          for (const word of excludeWords) {
+            if (p.name.includes(word) && !keyword.includes(word)) return false
+          }
+
           // 接头搜索模式
           if (pipeQuery.isJointQuery) {
-            if (!p.name.includes('接头')) return false
+            if (!p.name.includes('接头') && !p.name.includes('衬套')) return false
             if (pipeQuery.pipeType && !p.name.includes(pipeQuery.pipeType)) return false
             if (pipeQuery.threadType && !p.name.includes(pipeQuery.threadType)) return false
             if (pipeQuery.jointSpec && !p.name.includes(pipeQuery.jointSpec)) return false
+
+            // 匹配外径
+            if (pipeQuery.T !== null && !(p.description && p.description.includes(`外径：${pipeQuery.T}`))) return false
             return true
           }
 
           // 导管搜索模式
-          if (pipeQuery.pipeType && !p.name.includes(`${pipeQuery.pipeType}导管`)) return false
-          if (pipeQuery.threadType && !p.name.includes(pipeQuery.threadType)) return false
-          if (pipeQuery.length && !p.name.includes(`${pipeQuery.length}m`)) return false
-          if (pipeQuery.thickness && !(p.description && p.description.includes(`壁厚${pipeQuery.thickness}mm`))) return false
+          if (pipeQuery.name) {
+            if (!p.name.includes(pipeQuery.name)) return false
+          } else {
+            if (pipeQuery.pipeType && !p.name.includes(pipeQuery.pipeType)) return false
+            if (pipeQuery.threadType && !p.name.includes(pipeQuery.threadType)) return false
+          }
+          if (pipeQuery.L !== null && !p.name.includes(`${pipeQuery.L}m`)) return false
+
+          // 匹配壁厚
+          if (pipeQuery.T !== null && !(p.description && p.description.includes(`壁厚：${pipeQuery.T}`))) return false
           return true
         })
         if (pipeResults.length > 0) return pipeResults

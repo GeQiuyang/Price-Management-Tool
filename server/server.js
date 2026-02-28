@@ -1655,19 +1655,73 @@ app.post('/api/freight/calculate', (req, res) => {
   }
 })
 
+// ─── Quote Lists API ───
+app.get('/api/quote-lists', (req, res) => {
+  const lists = queryAll('SELECT * FROM quote_lists ORDER BY created_at ASC')
+  res.json(lists)
+})
+
+app.post('/api/quote-lists', (req, res) => {
+  const { id, name } = req.body
+  try {
+    const listId = id || `quote-${Date.now()}`
+    db.run(
+      'INSERT INTO quote_lists (id, name) VALUES (?, ?)',
+      [listId, name || '新报价单']
+    )
+    saveDB()
+    const newList = queryOne('SELECT * FROM quote_lists WHERE id = ?', [listId])
+    res.status(201).json(newList)
+  } catch (error) {
+    res.status(500).json({ error: '创建报价单失败' })
+  }
+})
+
+app.put('/api/quote-lists/:id', (req, res) => {
+  const { name } = req.body
+  try {
+    db.run('UPDATE quote_lists SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [name, req.params.id])
+    saveDB()
+    const updatedList = queryOne('SELECT * FROM quote_lists WHERE id = ?', [req.params.id])
+    res.json(updatedList)
+  } catch (error) {
+    res.status(500).json({ error: '更新报价单名称失败' })
+  }
+})
+
+app.delete('/api/quote-lists/:id', (req, res) => {
+  try {
+    db.run('DELETE FROM quote_items WHERE quote_list_id = ?', [req.params.id])
+    db.run('DELETE FROM quote_imported_data WHERE quote_list_id = ?', [req.params.id])
+    db.run('DELETE FROM quote_lists WHERE id = ?', [req.params.id])
+    saveDB()
+    res.json({ message: '删除成功' })
+  } catch (error) {
+    res.status(500).json({ error: '删除报价单失败' })
+  }
+})
+
 // ─── Quote Items API ───
 app.get('/api/quote-items', (req, res) => {
-  const items = queryAll('SELECT * FROM quote_items ORDER BY id ASC')
+  const { list_id } = req.query
+  let sql = 'SELECT * FROM quote_items'
+  const params = []
+  if (list_id) {
+    sql += ' WHERE quote_list_id = ?'
+    params.push(list_id)
+  }
+  sql += ' ORDER BY id ASC'
+  const items = queryAll(sql, params)
   // Map sku field to productId for frontend
   res.json(items.map(item => ({ ...item, productId: Number(item.sku) || null })))
 })
 
 app.post('/api/quote-items', (req, res) => {
-  const { productId, name, description, price, quantity } = req.body
+  const { productId, name, description, price, quantity, list_id } = req.body
   try {
     const result = runSQL(
-      'INSERT INTO quote_items (sku, name, description, price, quantity) VALUES (?, ?, ?, ?, ?)',
-      [String(productId || ''), name, description || '', price, quantity || 1]
+      'INSERT INTO quote_items (sku, name, description, price, quantity, quote_list_id) VALUES (?, ?, ?, ?, ?, ?)',
+      [String(productId || ''), name, description || '', price, quantity || 1, list_id || 'default-quote']
     )
     const item = queryOne('SELECT * FROM quote_items WHERE id = ?', [result.lastInsertRowid])
     // Map sku field to productId for frontend
@@ -1696,29 +1750,42 @@ app.delete('/api/quote-items/:id', (req, res) => {
 })
 
 app.delete('/api/quote-items', (req, res) => {
-  db.run('DELETE FROM quote_items')
+  const { list_id } = req.query
+  if (list_id) {
+    db.run('DELETE FROM quote_items WHERE quote_list_id = ?', [list_id])
+  } else {
+    db.run('DELETE FROM quote_items')
+  }
   saveDB()
   res.json({ message: '清空成功' })
 })
 
 // ─── Quote Imported Data API ───
 app.get('/api/quote-imported-data', (req, res) => {
-  const rows = queryAll('SELECT * FROM quote_imported_data ORDER BY id ASC')
-  const parsed = rows.map(r => ({ ...JSON.parse(r.data_json), _dbId: r.id, sheetName: r.sheet_name }))
+  const { list_id } = req.query
+  let sql = 'SELECT * FROM quote_imported_data'
+  const params = []
+  if (list_id) {
+    sql += ' WHERE quote_list_id = ?'
+    params.push(list_id)
+  }
+  sql += ' ORDER BY id ASC'
+  const rows = queryAll(sql, params)
+  const parsed = rows.map(r => ({ ...JSON.parse(r.data_json), _dbId: r.id, sheetName: r.sheet_name, listId: r.quote_list_id }))
   res.json(parsed)
 })
 
 app.post('/api/quote-imported-data', (req, res) => {
-  const { items } = req.body // array of { sheetName, ...data }
+  const { items, list_id } = req.body // array of { sheetName, ...data }
   try {
     const inserted = []
     items.forEach(item => {
       const { sheetName, ...data } = item
       const result = runSQL(
-        'INSERT INTO quote_imported_data (sheet_name, data_json) VALUES (?, ?)',
-        [sheetName || '', JSON.stringify(data)]
+        'INSERT INTO quote_imported_data (sheet_name, data_json, quote_list_id) VALUES (?, ?, ?)',
+        [sheetName || '', JSON.stringify(data), list_id || 'default-quote']
       )
-      inserted.push({ ...data, _dbId: result.lastInsertRowid, sheetName })
+      inserted.push({ ...data, _dbId: result.lastInsertRowid, sheetName, listId: list_id || 'default-quote' })
     })
     res.status(201).json(inserted)
   } catch (error) {
@@ -1727,7 +1794,12 @@ app.post('/api/quote-imported-data', (req, res) => {
 })
 
 app.delete('/api/quote-imported-data', (req, res) => {
-  db.run('DELETE FROM quote_imported_data')
+  const { list_id } = req.query
+  if (list_id) {
+    db.run('DELETE FROM quote_imported_data WHERE quote_list_id = ?', [list_id])
+  } else {
+    db.run('DELETE FROM quote_imported_data')
+  }
   saveDB()
   res.json({ message: '清空成功' })
 })

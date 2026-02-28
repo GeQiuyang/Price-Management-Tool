@@ -82,6 +82,12 @@ const modalAnimationStyles = `
 `
 
 export default function QuoteGenerator() {
+    // 报价单列表
+    const [quoteLists, setQuoteLists] = useState([])
+    const [activeQuoteListId, setActiveQuoteListId] = useState(null)
+    const [isEditingListName, setIsEditingListName] = useState(null)
+    const [editingNameValue, setEditingNameValue] = useState('')
+
     // 产品报价行
     const [quoteItems, setQuoteItems] = useState([])
     // 产品数据源
@@ -106,17 +112,114 @@ export default function QuoteGenerator() {
     // 清除确认对话框
     const [showClearModal, setShowClearModal] = useState(false)
     const [isClearClosing, setIsClearClosing] = useState(false)
+    // 删除报价单确认对话框
+    const [deleteListId, setDeleteListId] = useState(null)
+    const [isDeleteListClosing, setIsDeleteListClosing] = useState(false)
 
-    // 初始化加载
+    // 初始化加载基础数据
     useEffect(() => {
         fetchProducts()
-        fetchQuoteItems()
-        fetchImportedData()
+        fetchQuoteLists()
     }, [])
 
-    const fetchQuoteItems = async () => {
+    // 当活动的报价单切换时，重新获取其数据
+    useEffect(() => {
+        if (activeQuoteListId) {
+            fetchQuoteItems(activeQuoteListId)
+            fetchImportedData(activeQuoteListId)
+        } else {
+            setQuoteItems([])
+            setImportedData([])
+        }
+    }, [activeQuoteListId])
+
+    const fetchQuoteLists = async () => {
         try {
-            const res = await fetch(`${API_URL}/quote-items`)
+            const res = await fetch(`${API_URL}/quote-lists`)
+            const data = await res.json()
+            setQuoteLists(data)
+            if (data.length > 0 && !activeQuoteListId) {
+                setActiveQuoteListId(data[0].id)
+            } else if (data.length === 0) {
+                // 如果后端为空，自动创建一个默认的
+                handleCreateQuoteList()
+            }
+        } catch (err) {
+            console.error('获取报价单列表失败:', err)
+        }
+    }
+
+    const handleCreateQuoteList = async () => {
+        if (quoteLists.length >= 5) {
+            alert('最多只能创建 5 个报价单')
+            return
+        }
+        try {
+            const res = await fetch(`${API_URL}/quote-lists`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: `报价单 ${quoteLists.length + 1}` })
+            })
+            const newList = await res.json()
+            setQuoteLists([...quoteLists, newList])
+            setActiveQuoteListId(newList.id)
+        } catch (err) {
+            console.error('创建报价单失败:', err)
+        }
+    }
+
+    const handleDeleteQuoteListClick = (id, e) => {
+        e.stopPropagation()
+        if (quoteLists.length <= 1) {
+            alert('必须保留至少一个报价单')
+            return
+        }
+        setDeleteListId(id)
+    }
+
+    const handleConfirmDeleteList = async () => {
+        if (!deleteListId) return
+        try {
+            await fetch(`${API_URL}/quote-lists/${deleteListId}`, { method: 'DELETE' })
+            const newLists = quoteLists.filter(list => list.id !== deleteListId)
+            setQuoteLists(newLists)
+            if (activeQuoteListId === deleteListId) {
+                setActiveQuoteListId(newLists[0].id)
+            }
+        } catch (err) {
+            console.error('删除报价单失败:', err)
+        }
+        handleCloseDeleteListModal()
+    }
+
+    const handleCloseDeleteListModal = () => {
+        setIsDeleteListClosing(true)
+        setTimeout(() => {
+            setDeleteListId(null)
+            setIsDeleteListClosing(false)
+        }, 200)
+    }
+
+    const handleUpdateListName = async (id) => {
+        if (!editingNameValue.trim()) return
+        try {
+            await fetch(`${API_URL}/quote-lists/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: editingNameValue.trim() })
+            })
+            setQuoteLists(quoteLists.map(list =>
+                list.id === id ? { ...list, name: editingNameValue.trim() } : list
+            ))
+            setIsEditingListName(null)
+        } catch (err) {
+            console.error('更新报价单名称失败:', err)
+        }
+    }
+
+    const fetchQuoteItems = async (listId) => {
+        try {
+            const res = await fetch(`${API_URL}/quote-items?list_id=${listId}`)
             const data = await res.json()
             setQuoteItems(data)
         } catch (err) {
@@ -124,9 +227,9 @@ export default function QuoteGenerator() {
         }
     }
 
-    const fetchImportedData = async () => {
+    const fetchImportedData = async (listId) => {
         try {
-            const res = await fetch(`${API_URL}/quote-imported-data`)
+            const res = await fetch(`${API_URL}/quote-imported-data?list_id=${listId}`)
             const data = await res.json()
             setImportedData(data)
         } catch (err) {
@@ -176,6 +279,7 @@ export default function QuoteGenerator() {
                         description: product.description || '',
                         price: selectedPrice,
                         quantity: 1,
+                        list_id: activeQuoteListId,
                     }),
                 })
                 const newItem = await res.json()
@@ -323,9 +427,8 @@ export default function QuoteGenerator() {
     }
 
     const handleConfirmClear = () => {
-        quoteItems.forEach(item => {
-            fetch(`${API_URL}/quote-items/${item.id}`, { method: 'DELETE' })
-        })
+        const urlParams = activeQuoteListId ? `?list_id=${activeQuoteListId}` : ''
+        fetch(`${API_URL}/quote-items${urlParams}`, { method: 'DELETE' })
         setQuoteItems([])
         handleCloseClearModal()
     }
@@ -358,31 +461,84 @@ export default function QuoteGenerator() {
         const numberPart = numbers ? numbers.join('') : ''
         const isNumericOnly = /^\d+$/.test(keyword)
 
-        // 导管类智能搜索（最高优先级）
+        // 导管类智能搜索：将自然语言提取为结构化 JSON
         const parsePipeQuery = (kw) => {
             const pipeTypeMatch = kw.match(/(300|260|273|219)/)
             const pipeType = pipeTypeMatch ? pipeTypeMatch[1] : null
+
             let threadType = null
             if (/尖丝|尖/.test(kw)) threadType = '尖丝'
             else if (/方丝|方/.test(kw)) threadType = '方丝'
-            const lengthMatch = kw.match(/(\d+\.?\d*)\s*(?:米|m)/i)
-            const length = lengthMatch ? lengthMatch[1] : null
-            let thickness = null
-            const thickMatch1 = kw.match(/(\d+\.?\d*)\s*(?:厚|壁厚)/)
-            const thickMatch2 = kw.match(/(?:厚度|壁厚)\s*(\d+\.?\d*)/)
-            if (thickMatch1) thickness = thickMatch1[1]
-            else if (thickMatch2) thickness = thickMatch2[1]
-            const hasPipeKeywords = pipeType || kw.includes('导管')
-            return { pipeType, threadType, length, thickness, hasPipeKeywords }
+
+            let name = null
+            if (pipeType && threadType) {
+                name = `${pipeType}${threadType}导管`
+            }
+
+            let jointSpec = null
+            if (/公扣/.test(kw)) jointSpec = '公扣'
+            else if (/母扣/.test(kw)) jointSpec = '母扣'
+            else if (/衬套/.test(kw)) jointSpec = '衬套'
+            const isJointQuery = /接头|衬套/.test(kw) || jointSpec !== null
+
+            // 长度 (L)：支持 "1米"/"1m"/"0.5米"/"1.5m" 等 (排除了 mm)
+            const lengthMatch = kw.match(/(\d+\.?\d*)\s*(?:m|米)(?!m|毫米)/i)
+            const L = lengthMatch ? parseFloat(lengthMatch[1]) : null
+
+            let T = null
+            const thickMatch1 = kw.match(/(\d+\.?\d*)\s*(?:mm|毫米|厚|壁厚|外径)/i)
+            const thickMatch2 = kw.match(/(?:厚度|壁厚|外径)[：:]?\s*(\d+\.?\d*)/)
+            const thickMatch3 = kw.match(/(?:(?:米|m)(?!m|毫米)[^+]*\+\s*|\+\s*)(\d+\.?\d*)\s*(?:mm|毫米)?\s*$/i)
+
+            if (thickMatch1) {
+                T = parseFloat(thickMatch1[1])
+            } else if (thickMatch2) {
+                T = parseFloat(thickMatch2[1])
+            } else if (thickMatch3) {
+                T = parseFloat(thickMatch3[1])
+            } else {
+                const allNums = [...kw.matchAll(/(?<!\d\.)\d+(?:\.\d+)?(?!m|米|mm)/gi)].map(m => parseFloat(m[0]))
+                for (const n of allNums) {
+                    if (n !== L && n !== parseInt(pipeType) && n !== 6) {
+                        T = n;
+                        break;
+                    }
+                }
+            }
+
+            const hasPipeKeywords = pipeType || kw.includes('导管') || isJointQuery || L !== null || T !== null
+            return { name, pipeType, threadType, L, T, hasPipeKeywords, isJointQuery, jointSpec }
         }
         const pipeQuery = parsePipeQuery(keyword)
-        if (pipeQuery.hasPipeKeywords && (pipeQuery.pipeType || pipeQuery.threadType || pipeQuery.length || pipeQuery.thickness)) {
+        if (pipeQuery.hasPipeKeywords && (pipeQuery.pipeType || pipeQuery.threadType || pipeQuery.L !== null || pipeQuery.T !== null || pipeQuery.isJointQuery)) {
             const pipeResults = products.filter((p) => {
                 if (p.category !== '导管类') return false
-                if (pipeQuery.pipeType && !p.name.includes(`${pipeQuery.pipeType}导管`)) return false
-                if (pipeQuery.threadType && !p.name.includes(pipeQuery.threadType)) return false
-                if (pipeQuery.length && !p.name.includes(`${pipeQuery.length}m`)) return false
-                if (pipeQuery.thickness && !(p.description && p.description.includes(`壁厚${pipeQuery.thickness}mm`))) return false
+
+                // 严禁返回钻宝、SMS6系、钻金 (除非用户输入包含)
+                const excludeWords = ['钻宝', 'SMS6系', '钻金']
+                for (const word of excludeWords) {
+                    if (p.name.includes(word) && !keyword.includes(word)) return false
+                }
+
+                if (pipeQuery.isJointQuery) {
+                    if (!p.name.includes('接头') && !p.name.includes('衬套')) return false
+                    if (pipeQuery.pipeType && !p.name.includes(pipeQuery.pipeType)) return false
+                    if (pipeQuery.threadType && !p.name.includes(pipeQuery.threadType)) return false
+                    if (pipeQuery.jointSpec && !p.name.includes(pipeQuery.jointSpec)) return false
+
+                    if (pipeQuery.T !== null && !(p.description && p.description.includes(`外径：${pipeQuery.T}`))) return false
+                    return true
+                }
+
+                if (pipeQuery.name) {
+                    if (!p.name.includes(pipeQuery.name)) return false
+                } else {
+                    if (pipeQuery.pipeType && !p.name.includes(pipeQuery.pipeType)) return false
+                    if (pipeQuery.threadType && !p.name.includes(pipeQuery.threadType)) return false
+                }
+
+                if (pipeQuery.L !== null && !p.name.includes(`${pipeQuery.L}m`)) return false
+                if (pipeQuery.T !== null && !(p.description && p.description.includes(`壁厚：${pipeQuery.T}`))) return false
                 return true
             })
             if (pipeResults.length > 0) return pipeResults
@@ -520,14 +676,14 @@ export default function QuoteGenerator() {
             const res = await fetch(`${API_URL}/quote-imported-data`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: newData }),
+                body: JSON.stringify({ items: newData, list_id: activeQuoteListId }),
             })
             const saved = await res.json()
             setImportedData(prev => [...prev, ...saved])
         } catch (err) {
             console.error('保存导入数据失败:', err)
             // fallback: still update UI
-            const fallback = newData.map((row, i) => ({ id: Date.now() + i, ...row }))
+            const fallback = newData.map((row, i) => ({ id: Date.now() + i, ...row, listId: activeQuoteListId }))
             setImportedData(prev => [...prev, ...fallback])
         }
         handleClosePreview()
@@ -556,8 +712,12 @@ export default function QuoteGenerator() {
         exportData.push({ 产品名称: '', 产品规格: '', 单价: '', 数量: '总计', 合计: totalAmount })
         const ws = XLSX.utils.json_to_sheet(exportData)
         const wb = XLSX.utils.book_new()
-        XLSX.utils.book_append_sheet(wb, ws, '报价单')
-        XLSX.writeFile(wb, `报价单_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.xlsx`)
+
+        const activeList = quoteLists.find(l => l.id === activeQuoteListId)
+        const sheetName = activeList ? activeList.name : '报价单'
+
+        XLSX.utils.book_append_sheet(wb, ws, sheetName)
+        XLSX.writeFile(wb, `${sheetName}_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.xlsx`)
     }
 
     const currentSheet = importedSheets[activeSheet]
@@ -570,27 +730,136 @@ export default function QuoteGenerator() {
             <style>{modalAnimationStyles}</style>
 
             <div style={styles.topBar}>
-                <h2 style={styles.pageTitle}>报价生成器</h2>
-                <div style={styles.topActions}>
-                    {quoteItems.length > 0 && (
-                        <>
-                            <button style={styles.clearButton} onClick={handleClearAll}>🗑️ 清除所有</button>
-                            <button style={styles.exportButton} onClick={handleExportQuote}>📥 导出报价单</button>
-                        </>
-                    )}
-                    <button style={styles.importButton} onClick={() => fileInputRef.current?.click()}>
-                        📂 导入 Excel
-                    </button>
-                    <button style={styles.addButton} onClick={() => setShowProductModal(true)}>
-                        ＋ 添加产品
-                    </button>
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".xlsx,.xls,.csv"
-                        onChange={handleFileSelect}
-                        style={{ display: 'none' }}
-                    />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <h2 style={styles.pageTitle}>报价生成器</h2>
+                        <div style={styles.topActions}>
+                            {quoteItems.length > 0 && (
+                                <>
+                                    <button style={styles.clearButton} onClick={handleClearAll}>🗑️ 清除所有</button>
+                                    <button style={styles.exportButton} onClick={handleExportQuote}>📥 导出当前报价单</button>
+                                </>
+                            )}
+                            <button style={styles.importButton} onClick={() => fileInputRef.current?.click()}>
+                                📂 导入 Excel
+                            </button>
+                            <button style={styles.addButton} onClick={() => setShowProductModal(true)}>
+                                ＋ 添加产品
+                            </button>
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept=".xlsx,.xls,.csv"
+                                onChange={handleFileSelect}
+                                style={{ display: 'none' }}
+                            />
+                        </div>
+                    </div>
+
+                    {/* 报价单列表 Tabs */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+                        {quoteLists.map(list => (
+                            <div
+                                key={list.id}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '6px 16px',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    backgroundColor: activeQuoteListId === list.id ? '#4F46E5' : 'white',
+                                    color: activeQuoteListId === list.id ? 'white' : '#4b5563',
+                                    border: `1px solid ${activeQuoteListId === list.id ? '#4F46E5' : '#e5e7eb'}`,
+                                    boxShadow: activeQuoteListId === list.id ? '0 1px 2px rgba(79, 70, 229, 0.1)' : 'none',
+                                    transition: 'all 0.2s',
+                                    whiteSpace: 'nowrap',
+                                    fontSize: '14px',
+                                    fontWeight: activeQuoteListId === list.id ? '500' : '400',
+                                }}
+                                onClick={() => setActiveQuoteListId(list.id)}
+                            >
+                                {isEditingListName === list.id ? (
+                                    <input
+                                        autoFocus
+                                        value={editingNameValue}
+                                        onChange={(e) => setEditingNameValue(e.target.value)}
+                                        onBlur={() => handleUpdateListName(list.id)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') handleUpdateListName(list.id)
+                                            if (e.key === 'Escape') setIsEditingListName(null)
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                        style={{
+                                            border: 'none',
+                                            outline: 'none',
+                                            background: 'transparent',
+                                            color: 'inherit',
+                                            width: '80px',
+                                            fontSize: 'inherit',
+                                            fontWeight: 'inherit',
+                                        }}
+                                    />
+                                ) : (
+                                    <span
+                                        onDoubleClick={(e) => {
+                                            e.stopPropagation()
+                                            setEditingNameValue(list.name)
+                                            setIsEditingListName(list.id)
+                                        }}
+                                        title="双击重命名"
+                                    >
+                                        {list.name}
+                                    </span>
+                                )}
+                                {quoteLists.length > 1 && (
+                                    <button
+                                        onClick={(e) => handleDeleteQuoteListClick(list.id, e)}
+                                        style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            color: activeQuoteListId === list.id ? 'rgba(255,255,255,0.7)' : '#9ca3af',
+                                            padding: '0 2px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            fontSize: '12px'
+                                        }}
+                                        title="删除报价单"
+                                    >×</button>
+                                )}
+                            </div>
+                        ))}
+                        {quoteLists.length < 5 && (
+                            <button
+                                onClick={handleCreateQuoteList}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    width: '32px',
+                                    height: '32px',
+                                    borderRadius: '8px',
+                                    border: '1px dashed #d1d5db',
+                                    backgroundColor: '#f9fafb',
+                                    color: '#6b7280',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                }}
+                                title="添加报价单"
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.borderColor = '#4F46E5';
+                                    e.currentTarget.style.color = '#4F46E5';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.borderColor = '#d1d5db';
+                                    e.currentTarget.style.color = '#6b7280';
+                                }}
+                            >
+                                ＋
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -1052,6 +1321,89 @@ export default function QuoteGenerator() {
                             </button>
                             <button style={styles.clearModalConfirm} onClick={handleConfirmClear}>
                                 确认清除
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* ─── 删除报价单确认弹窗 ─── */}
+            {deleteListId && (
+                <div
+                    style={{
+                        ...styles.modalOverlay,
+                        animation: isDeleteListClosing ? 'modalFadeOut 0.2s ease-out forwards' : 'modalFadeIn 0.2s ease-out forwards',
+                    }}
+                    onClick={handleCloseDeleteListModal}
+                >
+                    <div
+                        style={{
+                            ...styles.modal,
+                            width: '420px',
+                            padding: '0',
+                            animation: isDeleteListClosing ? 'modalSlideOut 0.2s ease-out forwards' : 'modalSlideIn 0.2s ease-out forwards',
+                            overflow: 'hidden',
+                            borderRadius: '16px',
+                            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div style={{ padding: '24px 24px 16px 24px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
+                                <div style={{
+                                    width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#FEE2E2',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                                }}>
+                                    <span style={{ fontSize: '24px' }}>🗑️</span>
+                                </div>
+                                <h3 style={{ margin: 0, fontSize: '20px', color: '#111827', fontWeight: '600' }}>
+                                    删除报价单
+                                </h3>
+                            </div>
+                            <p style={{ margin: '0 0 0 64px', fontSize: '15px', color: '#4B5563', lineHeight: '1.6' }}>
+                                确定要删除该报价单及其包含的所有产品数据吗？此操作不可恢复。
+                            </p>
+                        </div>
+                        <div style={{
+                            padding: '20px 24px', backgroundColor: '#F9FAFB', borderTop: '1px solid #E5E7EB',
+                            display: 'flex', justifyContent: 'flex-end', gap: '12px'
+                        }}>
+                            <button
+                                style={{
+                                    ...styles.cancelBtn,
+                                    backgroundColor: 'white',
+                                    border: '1px solid #D1D5DB',
+                                    color: '#374151',
+                                    padding: '8px 20px',
+                                    fontSize: '14px',
+                                    fontWeight: '500',
+                                    borderRadius: '8px',
+                                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                                    transition: 'background-color 0.2s'
+                                }}
+                                onMouseEnter={(e) => e.target.style.backgroundColor = '#F9FAFB'}
+                                onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                                onClick={handleCloseDeleteListModal}
+                            >
+                                取消
+                            </button>
+                            <button
+                                style={{
+                                    ...styles.confirmBtn,
+                                    backgroundColor: '#DC2626',
+                                    color: 'white',
+                                    padding: '8px 20px',
+                                    fontSize: '14px',
+                                    fontWeight: '500',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                                    transition: 'background-color 0.2s'
+                                }}
+                                onMouseEnter={(e) => e.target.style.backgroundColor = '#B91C1C'}
+                                onMouseLeave={(e) => e.target.style.backgroundColor = '#DC2626'}
+                                onClick={handleConfirmDeleteList}
+                            >
+                                确定删除
                             </button>
                         </div>
                     </div>
