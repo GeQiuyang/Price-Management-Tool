@@ -403,11 +403,12 @@ const styles = {
     alignItems: 'center',
   },
   pageTitle: {
-    fontSize: '26px',
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontSize: '28px',
     fontWeight: '700',
-    color: 'var(--text-primary)',
+    color: '#0F172A',
     margin: 0,
-    letterSpacing: '-0.5px',
+    letterSpacing: '-0.02em',
   },
   topActions: {
     display: 'flex',

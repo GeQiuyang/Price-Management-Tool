@@ -31,12 +31,12 @@ const modalAnimationStyles = `
     background: var(--bg-tertiary) !important;
   }
   .quote-search-input:focus {
-    border-color: #4F46E5 !important;
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1) !important;
+    border-color: #1E293B !important;
+    box-shadow: 0 0 0 3px rgba(30, 41, 59, 0.1) !important;
   }
   .product-quantity-input:focus {
-    border-color: #4F46E5 !important;
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1) !important;
+    border-color: #1E293B !important;
+    box-shadow: 0 0 0 3px rgba(30, 41, 59, 0.1) !important;
   }
   .quote-desc-cell {
     position: relative;
@@ -768,9 +768,9 @@ export default function QuoteGenerator() {
                                     padding: '6px 16px',
                                     borderRadius: '8px',
                                     cursor: 'pointer',
-                                    backgroundColor: activeQuoteListId === list.id ? '#4F46E5' : 'white',
+                                    backgroundColor: activeQuoteListId === list.id ? '#1E293B' : 'white',
                                     color: activeQuoteListId === list.id ? 'white' : '#4b5563',
-                                    border: `1px solid ${activeQuoteListId === list.id ? '#4F46E5' : '#e5e7eb'}`,
+                                    border: `1px solid ${activeQuoteListId === list.id ? '#1E293B' : '#e5e7eb'}`,
                                     boxShadow: activeQuoteListId === list.id ? '0 1px 2px rgba(79, 70, 229, 0.1)' : 'none',
                                     transition: 'all 0.2s',
                                     whiteSpace: 'nowrap',
@@ -848,8 +848,8 @@ export default function QuoteGenerator() {
                                 }}
                                 title="添加报价单"
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.borderColor = '#4F46E5';
-                                    e.currentTarget.style.color = '#4F46E5';
+                                    e.currentTarget.style.borderColor = '#1E293B';
+                                    e.currentTarget.style.color = '#1E293B';
                                 }}
                                 onMouseLeave={(e) => {
                                     e.currentTarget.style.borderColor = '#d1d5db';
@@ -1016,8 +1016,8 @@ export default function QuoteGenerator() {
                 <div
                     style={{
                         ...styles.dropZone,
-                        borderColor: isDragging ? '#4F46E5' : 'var(--border)',
-                        background: isDragging ? 'rgba(79, 70, 229, 0.06)' : 'var(--bg-secondary)',
+                        borderColor: isDragging ? '#1E293B' : 'var(--border)',
+                        background: isDragging ? 'rgba(30, 41, 59, 0.05)' : 'var(--bg-secondary)',
                     }}
                     onDrop={handleDrop}
                     onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
@@ -1035,8 +1035,8 @@ export default function QuoteGenerator() {
                 <div
                     style={{
                         ...styles.dropZone,
-                        borderColor: isDragging ? '#4F46E5' : 'var(--border)',
-                        background: isDragging ? 'rgba(79, 70, 229, 0.06)' : 'var(--bg-secondary)',
+                        borderColor: isDragging ? '#1E293B' : 'var(--border)',
+                        background: isDragging ? 'rgba(30, 41, 59, 0.05)' : 'var(--bg-secondary)',
                     }}
                     onDrop={handleDrop}
                     onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
@@ -1099,9 +1099,9 @@ export default function QuoteGenerator() {
                                         border: '1px solid',
                                         borderRadius: '6px',
                                         cursor: 'pointer',
-                                        borderColor: !useDealerPrice ? '#4F46E5' : '#d1d5db',
-                                        backgroundColor: !useDealerPrice ? '#EEF2FF' : 'white',
-                                        color: !useDealerPrice ? '#4F46E5' : '#6b7280',
+                                        borderColor: !useDealerPrice ? '#1E293B' : '#d1d5db',
+                                        backgroundColor: !useDealerPrice ? '#F8FAFC' : 'white',
+                                        color: !useDealerPrice ? '#1E293B' : '#6b7280',
                                     }}
                                     onClick={() => setUseDealerPrice(false)}
                                 >终端价</button>
@@ -1114,9 +1114,9 @@ export default function QuoteGenerator() {
                                         border: '1px solid',
                                         borderRadius: '6px',
                                         cursor: 'pointer',
-                                        borderColor: useDealerPrice ? '#4F46E5' : '#d1d5db',
-                                        backgroundColor: useDealerPrice ? '#EEF2FF' : 'white',
-                                        color: useDealerPrice ? '#4F46E5' : '#6b7280',
+                                        borderColor: useDealerPrice ? '#1E293B' : '#d1d5db',
+                                        backgroundColor: useDealerPrice ? '#F8FAFC' : 'white',
+                                        color: useDealerPrice ? '#1E293B' : '#6b7280',
                                     }}
                                     onClick={() => setUseDealerPrice(true)}
                                 >经销商价</button>
@@ -1211,7 +1211,9 @@ export default function QuoteGenerator() {
                             <h3 style={styles.modalTitle}>📄 {fileName}</h3>
                             <div style={{ display: 'flex', gap: '8px' }}>
                                 {importedSheets.length > 1 && (
-                                    <span style={styles.sheetBadge}>{importedSheets.length} 个工作表</span>
+                                    <span style={styles.sheetBadge}>
+                                        {importedSheets.length} 个工作表
+                                    </span>
                                 )}
                                 <span style={styles.rowBadge}>{currentSheet.rows.length} 行</span>
                             </div>
@@ -1337,72 +1339,29 @@ export default function QuoteGenerator() {
                 >
                     <div
                         style={{
-                            ...styles.modal,
-                            width: '420px',
-                            padding: '0',
+                            ...styles.clearModal,
                             animation: isDeleteListClosing ? 'modalSlideOut 0.2s ease-out forwards' : 'modalSlideIn 0.2s ease-out forwards',
-                            overflow: 'hidden',
-                            borderRadius: '16px',
-                            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
                         }}
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div style={{ padding: '24px 24px 16px 24px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
-                                <div style={{
-                                    width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#FEE2E2',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-                                }}>
-                                    <span style={{ fontSize: '24px' }}>🗑️</span>
-                                </div>
-                                <h3 style={{ margin: 0, fontSize: '20px', color: '#111827', fontWeight: '600' }}>
-                                    删除报价单
-                                </h3>
+                        <div style={styles.clearModalIcon}>
+                            <div style={{
+                                width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#FEF2F2',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#E11D48'
+                            }}>
+                                <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
                             </div>
-                            <p style={{ margin: '0 0 0 64px', fontSize: '15px', color: '#4B5563', lineHeight: '1.6' }}>
-                                确定要删除该报价单及其包含的所有产品数据吗？此操作不可恢复。
-                            </p>
                         </div>
-                        <div style={{
-                            padding: '20px 24px', backgroundColor: '#F9FAFB', borderTop: '1px solid #E5E7EB',
-                            display: 'flex', justifyContent: 'flex-end', gap: '12px'
-                        }}>
-                            <button
-                                style={{
-                                    ...styles.cancelBtn,
-                                    backgroundColor: 'white',
-                                    border: '1px solid #D1D5DB',
-                                    color: '#374151',
-                                    padding: '8px 20px',
-                                    fontSize: '14px',
-                                    fontWeight: '500',
-                                    borderRadius: '8px',
-                                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                                    transition: 'background-color 0.2s'
-                                }}
-                                onMouseEnter={(e) => e.target.style.backgroundColor = '#F9FAFB'}
-                                onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
-                                onClick={handleCloseDeleteListModal}
-                            >
+                        <h3 style={styles.clearModalTitle}>删除报价单</h3>
+                        <p style={styles.clearModalMessage}>确定要删除该报价单及其包含的所有产品数据吗？此操作不可恢复。</p>
+
+                        <div style={styles.clearModalButtons}>
+                            <button style={styles.clearModalCancel} onClick={handleCloseDeleteListModal}>
                                 取消
                             </button>
-                            <button
-                                style={{
-                                    ...styles.confirmBtn,
-                                    backgroundColor: '#DC2626',
-                                    color: 'white',
-                                    padding: '8px 20px',
-                                    fontSize: '14px',
-                                    fontWeight: '500',
-                                    border: 'none',
-                                    borderRadius: '8px',
-                                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                                    transition: 'background-color 0.2s'
-                                }}
-                                onMouseEnter={(e) => e.target.style.backgroundColor = '#B91C1C'}
-                                onMouseLeave={(e) => e.target.style.backgroundColor = '#DC2626'}
-                                onClick={handleConfirmDeleteList}
-                            >
+                            <button style={styles.clearModalConfirm} onClick={handleConfirmDeleteList}>
                                 确定删除
                             </button>
                         </div>
@@ -1414,127 +1373,131 @@ export default function QuoteGenerator() {
 }
 
 const styles = {
-    container: { display: 'flex', flexDirection: 'column', gap: '20px' },
+    container: { display: 'flex', flexDirection: 'column', gap: '24px', animation: 'fadeInUp 0.4s ease forwards' },
     topBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' },
-    pageTitle: { fontSize: '26px', fontWeight: '700', color: 'var(--text-primary)', margin: 0 },
-    topActions: { display: 'flex', alignItems: 'center', gap: '10px' },
+    pageTitle: { fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: '28px', fontWeight: '700', color: '#0F172A', margin: 0, letterSpacing: '-0.02em' },
+    topActions: { display: 'flex', alignItems: 'center', gap: '14px', position: 'relative', zIndex: 100 },
     addButton: {
-        padding: '10px 20px', background: 'var(--gradient-primary)', color: '#fff', border: 'none',
-        borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '14px', fontWeight: '600',
+        padding: '12px 26px', background: 'linear-gradient(135deg, #D4AF37 0%, #E8C547 50%, #D4AF37 100%)', color: '#0F172A', border: 'none',
+        borderRadius: '12px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        boxShadow: '0 4px 16px rgba(212, 175, 55, 0.35)', letterSpacing: '-0.1px', zIndex: 100, position: 'relative'
     },
     importButton: {
-        padding: '10px 20px', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)',
-        border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '14px', fontWeight: '500',
+        padding: '12px 26px', backgroundColor: '#FFFFFF', color: '#64748B',
+        border: '1px solid #E2E8F0', borderRadius: '12px', cursor: 'pointer', fontSize: '14px', fontWeight: '600',
+        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
     },
     exportButton: {
-        padding: '10px 20px', backgroundColor: '#ECFDF5', color: '#059669',
-        border: '1px solid #A7F3D0', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '14px', fontWeight: '500',
+        padding: '12px 26px', backgroundColor: 'rgba(5, 150, 105, 0.08)', color: '#059669',
+        border: '1px solid rgba(5, 150, 105, 0.2)', borderRadius: '12px', cursor: 'pointer', fontSize: '14px', fontWeight: '600',
+        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
     },
     clearButton: {
-        padding: '10px 20px', backgroundColor: '#FEF2F2', color: '#DC2626',
-        border: '1px solid #FECACA', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '14px', fontWeight: '500',
+        padding: '12px 26px', backgroundColor: 'rgba(225, 29, 72, 0.06)', color: '#E11D48',
+        border: '1px solid rgba(225, 29, 72, 0.12)', borderRadius: '12px', cursor: 'pointer', fontSize: '14px', fontWeight: '600',
+        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
     },
     summaryCards: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' },
-    summaryCard: { backgroundColor: 'var(--bg-secondary)', padding: '20px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)' },
-    summaryLabel: { fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '8px', fontWeight: '500' },
-    summaryValue: { fontSize: '26px', fontWeight: '700', color: 'var(--text-primary)' },
-    tabBar: { display: 'flex', gap: '4px', backgroundColor: 'var(--bg-secondary)', padding: '4px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' },
+    summaryCard: { backgroundColor: '#FFFFFF', padding: '24px', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 2px 8px rgba(30, 41, 59, 0.04)' },
+    summaryLabel: { fontSize: '13px', color: '#64748B', marginBottom: '8px', fontWeight: '500' },
+    summaryValue: { fontSize: '26px', fontWeight: '700', color: '#1E293B' },
+    tabBar: { display: 'flex', gap: '6px', backgroundColor: '#FFFFFF', padding: '6px', borderRadius: '14px', border: '1px solid #E2E8F0', boxShadow: '0 2px 8px rgba(30, 41, 59, 0.04)', width: 'fit-content' },
     tab: {
-        flex: 1, padding: '10px 16px', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
-        fontSize: '14px', fontWeight: '500', backgroundColor: 'transparent', color: 'var(--text-secondary)', transition: 'all 0.15s',
+        padding: '12px 24px', backgroundColor: 'transparent', border: 'none', borderRadius: '10px', cursor: 'pointer',
+        fontSize: '14px', fontWeight: '500', color: '#64748B', display: 'flex', alignItems: 'center', gap: '10px', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
     },
-    tabActive: { backgroundColor: '#4F46E5', color: '#fff' },
-    tableCard: { backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', overflow: 'hidden', boxShadow: 'var(--shadow-card)' },
-    tableToolbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid var(--border)' },
-    tableTitle: { fontSize: '15px', fontWeight: '600', color: 'var(--text-primary)' },
-    importMoreBtn: { padding: '6px 14px', backgroundColor: 'var(--primary-bg)', color: 'var(--primary)', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '13px', fontWeight: '500' },
+    tabActive: { background: 'linear-gradient(135deg, #1E293B 0%, #334155 100%)', color: '#FFFFFF', boxShadow: '0 4px 12px rgba(30, 41, 59, 0.25)' },
+    tableCard: { backgroundColor: '#FFFFFF', borderRadius: '18px', border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 2px 12px rgba(30, 41, 59, 0.04), 0 0 0 1px rgba(30, 41, 59, 0.02)', transition: 'box-shadow 0.3s ease, transform 0.3s ease' },
+    tableToolbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #E2E8F0' },
+    tableTitle: { fontSize: '16px', fontWeight: '600', color: '#1E293B' },
+    importMoreBtn: { padding: '8px 18px', backgroundColor: 'rgba(212, 175, 55, 0.08)', color: '#B8860B', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '10px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' },
     tableScroll: { overflowX: 'auto' },
     table: { width: '100%', borderCollapse: 'collapse' },
-    tableHeader: { backgroundColor: 'var(--bg-tertiary)' },
-    th: { padding: '14px 20px', textAlign: 'left', fontSize: '13px', fontWeight: '500', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' },
-    tableRow: { borderBottom: '1px solid var(--border)', transition: 'background 0.15s' },
-    td: { padding: '12px 20px', fontSize: '14px', color: 'var(--text-primary)' },
-    tdSku: { padding: '12px 20px', fontSize: '13px', color: 'var(--text-tertiary)', fontFamily: 'monospace', fontWeight: '500' },
-    tdDesc: { padding: '12px 20px', fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-    tdTotal: { padding: '12px 20px', fontSize: '14px', fontWeight: '700', color: '#059669' },
-    tdIndex: { padding: '10px 16px', fontSize: '12px', color: 'var(--text-tertiary)', fontWeight: '500' },
+    tableHeader: { backgroundColor: '#F8FAFC' },
+    th: { padding: '16px 24px', textAlign: 'left', fontSize: '11px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #E2E8F0', textTransform: 'uppercase', letterSpacing: '1px', whiteSpace: 'nowrap' },
+    tableRow: { borderBottom: '1px solid #F1F5F9', transition: 'background-color 0.2s ease', cursor: 'default' },
+    td: { padding: '18px 24px', fontSize: '14px', color: '#1E293B' },
+    tdSku: { padding: '18px 24px', fontSize: '13px', color: '#64748B', fontFamily: 'monospace', fontWeight: '500' },
+    tdDesc: { padding: '18px 24px', fontSize: '13px', color: '#64748B', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+    tdTotal: { padding: '18px 24px', fontSize: '16px', fontWeight: '700', color: '#D4AF37' },
+    tdIndex: { padding: '18px 24px', fontSize: '12px', color: '#64748B', fontWeight: '500' },
     inlineInput: {
-        width: '80px', padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
-        fontSize: '14px', backgroundColor: 'var(--bg-primary)', textAlign: 'right', boxSizing: 'border-box',
+        width: '80px', padding: '8px 12px', border: '1px solid #E2E8F0', borderRadius: '10px',
+        fontSize: '14px', backgroundColor: '#FFFFFF', textAlign: 'right', boxSizing: 'border-box', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
     },
     quantityControl: { display: 'flex', alignItems: 'center', gap: '4px' },
     quantityBtn: {
-        width: '28px', height: '28px', padding: '0', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
-        backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '14px',
+        width: '28px', height: '28px', padding: '0', border: '1px solid #E2E8F0', borderRadius: '8px',
+        backgroundColor: '#FFFFFF', color: '#1E293B', cursor: 'pointer', fontSize: '14px',
         fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
     },
     removeBtn: {
-        width: '28px', height: '28px', border: 'none', borderRadius: '50%', backgroundColor: '#FEF2F2',
-        color: '#EF4444', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        width: '28px', height: '28px', border: 'none', borderRadius: '8px', backgroundColor: 'rgba(225, 29, 72, 0.06)',
+        color: '#E11D48', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center',
     },
-    totalRow: { backgroundColor: 'var(--bg-tertiary)' },
-    totalLabel: { padding: '14px 20px', fontSize: '14px', fontWeight: '700', color: 'var(--text-primary)', textAlign: 'right' },
-    totalValue: { padding: '14px 20px', fontSize: '16px', fontWeight: '700', color: '#059669' },
-    dropZone: { borderRadius: 'var(--radius-lg)', border: '2px dashed var(--border)', padding: '60px 40px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s ease' },
+    totalRow: { backgroundColor: '#F8FAFC' },
+    totalLabel: { padding: '18px 24px', fontSize: '14px', fontWeight: '700', color: '#1E293B', textAlign: 'right' },
+    totalValue: { padding: '18px 24px', fontSize: '18px', fontWeight: '700', color: '#D4AF37' },
+    dropZone: { borderRadius: '20px', border: '2px dashed #E2E8F0', padding: '60px 40px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s ease', backgroundColor: '#FAFAF9' },
     dropIcon: { fontSize: '56px', marginBottom: '16px' },
-    dropTitle: { fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '8px' },
-    dropDesc: { fontSize: '14px', color: 'var(--text-tertiary)' },
+    dropTitle: { fontSize: '16px', fontWeight: '600', color: '#1E293B', marginBottom: '8px' },
+    dropDesc: { fontSize: '14px', color: '#64748B' },
     loadingWrap: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' },
-    spinner: { width: '32px', height: '32px', border: '3px solid var(--border)', borderTopColor: '#4F46E5', borderRadius: '50%', animation: 'spin 0.8s linear infinite' },
-    loadingText: { fontSize: '14px', color: 'var(--text-tertiary)' },
+    spinner: { width: '32px', height: '32px', border: '3px solid #E2E8F0', borderTopColor: '#0F172A', borderRadius: '50%', animation: 'spin 0.8s linear infinite' },
+    loadingText: { fontSize: '14px', color: '#64748B' },
     // Modal
-    modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
-    modal: { backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border)', width: '600px', maxWidth: '94%', maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-xl)' },
-    modalHeader: { padding: '20px 24px', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-tertiary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, borderRadius: 'var(--radius-xl) var(--radius-xl) 0 0' },
-    modalTitle: { fontSize: '17px', fontWeight: '700', margin: 0, color: 'var(--text-primary)' },
-    modalSubtitle: { fontSize: '13px', color: 'var(--text-tertiary)' },
-    searchBox: { padding: '16px 24px', borderBottom: '1px solid var(--border)', flexShrink: 0 },
-    searchInput: { width: '100%', padding: '10px 14px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: '14px', backgroundColor: 'var(--bg-primary)', boxSizing: 'border-box', outline: 'none', transition: 'all 0.15s' },
+    modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
+    modal: { backgroundColor: '#FFFFFF', padding: '0', borderRadius: '20px', border: '1px solid rgba(30, 41, 59, 0.08)', width: '600px', maxWidth: '92%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 48px rgba(30, 41, 59, 0.2), 0 0 0 1px rgba(212, 175, 55, 0.05)' },
+    modalHeader: { padding: '24px 28px', borderBottom: '1px solid #F1F5F9', backgroundColor: '#FDFCFB', borderRadius: '20px 20px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 },
+    modalTitle: { fontFamily: "'Playfair Display', serif", fontSize: '20px', fontWeight: '600', margin: 0, color: '#1E293B' },
+    modalSubtitle: { fontSize: '13px', color: '#64748B' },
+    searchBox: { padding: '16px 24px', borderBottom: '1px solid #E2E8F0', flexShrink: 0 },
+    searchInput: { width: '100%', padding: '12px 16px', border: '1px solid #E2E8F0', borderRadius: '12px', fontSize: '14px', backgroundColor: '#FFFFFF', boxSizing: 'border-box', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', color: '#1E293B' },
     productList: { flex: 1, overflowY: 'auto', padding: '8px 12px' },
-    productItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderRadius: 'var(--radius-sm)', cursor: 'pointer', transition: 'background 0.15s', borderBottom: '1px solid var(--border)' },
+    productItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', borderRadius: '14px', cursor: 'pointer', transition: 'background-color 0.2s ease', borderBottom: '1px solid #F1F5F9' },
     productInfo: { flex: 1 },
-    productName: { fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '2px' },
-    productSku: { fontSize: '12px', color: 'var(--text-tertiary)', fontFamily: 'monospace' },
-    productRight: { display: 'flex', alignItems: 'center', gap: '10px' },
-    productPrice: { fontSize: '15px', fontWeight: '700', color: '#059669' },
+    productName: { fontSize: '15px', fontWeight: '600', color: '#1E293B', marginBottom: '4px' },
+    productSku: { fontSize: '13px', color: '#64748B', fontFamily: 'monospace' },
+    productRight: { display: 'flex', alignItems: 'center', gap: '12px' },
+    productPrice: { fontSize: '16px', fontWeight: '700', color: '#D4AF37' },
     productActions: { display: 'flex', alignItems: 'center', gap: '4px' },
     productActionBtn: {
-        width: '24px', height: '24px', padding: '0', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
-        backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '14px',
+        width: '28px', height: '28px', padding: '0', border: '1px solid #E2E8F0', borderRadius: '8px',
+        backgroundColor: '#FFFFFF', color: '#1E293B', cursor: 'pointer', fontSize: '14px',
         fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
     },
     productQuantityInput: {
-        width: '60px', height: '24px', padding: '0 4px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
-        backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px', fontWeight: '600',
+        width: '60px', height: '28px', padding: '0 4px', border: '1px solid #E2E8F0', borderRadius: '8px',
+        backgroundColor: '#FFFFFF', color: '#1E293B', fontSize: '14px', fontWeight: '600',
         textAlign: 'center', outline: 'none', transition: 'all 0.15s', boxSizing: 'border-box',
     },
-    addBadge: { fontSize: '11px', color: '#4F46E5', backgroundColor: 'rgba(79,70,229,0.1)', padding: '4px 10px', borderRadius: '999px', fontWeight: '600' },
-    noResult: { padding: '40px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '14px' },
+    addBadge: { fontSize: '12px', color: '#1E293B', backgroundColor: 'rgba(30, 41, 59, 0.08)', padding: '4px 12px', borderRadius: '10px', fontWeight: '600' },
+    noResult: { padding: '40px', textAlign: 'center', color: '#64748B', fontSize: '14px' },
     // Preview
-    sheetBadge: { fontSize: '12px', color: '#4F46E5', backgroundColor: 'rgba(79,70,229,0.1)', padding: '3px 10px', borderRadius: '999px', fontWeight: '600' },
-    rowBadge: { fontSize: '12px', color: '#059669', backgroundColor: '#ECFDF5', padding: '3px 10px', borderRadius: '999px', fontWeight: '600' },
-    sheetTabs: { display: 'flex', gap: '4px', padding: '12px 24px', borderBottom: '1px solid var(--border)', overflowX: 'auto', flexShrink: 0 },
-    sheetTab: { padding: '6px 14px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', backgroundColor: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '13px', fontWeight: '500', whiteSpace: 'nowrap' },
-    sheetTabActive: { backgroundColor: '#4F46E5', color: '#fff', borderColor: '#4F46E5' },
+    sheetBadge: { fontSize: '12px', color: '#1E293B', backgroundColor: 'rgba(30, 41, 59, 0.08)', padding: '4px 12px', borderRadius: '10px', fontWeight: '600' },
+    rowBadge: { fontSize: '12px', color: '#059669', backgroundColor: '#ECFDF5', padding: '4px 12px', borderRadius: '10px', fontWeight: '600' },
+    sheetTabs: { display: 'flex', gap: '6px', padding: '16px 24px', borderBottom: '1px solid #E2E8F0', overflowX: 'auto', flexShrink: 0 },
+    sheetTab: { padding: '8px 16px', border: '1px solid #E2E8F0', borderRadius: '10px', backgroundColor: 'transparent', color: '#64748B', cursor: 'pointer', fontSize: '14px', fontWeight: '600', whiteSpace: 'nowrap', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' },
+    sheetTabActive: { background: 'linear-gradient(135deg, #1E293B 0%, #334155 100%)', color: '#FFFFFF', borderColor: 'transparent', boxShadow: '0 4px 12px rgba(30, 41, 59, 0.25)' },
     previewScroll: { flex: 1, overflowY: 'auto', overflowX: 'auto' },
     previewTable: { width: '100%', borderCollapse: 'collapse', minWidth: '500px' },
-    previewTh: { padding: '10px 14px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: 'var(--text-tertiary)', backgroundColor: 'var(--bg-tertiary)', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', position: 'sticky', top: 0 },
-    previewTd: { padding: '8px 14px', fontSize: '13px', color: 'var(--text-primary)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-    moreRows: { padding: '12px', textAlign: 'center', fontSize: '13px', color: 'var(--text-tertiary)', backgroundColor: 'var(--bg-tertiary)' },
-    modalButtons: { display: 'flex', justifyContent: 'flex-end', gap: '12px', padding: '16px 24px', backgroundColor: 'var(--bg-tertiary)', borderTop: '1px solid var(--border)', flexShrink: 0, borderRadius: '0 0 var(--radius-xl) var(--radius-xl)' },
-    cancelButton: { padding: '10px 24px', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '14px', fontWeight: '500' },
-    submitButton: { padding: '10px 24px', background: 'var(--gradient-primary)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '14px', fontWeight: '500' },
+    previewTh: { padding: '14px 20px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#64748B', backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0', whiteSpace: 'nowrap', position: 'sticky', top: 0, textTransform: 'uppercase', letterSpacing: '1px' },
+    previewTd: { padding: '12px 20px', fontSize: '13px', color: '#1E293B', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', borderBottom: '1px solid #F1F5F9' },
+    moreRows: { padding: '16px', textAlign: 'center', fontSize: '13px', color: '#64748B', backgroundColor: '#F8FAFC' },
+    modalButtons: { display: 'flex', justifyContent: 'flex-end', gap: '14px', padding: '20px 28px', backgroundColor: '#F8FAFC', borderTop: '1px solid #F1F5F9', flexShrink: 0, borderRadius: '0 0 20px 20px' },
+    cancelButton: { padding: '12px 28px', backgroundColor: '#FFFFFF', color: '#64748B', border: '1px solid #E2E8F0', borderRadius: '12px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' },
+    submitButton: { padding: '12px 28px', background: 'linear-gradient(135deg, #D4AF37 0%, #E8C547 50%, #D4AF37 100%)', color: '#0F172A', border: 'none', borderRadius: '12px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 4px 16px rgba(212, 175, 55, 0.35)' },
     // Clear Modal
-    clearModal: { backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border)', width: '420px', maxWidth: '94%', padding: '32px', textAlign: 'center', boxShadow: 'var(--shadow-xl)' },
-    clearModalIcon: { marginBottom: '20px', display: 'flex', justifyContent: 'center' },
-    clearModalTitle: { fontSize: '20px', fontWeight: '700', color: 'var(--text-primary)', margin: '0 0 12px 0' },
-    clearModalMessage: { fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.6', margin: '0 0 24px 0' },
-    clearModalStats: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '24px', marginBottom: '28px', padding: '20px', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' },
+    clearModal: { backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid rgba(30, 41, 59, 0.08)', width: '420px', maxWidth: '94%', padding: '40px 32px', textAlign: 'center', boxShadow: '0 24px 48px rgba(30, 41, 59, 0.2), 0 0 0 1px rgba(212, 175, 55, 0.05)' },
+    clearModalIcon: { marginBottom: '24px', display: 'flex', justifyContent: 'center' },
+    clearModalTitle: { fontFamily: "'Playfair Display', serif", fontSize: '24px', fontWeight: '600', color: '#1E293B', margin: '0 0 16px 0' },
+    clearModalMessage: { fontSize: '15px', color: '#64748B', lineHeight: '1.6', margin: '0 0 32px 0' },
+    clearModalStats: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '24px', marginBottom: '32px', padding: '24px', backgroundColor: '#F8FAFC', borderRadius: '16px', border: '1px solid #E2E8F0' },
     statItem: { flex: 1 },
-    statValue: { fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '4px' },
-    statLabel: { fontSize: '12px', color: 'var(--text-tertiary)', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.5px' },
-    statDivider: { width: '1px', height: '40px', backgroundColor: 'var(--border)' },
-    clearModalButtons: { display: 'flex', gap: '12px', justifyContent: 'center' },
-    clearModalCancel: { flex: 1, padding: '12px 24px', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '14px', fontWeight: '500', transition: 'all 0.15s' },
-    clearModalConfirm: { flex: 1, padding: '12px 24px', backgroundColor: '#DC2626', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.15s' },
-}
+    statValue: { fontSize: '28px', fontWeight: '700', color: '#1E293B', marginBottom: '6px' },
+    statLabel: { fontSize: '12px', color: '#64748B', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '1px' },
+    statDivider: { width: '1px', height: '48px', backgroundColor: '#E2E8F0' },
+    clearModalButtons: { display: 'flex', gap: '14px', justifyContent: 'center' },
+    clearModalCancel: { flex: 1, padding: '14px 24px', backgroundColor: '#FFFFFF', color: '#64748B', border: '1px solid #E2E8F0', borderRadius: '12px', cursor: 'pointer', fontSize: '15px', fontWeight: '600', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' },
+    clearModalConfirm: { flex: 1, padding: '14px 24px', backgroundColor: '#E11D48', color: '#fff', border: 'none', borderRadius: '12px', cursor: 'pointer', fontSize: '15px', fontWeight: '600', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 4px 16px rgba(225, 29, 72, 0.35)' },
+};
