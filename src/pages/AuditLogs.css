@@ -60,8 +60,8 @@
 }
 
 .filter-group select:focus {
-  border-color: #D4AF37;
-  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+  border-color: #4169E1;
+  box-shadow: 0 0 0 3px rgba(65, 105, 225, 0.1);
 }
 
 .logs-table {
@@ -121,7 +121,7 @@
 
 .view-detail-btn {
   padding: 8px 18px;
-  background: linear-gradient(135deg, #D4AF37 0%, #E8C547 50%, #D4AF37 100%);
+  background: linear-gradient(135deg, #4169E1 0%, #6B8DF5 50%, #4169E1 100%);
   color: #0F172A;
   border: none;
   border-radius: 10px;
@@ -129,12 +129,12 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.25);
+  box-shadow: 0 2px 8px rgba(65, 105, 225, 0.25);
 }
 
 .view-detail-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(212, 175, 55, 0.35);
+  box-shadow: 0 4px 16px rgba(65, 105, 225, 0.35);
 }
 
 .pagination {
@@ -152,7 +152,7 @@
 
 .pagination button {
   padding: 12px 24px;
-  background: linear-gradient(135deg, #D4AF37 0%, #E8C547 50%, #D4AF37 100%);
+  background: linear-gradient(135deg, #4169E1 0%, #6B8DF5 50%, #4169E1 100%);
   color: #0F172A;
   border: none;
   border-radius: 12px;
@@ -160,12 +160,12 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 16px rgba(212, 175, 55, 0.35);
+  box-shadow: 0 4px 16px rgba(65, 105, 225, 0.35);
 }
 
 .pagination button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
+  box-shadow: 0 6px 20px rgba(65, 105, 225, 0.4);
 }
 
 .pagination button:disabled {
@@ -187,8 +187,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(6px);
+  background: rgba(255, 255, 255, 0.95);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -214,7 +213,7 @@
   max-height: 90vh;
   overflow-y: auto;
   animation: slideUp 0.3s ease;
-  box-shadow: 0 24px 48px rgba(30, 41, 59, 0.2), 0 0 0 1px rgba(212, 175, 55, 0.05);
+  box-shadow: 0 24px 48px rgba(30, 41, 59, 0.2), 0 0 0 1px rgba(65, 105, 225, 0.05);
   border: 1px solid rgba(30, 41, 59, 0.08);
 }
 

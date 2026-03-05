@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 const sidebarStyles = `
   .sidebar {
     width: 268px;
-    background: linear-gradient(180deg, #0F172A 0%, #1E293B 50%, #0F172A 100%);
-    color: #fff;
+    background: #FFFFFF;
+    color: #1E293B;
     display: flex;
     flex-direction: column;
     position: fixed;
@@ -14,23 +14,13 @@ const sidebarStyles = `
     bottom: 0;
     z-index: 100;
     overflow-y: auto;
-    border-right: 1px solid rgba(212, 175, 55, 0.08);
-  }
-  
-  .sidebar::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 200px;
-    background: linear-gradient(180deg, rgba(212, 175, 55, 0.03) 0%, transparent 100%);
-    pointer-events: none;
+    border-right: 1px solid #E2E8F0;
+    box-shadow: 4px 0 24px rgba(30, 41, 59, 0.02);
   }
   
   .sidebar-header {
     padding: 32px 28px 28px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid #F1F5F9;
     position: relative;
   }
   
@@ -44,11 +34,10 @@ const sidebarStyles = `
   
   .sidebar-logo-text {
     font-family: 'Inter', -apple-system, sans-serif;
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 800;
     letter-spacing: -0.5px;
-    color: #FFFFFF;
-    background: linear-gradient(135deg, #FFFFFF 0%, #E8C547 60%, #D4AF37 100%);
+    background: linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #334155 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -57,8 +46,8 @@ const sidebarStyles = `
   .nav-section-label {
     padding: 28px 28px 12px;
     font-size: 11px;
-    font-weight: 600;
-    color: rgba(212, 175, 55, 0.7);
+    font-weight: 700;
+    color: #94A3B8;
     text-transform: uppercase;
     letter-spacing: 1.5px;
   }
@@ -74,7 +63,7 @@ const sidebarStyles = `
     align-items: center;
     gap: 14px;
     padding: 14px 18px;
-    color: rgba(255, 255, 255, 0.6);
+    color: #64748B;
     text-decoration: none;
     font-size: 14px;
     font-weight: 500;
@@ -83,47 +72,30 @@ const sidebarStyles = `
     border-radius: 12px;
     margin-bottom: 4px;
     position: relative;
-    overflow: hidden;
   }
   
-  .nav-link::before {
+  .nav-link:hover {
+    color: #4169E1;
+    background: rgba(65, 105, 225, 0.05);
+    transform: translateX(4px);
+  }
+  
+  .nav-link.active {
+    color: #1E293B;
+    background: linear-gradient(135deg, rgba(65, 105, 225, 0.12) 0%, rgba(65, 105, 225, 0.06) 100%);
+    font-weight: 600;
+  }
+  
+  .nav-link.active::before {
     content: '';
     position: absolute;
     left: 0;
     top: 50%;
     transform: translateY(-50%);
-    width: 3px;
-    height: 0;
-    background: linear-gradient(180deg, #D4AF37 0%, #E8C547 100%);
-    border-radius: 0 3px 3px 0;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  
-  .nav-link:hover {
-    color: #FFFFFF;
-    background: rgba(255, 255, 255, 0.05);
-    transform: translateX(4px);
-  }
-  
-  .nav-link.active {
-    color: #FFFFFF;
-    background: linear-gradient(135deg, rgba(212, 175, 55, 0.15) 0%, rgba(212, 175, 55, 0.08) 100%);
-    box-shadow: 0 4px 20px rgba(212, 175, 55, 0.1);
-  }
-  
-  .nav-link.active::before {
-    height: 24px;
-  }
-  
-  .nav-link.active:hover {
-    background: linear-gradient(135deg, rgba(212, 175, 55, 0.2) 0%, rgba(212, 175, 55, 0.12) 100%);
-  }
-  
-  .nav-icon {
-    font-size: 0;
-    width: 0;
-    text-align: center;
-    flex-shrink: 0;
+    width: 4px;
+    height: 20px;
+    background: #4169E1;
+    border-radius: 0 4px 4px 0;
   }
   
   .nav-badge {
@@ -132,124 +104,94 @@ const sidebarStyles = `
     font-weight: 600;
     padding: 3px 10px;
     border-radius: 999px;
-    background: rgba(212, 175, 55, 0.2);
-    color: #E8C547;
+    background: rgba(65, 105, 225, 0.1);
+    color: #3355C0;
     letter-spacing: 0.5px;
   }
   
   .sidebar-footer {
     margin-top: auto;
-    padding: 20px 24px 24px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-    position: relative;
-  }
-  
-  .sidebar-footer::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 24px;
-    right: 24px;
-    height: 1px;
-    background: linear-gradient(90deg, transparent 0%, rgba(212, 175, 55, 0.3) 50%, transparent 100%);
+    padding: 24px;
+    border-top: 1px solid #F1F5F9;
+    background: #FAFAFA;
   }
   
   .user-info {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 16px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    gap: 12px;
+    padding: 12px;
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
     border-radius: 14px;
-    margin-bottom: 14px;
-    transition: all 0.3s ease;
-  }
-  
-  .user-info:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(212, 175, 55, 0.2);
+    margin-bottom: 12px;
+    box-shadow: 0 2px 6px rgba(30, 41, 59, 0.02);
   }
   
   .user-avatar {
-    width: 44px;
-    height: 44px;
-    background: linear-gradient(135deg, #D4AF37 0%, #AA8C2C 100%);
-    border-radius: 12px;
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #4169E1 0%, #3355C0 100%);
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
-    font-weight: 600;
-    color: #0F172A;
-    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
-  }
-  
-  .user-details {
-    flex: 1;
-    min-width: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #FFFFFF;
+    box-shadow: 0 4px 12px rgba(65, 105, 225, 0.2);
   }
   
   .user-name {
     font-size: 14px;
     font-weight: 600;
-    color: #FFFFFF;
-    margin: 0 0 3px 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    color: #1E293B;
+    margin: 0;
   }
   
   .user-role {
     font-size: 12px;
-    color: rgba(212, 175, 55, 0.8);
-    margin: 0;
-    font-weight: 500;
-    letter-spacing: 0.3px;
+    color: #64748B;
+    margin: 2px 0 0 0;
   }
   
   .logout-button {
     width: 100%;
-    padding: 14px 18px;
-    background: rgba(239, 68, 68, 0.08);
-    color: #FCA5A5;
-    border: 1px solid rgba(239, 68, 68, 0.15);
+    padding: 12px;
+    background: #FFFFFF;
+    color: #E11D48;
+    border: 1px solid rgba(225, 29, 72, 0.1);
     border-radius: 12px;
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     justify-content: center;
-    letter-spacing: 0.2px;
   }
   
   .logout-button:hover {
-    background: rgba(239, 68, 68, 0.15);
-    color: #FCA5A5;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.2);
-  }
-  
-  .logout-button:active {
-    transform: translateY(0);
+    background: rgba(225, 29, 72, 0.05);
+    border-color: rgba(225, 29, 72, 0.2);
+    transform: translateY(-1px);
   }
   
   .sidebar-footer-text {
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.3);
+    color: #94A3B8;
     text-align: center;
     margin-top: 16px;
-    letter-spacing: 0.5px;
+    font-weight: 500;
   }
   
   .main-content {
     flex: 1;
     margin-left: 268px;
     padding: 36px 40px;
-    max-width: calc(100vw - 268px);
+    background-color: #F8FAFC;
+    min-height: 100vh;
     animation: contentFadeIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
   

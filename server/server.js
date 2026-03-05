@@ -423,7 +423,7 @@ function runSQL(sql, params = []) {
 }
 
 const JWT_SECRET = 'your-secret-key-change-in-production'
-const JWT_EXPIRES_IN = '24h'
+const JWT_EXPIRES_IN = '7d'
 
 function generateToken(user) {
   return jwt.sign(

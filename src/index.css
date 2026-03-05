@@ -1,22 +1,22 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Playfair+Display:wght@400;500;600;700&display=swap');
 
 :root {
-  /* Elegant Color Palette - Slate & Gold */
+  /* Elegant Color Palette - Slate & Royal Blue */
   --primary: #1E293B;
   --primary-light: #334155;
   --primary-dark: #0F172A;
-  --primary-accent: #B8860B;
-  
-  --accent-gold: #D4AF37;
-  --accent-gold-light: #E8C547;
-  --accent-gold-dark: #AA8C2C;
-  
+  --primary-accent: #3355C0;
+
+  --accent-gold: #4169E1;
+  --accent-gold-light: #6B8DF5;
+  --accent-gold-dark: #2E4AB0;
+
   --accent-blue: #2563EB;
   --accent-emerald: #059669;
   --accent-amber: #D97706;
   --accent-rose: #E11D48;
   --accent-violet: #7C3AED;
-  
+
   /* Neutrals - Warm Slate */
   --bg-primary: #F8FAFC;
   --bg-secondary: #FFFFFF;
@@ -28,13 +28,13 @@
   --text-secondary: #64748B;
   --text-tertiary: #94A3B8;
   --text-link: #2563EB;
-  
+
   /* Premium Gradients */
   --gradient-primary: linear-gradient(135deg, #1E293B 0%, #334155 100%);
-  --gradient-gold: linear-gradient(135deg, #D4AF37 0%, #E8C547 50%, #D4AF37 100%);
+  --gradient-gold: linear-gradient(135deg, #4169E1 0%, #6B8DF5 50%, #4169E1 100%);
   --gradient-elegant: linear-gradient(135deg, #1E293B 0%, #475569 50%, #1E293B 100%);
   --gradient-subtle: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
-  
+
   /* Sophisticated Shadows */
   --shadow-sm: 0 1px 2px rgba(30, 41, 59, 0.04);
   --shadow-md: 0 4px 6px -1px rgba(30, 41, 59, 0.06), 0 2px 4px -2px rgba(30, 41, 59, 0.04);
@@ -42,15 +42,15 @@
   --shadow-xl: 0 20px 25px -5px rgba(30, 41, 59, 0.1), 0 8px 10px -6px rgba(30, 41, 59, 0.06);
   --shadow-card: 0 1px 3px rgba(30, 41, 59, 0.03), 0 1px 2px rgba(30, 41, 59, 0.04);
   --shadow-card-hover: 0 12px 24px rgba(30, 41, 59, 0.1), 0 4px 8px rgba(30, 41, 59, 0.04);
-  --shadow-gold: 0 4px 14px rgba(212, 175, 55, 0.25);
-  
+  --shadow-gold: 0 4px 14px rgba(65, 105, 225, 0.25);
+
   /* Refined Radius */
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
   --radius-xl: 20px;
   --radius-2xl: 28px;
-  
+
   /* Smooth Transitions */
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -85,92 +85,135 @@ body {
   width: 8px;
   height: 8px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, #CBD5E1 0%, #94A3B8 100%);
   border-radius: 999px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(180deg, #94A3B8 0%, #64748B 100%);
 }
 
 /* Elegant Entrance Animations */
 @keyframes fadeInUp {
-  from { 
-    opacity: 0; 
-    transform: translateY(16px); 
+  from {
+    opacity: 0;
+    transform: translateY(16px);
   }
-  to { 
-    opacity: 1; 
-    transform: translateY(0); 
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes scaleIn {
-  from { 
-    opacity: 0; 
-    transform: scale(0.96); 
+  from {
+    opacity: 0;
+    transform: scale(0.96);
   }
-  to { 
-    opacity: 1; 
-    transform: scale(1); 
+
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
 @keyframes slideInRight {
-  from { 
-    opacity: 0; 
-    transform: translateX(24px); 
+  from {
+    opacity: 0;
+    transform: translateX(24px);
   }
-  to { 
-    opacity: 1; 
-    transform: translateX(0); 
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
 }
 
 @keyframes gentleBounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-4px);
+  }
 }
 
 @keyframes glow {
-  0%, 100% { box-shadow: 0 0 8px rgba(212, 175, 55, 0.3); }
-  50% { box-shadow: 0 0 20px rgba(212, 175, 55, 0.5); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 8px rgba(65, 105, 225, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 20px rgba(65, 105, 225, 0.5);
+  }
 }
 
 /* Staggered Reveal */
 @keyframes revealUp {
-  from { 
-    opacity: 0; 
-    transform: translateY(24px); 
+  from {
+    opacity: 0;
+    transform: translateY(24px);
   }
-  to { 
-    opacity: 1; 
-    transform: translateY(0); 
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
 /* Premium Button Hover */
 @keyframes btnGlow {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 100% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+
+  100% {
+    background-position: 100% 50%;
+  }
 }
 
 /* Page entrance */
@@ -179,22 +222,46 @@ body {
 }
 
 /* Stagger children */
-.stagger-children > * {
+.stagger-children>* {
   opacity: 0;
   animation: revealUp 0.5s var(--transition-elegant) forwards;
 }
-.stagger-children > *:nth-child(1) { animation-delay: 0.05s; }
-.stagger-children > *:nth-child(2) { animation-delay: 0.1s; }
-.stagger-children > *:nth-child(3) { animation-delay: 0.15s; }
-.stagger-children > *:nth-child(4) { animation-delay: 0.2s; }
-.stagger-children > *:nth-child(5) { animation-delay: 0.25s; }
-.stagger-children > *:nth-child(6) { animation-delay: 0.3s; }
-.stagger-children > *:nth-child(7) { animation-delay: 0.35s; }
-.stagger-children > *:nth-child(8) { animation-delay: 0.4s; }
+
+.stagger-children>*:nth-child(1) {
+  animation-delay: 0.05s;
+}
+
+.stagger-children>*:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.stagger-children>*:nth-child(3) {
+  animation-delay: 0.15s;
+}
+
+.stagger-children>*:nth-child(4) {
+  animation-delay: 0.2s;
+}
+
+.stagger-children>*:nth-child(5) {
+  animation-delay: 0.25s;
+}
+
+.stagger-children>*:nth-child(6) {
+  animation-delay: 0.3s;
+}
+
+.stagger-children>*:nth-child(7) {
+  animation-delay: 0.35s;
+}
+
+.stagger-children>*:nth-child(8) {
+  animation-delay: 0.4s;
+}
 
 /* Selection */
 ::selection {
-  background-color: rgba(212, 175, 55, 0.2);
+  background-color: rgba(65, 105, 225, 0.2);
   color: var(--primary);
 }
 
@@ -204,7 +271,10 @@ body {
   outline-offset: 2px;
 }
 
-input, select, textarea, button {
+input,
+select,
+textarea,
+button {
   font-family: inherit;
 }
 

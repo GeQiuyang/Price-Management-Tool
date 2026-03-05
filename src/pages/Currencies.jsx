@@ -558,7 +558,7 @@ const styles = {
   },
   addButton: {
     padding: '12px 26px',
-    background: 'linear-gradient(135deg, #D4AF37 0%, #E8C547 50%, #D4AF37 100%)',
+    background: 'linear-gradient(135deg, #4169E1 0%, #6B8DF5 50%, #4169E1 100%)',
     color: '#0F172A',
     border: 'none',
     borderRadius: '12px',
@@ -566,7 +566,7 @@ const styles = {
     fontSize: '14px',
     fontWeight: '600',
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    boxShadow: '0 4px 16px rgba(212, 175, 55, 0.35)',
+    boxShadow: '0 4px 16px rgba(65, 105, 225, 0.35)',
     letterSpacing: '-0.1px',
     zIndex: 100,
     position: 'relative',
@@ -641,7 +641,7 @@ const styles = {
   convertResultValue: {
     fontSize: '20px',
     fontWeight: '700',
-    color: '#D4AF37',
+    color: '#4169E1',
   },
   summaryCards: {
     display: 'grid',
@@ -732,9 +732,9 @@ const styles = {
   },
   editButton: {
     padding: '8px 18px',
-    backgroundColor: 'rgba(212, 175, 55, 0.08)',
-    color: '#B8860B',
-    border: '1px solid rgba(212, 175, 55, 0.2)',
+    backgroundColor: 'rgba(65, 105, 225, 0.08)',
+    color: '#3355C0',
+    border: '1px solid rgba(65, 105, 225, 0.2)',
     borderRadius: '10px',
     cursor: 'pointer',
     fontSize: '13px',
@@ -760,7 +760,6 @@ const styles = {
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(15, 23, 42, 0.6)',
-    backdropFilter: 'blur(6px)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -776,7 +775,7 @@ const styles = {
     maxHeight: '90vh',
     display: 'flex',
     flexDirection: 'column',
-    boxShadow: '0 24px 48px rgba(30, 41, 59, 0.2), 0 0 0 1px rgba(212, 175, 55, 0.05)',
+    boxShadow: '0 24px 48px rgba(30, 41, 59, 0.2), 0 0 0 1px rgba(65, 105, 225, 0.05)',
   },
   modalTitle: {
     fontFamily: "'Playfair Display', serif",
@@ -862,7 +861,7 @@ const styles = {
   },
   submitButton: {
     padding: '12px 28px',
-    background: 'linear-gradient(135deg, #D4AF37 0%, #E8C547 50%, #D4AF37 100%)',
+    background: 'linear-gradient(135deg, #4169E1 0%, #6B8DF5 50%, #4169E1 100%)',
     color: '#0F172A',
     border: 'none',
     borderRadius: '12px',
@@ -870,6 +869,6 @@ const styles = {
     fontSize: '14px',
     fontWeight: '600',
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    boxShadow: '0 4px 16px rgba(212, 175, 55, 0.35)',
+    boxShadow: '0 4px 16px rgba(65, 105, 225, 0.35)',
   },
 }

@@ -157,6 +157,14 @@ export default function Products() {
   const fetchProducts = async () => {
     try {
       const response = await fetch(`${API_URL}/products`)
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          localStorage.removeItem('token')
+          localStorage.removeItem('user')
+          window.location.href = '/login'
+          return
+        }
+      }
       const data = await response.json()
       const filteredData = data.filter(p => !deletingProductIds.includes(p.id))
       setProducts(filteredData)
@@ -287,6 +295,14 @@ export default function Products() {
       }
 
       if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          alert('登录已过期，请重新登录')
+          localStorage.removeItem('token')
+          localStorage.removeItem('user')
+          window.location.href = '/login'
+          return
+        }
+
         let errorMessage = '保存产品失败'
         try {
           const data = await response.json()
@@ -312,45 +328,6 @@ export default function Products() {
     return products.filter((p) => p.category === category)
   }
 
-  // 导管类智能搜索：将自然语言提取为结构化 JSON
-  const parsePipeQuery = (keyword) => {
-    // 提取型号与丝型
-    const pipeTypeMatch = keyword.match(/(300|260|273|219)/)
-    const pipeType = pipeTypeMatch ? pipeTypeMatch[1] : null
-
-    let threadType = null
-    if (/尖丝|尖/.test(keyword)) threadType = '尖丝'
-    else if (/方丝|方/.test(keyword)) threadType = '方丝'
-
-    let name = null
-    if (pipeType && threadType) {
-      name = `${pipeType}${threadType}导管`
-    }
-
-    // 接头规格
-    let jointSpec = null
-    if (/公扣/.test(keyword)) jointSpec = '公扣'
-    else if (/母扣/.test(keyword)) jointSpec = '母扣'
-    else if (/衬套/.test(keyword)) jointSpec = '衬套'
-    const isJointQuery = /接头/.test(keyword) || jointSpec !== null
-
-    // 长度 (L)：支持 "1米"/"1m"/"0.5米"/"1.5m" 等 (排除了 mm)
-    const lengthMatch = keyword.match(/(\d+\.?\d*)\s*(?:m|米)(?!m|毫米)/i)
-    const L = lengthMatch ? parseFloat(lengthMatch[1]) : null
-
-    // 壁厚 (T)：支持 "3.5mm"/"3.5毫米"/"3.5厚"/"3.5壁厚"/"厚度3.5"/"壁厚3.5" 等
-    let T = null
-    const thickMatch1 = keyword.match(/(\d+\.?\d*)\s*(?:mm|毫米|厚|壁厚)/i)
-    const thickMatch2 = keyword.match(/(?:厚度|壁厚)\s*(\d+\.?\d*)/)
-    const thickMatch3 = keyword.match(/(?:(?:米|m)(?!m|毫米)[^+]*\+\s*|\+\s*)(\d+\.?\d*)\s*(?:mm|毫米)?\s*$/i)
-
-    if (thickMatch1) T = parseFloat(thickMatch1[1])
-    else if (thickMatch2) T = parseFloat(thickMatch2[1])
-    else if (thickMatch3) T = parseFloat(thickMatch3[1])
-
-    const hasPipeKeywords = pipeType || keyword.includes('导管') || isJointQuery || L !== null || T !== null
-    return { name, pipeType, threadType, L, T, hasPipeKeywords, isJointQuery, jointSpec }
-  }
 
   const getDisplayProducts = () => {
     if (searchQuery.trim()) {
@@ -363,45 +340,124 @@ export default function Products() {
 
       const isNumericOnly = /^\d+$/.test(keyword)
 
-      // 导管类智能搜索（最高优先级）
-      const pipeQuery = parsePipeQuery(keyword)
-      if (pipeQuery.hasPipeKeywords && (pipeQuery.pipeType || pipeQuery.threadType || pipeQuery.L !== null || pipeQuery.T !== null || pipeQuery.isJointQuery)) {
-        const pipeResults = products.filter((p) => {
+      // 导管类严格搜索：基于【产品名称】+【产品描述中的长度和厚度】
+      // 导管搜索格式：300+尖丝+导管+长度+厚度
+      // 料斗搜索格式：料斗+尺寸+厚度
+      // 接头搜索格式：300+尖丝+接头+公扣/母扣/衬套
+      const levelPipe = (() => {
+        // 渐进消费法：去掉空格后依次提取各字段，每次提取后移除已匹配部分
+        let remaining = keyword.replace(/[\s+]+/g, '')
+        // 1. 提取直径 (开头的三位数，如 300, 260, 219)
+        let queryDiameter = null
+        const dm = remaining.match(/^(\d{3})/)
+        if (dm) { queryDiameter = dm[1]; remaining = remaining.slice(3) }
+        // 2. 提取中文关键词
+        let queryThread = null
+        const tm = remaining.match(/(尖丝|方丝)/)
+        if (tm) { queryThread = tm[1]; remaining = remaining.replace(tm[1], '') }
+        let queryType = null
+        const tym = remaining.match(/(导管|接头|衬套|公扣|母扣|料斗)/)
+        if (tym) { queryType = tym[1]; remaining = remaining.replace(tym[1], '') }
+        // 3. 先提取厚度 Xmm（更具体，避免被长度 Xm 抢走）
+        let queryThickness = null
+        const thm = remaining.match(/(\d+\.?\d*)mm/)
+        if (thm) { queryThickness = thm[1]; remaining = remaining.replace(thm[0], '') }
+        // 4. 提取长度 Xm（mm 已被消费，不会冲突）
+        let queryLength = null
+        const lm = remaining.match(/(\d+\.?\d*)m/)
+        if (lm) { queryLength = lm[1]; remaining = remaining.replace(lm[0], '') }
+        // 5. 剩余的裸数字：料斗→尺寸+厚度，导管→厚度
+        const remainingNums = remaining.match(/\d+\.?\d*/g) || []
+        let queryHopperSize = null
+        if (queryType === '料斗') {
+          // 料斗裸数字解析：优先用空格分隔的原始数字（避免 "3 3.5" 合并成 "33.5"）
+          const hopperNums = keyword.match(/\d+\.?\d*/g) || []
+          if (hopperNums.length >= 2) {
+            queryHopperSize = hopperNums[0]
+            if (!queryThickness) queryThickness = hopperNums[1]
+          } else if (hopperNums.length === 1) {
+            queryHopperSize = hopperNums[0]
+          }
+        } else {
+          if (!queryThickness && remainingNums.length > 0) queryThickness = remainingNums[0]
+        }
+
+        return products.filter(p => {
           if (p.category !== '导管类') return false
 
-          // 严禁返回钻宝、SMS6系、钻金 (除非用户输入包含)
           const excludeWords = ['钻宝', 'SMS6系', '钻金']
           for (const word of excludeWords) {
             if (p.name.includes(word) && !keyword.includes(word)) return false
           }
 
-          // 接头搜索模式
-          if (pipeQuery.isJointQuery) {
-            if (!p.name.includes('接头') && !p.name.includes('衬套')) return false
-            if (pipeQuery.pipeType && !p.name.includes(pipeQuery.pipeType)) return false
-            if (pipeQuery.threadType && !p.name.includes(pipeQuery.threadType)) return false
-            if (pipeQuery.jointSpec && !p.name.includes(pipeQuery.jointSpec)) return false
+          const name = p.name
+          const desc = p.description || ''
+          const isHopper = name.includes('料斗')
+          const isPipe = name.includes('导管')
+          const isJoint = name.includes('接头') || name.includes('公扣') || name.includes('母扣') || name.includes('衬套')
 
-            // 匹配外径
-            if (pipeQuery.T !== null && !(p.description && p.description.includes(`外径：${pipeQuery.T}`))) return false
+          // ── 料斗匹配 ──
+          if (isHopper) {
+            if (queryType && queryType !== '料斗') return false
+            // 匹配料斗尺寸：name 开头的数字 (如 "3方料斗" → 3)
+            if (queryHopperSize) {
+              const nameSize = name.match(/^(\d+\.?\d*)/)
+              if (!nameSize || nameSize[1] !== queryHopperSize) return false
+            }
+            // 匹配厚度：description 中的 "厚度: Xmm" 或 "厚度：Xmm"
+            if (queryThickness) {
+              const descThickness = desc.match(/厚度[：:]?\s*(\d+\.?\d*)mm/)
+              if (!descThickness || descThickness[1] !== queryThickness) return false
+            }
+            // 如果搜索词包含导管/接头特有关键词，跳过料斗
+            if (queryDiameter || queryThread) return false
             return true
           }
 
-          // 导管搜索模式
-          if (pipeQuery.name) {
-            if (!p.name.includes(pipeQuery.name)) return false
-          } else {
-            if (pipeQuery.pipeType && !p.name.includes(pipeQuery.pipeType)) return false
-            if (pipeQuery.threadType && !p.name.includes(pipeQuery.threadType)) return false
+          // ── 导管匹配 ──
+          if (isPipe) {
+            if (queryType && queryType !== '导管') return false
+            // 匹配直径：name 开头的数字
+            if (queryDiameter) {
+              const nameDiameter = name.match(/^(\d+)/)
+              if (!nameDiameter || nameDiameter[1] !== queryDiameter) return false
+            }
+            // 匹配丝类型
+            if (queryThread && !name.includes(queryThread)) return false
+            // 匹配长度：严格匹配 description 中的 "长度: Xm" 或 "长度：Xm"
+            if (queryLength) {
+              const descLength = desc.match(/长度[：:]?\s*(\d+\.?\d*)m/)
+              if (!descLength || descLength[1] !== queryLength) return false
+            }
+            // 匹配厚度：严格匹配 description 中的壁厚值
+            if (queryThickness) {
+              const descThickness = desc.match(/壁厚[：:]?\s*(\d+\.?\d*)mm/)
+              if (!descThickness || descThickness[1] !== queryThickness) return false
+            }
+            return true
           }
-          if (pipeQuery.L !== null && !p.name.includes(`${pipeQuery.L}m`)) return false
 
-          // 匹配壁厚
-          if (pipeQuery.T !== null && !(p.description && p.description.includes(`壁厚：${pipeQuery.T}`))) return false
-          return true
+          // ── 接头匹配 ──
+          if (isJoint) {
+            if (queryType && !name.includes(queryType)) return false
+            // 匹配直径
+            if (queryDiameter) {
+              const nameDiameter = name.match(/^(\d+)/)
+              if (!nameDiameter || nameDiameter[1] !== queryDiameter) return false
+            }
+            // 匹配丝类型
+            if (queryThread && !name.includes(queryThread)) return false
+            // 接头没有长度/厚度，如果搜索了这些就不匹配
+            if (queryLength || queryThickness) return false
+            return true
+          }
+
+          // ── 兜底：其他导管类产品，用通用文本匹配 ──
+          const searchableText = `${name} ${desc}`.toLowerCase()
+          const segments = keyword.toLowerCase().match(/[\u4e00-\u9fff]+|[a-z0-9.]+/gi) || [keyword.toLowerCase()]
+          return segments.every(seg => searchableText.includes(seg))
         })
-        if (pipeResults.length > 0) return pipeResults
-      }
+      })()
 
       // 钻具类专有搜索规则：提取【产品名称】和【型号】，组合后作为搜索关键词
       const drillKeyword = keyword.replace(/[\s\-]+/g, '').toLowerCase()
@@ -478,7 +534,7 @@ export default function Products() {
       // 按优先级合并去重
       const seen = new Set()
       const result = []
-      for (const list of [levelDrill, level0, level1, level2, level3, level4, level5]) {
+      for (const list of [levelPipe, levelDrill, level0, level1, level2, level3, level4, level5]) {
         for (const p of list) {
           if (!seen.has(p.id)) {
             seen.add(p.id)
@@ -633,12 +689,12 @@ export default function Products() {
         <>
           <style>{`
           @keyframes modalOverlayIn {
-            from { opacity: 0; backdrop-filter: blur(0px); }
-            to { opacity: 1; backdrop-filter: blur(8px); }
+            from { opacity: 0; }
+            to { opacity: 1; }
           }
           @keyframes modalOverlayOut {
-            from { opacity: 1; backdrop-filter: blur(8px); }
-            to { opacity: 0; backdrop-filter: blur(0px); }
+            from { opacity: 1; }
+            to { opacity: 0; }
           }
           @keyframes modalSlideIn {
             from { opacity: 0; transform: translateY(32px) scale(0.95); }
@@ -668,8 +724,6 @@ export default function Products() {
               right: 0,
               bottom: 0,
               backgroundColor: 'rgba(0, 0, 0, 0.5)',
-              backdropFilter: 'blur(8px)',
-              WebkitBackdropFilter: 'blur(8px)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -832,7 +886,7 @@ export default function Products() {
                       type="submit"
                       style={{
                         padding: '10px 20px',
-                        backgroundColor: '#D4AF37',
+                        backgroundColor: '#4169E1',
                         color: 'white',
                         border: 'none',
                         borderRadius: '8px',
@@ -880,8 +934,8 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '18px',
-    border: '1px solid rgba(212, 175, 55, 0.15)',
-    boxShadow: '0 8px 30px rgba(30, 41, 59, 0.12), 0 0 0 1px rgba(212, 175, 55, 0.05)',
+    border: '1px solid rgba(65, 105, 225, 0.15)',
+    boxShadow: '0 8px 30px rgba(30, 41, 59, 0.12), 0 0 0 1px rgba(65, 105, 225, 0.05)',
     zIndex: 1001,
     animation: 'toastSlideIn 0.4s cubic-bezier(0.22, 1, 0.36, 1)',
   },
@@ -915,7 +969,7 @@ const styles = {
   },
   undoButton: {
     backgroundColor: 'transparent',
-    color: '#B8860B',
+    color: '#3355C0',
     border: 'none',
     padding: '8px 18px',
     borderRadius: '8px',
@@ -967,7 +1021,7 @@ const styles = {
   },
   addButton: {
     padding: '12px 26px',
-    background: 'linear-gradient(135deg, #D4AF37 0%, #E8C547 50%, #D4AF37 100%)',
+    background: 'linear-gradient(135deg, #4169E1 0%, #6B8DF5 50%, #4169E1 100%)',
     color: '#0F172A',
     border: 'none',
     borderRadius: '12px',
@@ -975,7 +1029,7 @@ const styles = {
     fontSize: '14px',
     fontWeight: '600',
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    boxShadow: '0 4px 16px rgba(212, 175, 55, 0.35)',
+    boxShadow: '0 4px 16px rgba(65, 105, 225, 0.35)',
     letterSpacing: '-0.1px',
     zIndex: 100,
     position: 'relative',
@@ -1004,9 +1058,9 @@ const styles = {
     transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
   },
   tabActive: {
-    background: 'linear-gradient(135deg, #1E293B 0%, #334155 100%)',
+    background: 'linear-gradient(135deg, #4169E1 0%, #3355C0 100%)',
     color: '#FFFFFF',
-    boxShadow: '0 4px 12px rgba(30, 41, 59, 0.25)',
+    boxShadow: '0 4px 12px rgba(65, 105, 225, 0.25)',
   },
   tabCount: {
     fontSize: '11px',
@@ -1069,13 +1123,13 @@ const styles = {
     padding: '18px 24px',
     fontSize: '16px',
     fontWeight: '700',
-    color: '#D4AF37',
+    color: '#4169E1',
   },
   editButton: {
     padding: '8px 18px',
-    backgroundColor: 'rgba(212, 175, 55, 0.08)',
-    color: '#B8860B',
-    border: '1px solid rgba(212, 175, 55, 0.2)',
+    backgroundColor: 'rgba(65, 105, 225, 0.08)',
+    color: '#3355C0',
+    border: '1px solid rgba(65, 105, 225, 0.2)',
     borderRadius: '10px',
     cursor: 'pointer',
     fontSize: '13px',
@@ -1100,8 +1154,7 @@ const styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
-    backdropFilter: 'blur(6px)',
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1117,7 +1170,7 @@ const styles = {
     maxHeight: '90vh',
     display: 'flex',
     flexDirection: 'column',
-    boxShadow: '0 24px 48px rgba(30, 41, 59, 0.2), 0 0 0 1px rgba(212, 175, 55, 0.05)',
+    boxShadow: '0 24px 48px rgba(30, 41, 59, 0.2), 0 0 0 1px rgba(65, 105, 225, 0.05)',
   },
   modalTitle: {
     fontFamily: "'Playfair Display', serif",
@@ -1164,9 +1217,9 @@ const styles = {
     transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
   },
   templateButtonHover: {
-    backgroundColor: 'rgba(212, 175, 55, 0.08)',
-    borderColor: 'rgba(212, 175, 55, 0.3)',
-    color: '#B8860B',
+    backgroundColor: 'rgba(65, 105, 225, 0.08)',
+    borderColor: 'rgba(65, 105, 225, 0.3)',
+    color: '#3355C0',
   },
   formSection: {
     padding: '24px 28px',
@@ -1226,7 +1279,7 @@ const styles = {
   },
   submitButton: {
     padding: '12px 28px',
-    background: 'linear-gradient(135deg, #D4AF37 0%, #E8C547 50%, #D4AF37 100%)',
+    background: 'linear-gradient(135deg, #4169E1 0%, #6B8DF5 50%, #4169E1 100%)',
     color: '#0F172A',
     border: 'none',
     borderRadius: '12px',
@@ -1234,6 +1287,6 @@ const styles = {
     fontSize: '14px',
     fontWeight: '600',
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    boxShadow: '0 4px 16px rgba(212, 175, 55, 0.35)',
+    boxShadow: '0 4px 16px rgba(65, 105, 225, 0.35)',
   },
 }

@@ -174,7 +174,7 @@ export default function SystemSettings() {
                         <div
                             style={{
                                 ...styles.toggle,
-                                backgroundColor: settings.autoSave ? '#1E293B' : '#D1D5DB',
+                                backgroundColor: settings.autoSave ? '#4169E1' : '#D1D5DB',
                             }}
                             onClick={() => handleChange('autoSave', !settings.autoSave)}
                         >
@@ -275,7 +275,7 @@ const styles = {
     },
     saveButton: {
         padding: '12px 26px',
-        background: 'linear-gradient(135deg, #D4AF37 0%, #E8C547 50%, #D4AF37 100%)',
+        background: 'linear-gradient(135deg, #4169E1 0%, #6B8DF5 50%, #4169E1 100%)',
         color: '#0F172A',
         border: 'none',
         borderRadius: '12px',
@@ -283,7 +283,7 @@ const styles = {
         fontSize: '14px',
         fontWeight: '600',
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        boxShadow: '0 4px 16px rgba(212, 175, 55, 0.35)',
+        boxShadow: '0 4px 16px rgba(65, 105, 225, 0.35)',
         letterSpacing: '-0.1px',
         zIndex: 100,
         position: 'relative',
@@ -373,8 +373,7 @@ const styles = {
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(15, 23, 42, 0.6)',
-        backdropFilter: 'blur(6px)',
+        backgroundColor: 'rgba(15, 23, 42, 0.4)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -390,7 +389,7 @@ const styles = {
         flexDirection: 'column',
         alignItems: 'center',
         textAlign: 'center',
-        boxShadow: '0 24px 48px rgba(30, 41, 59, 0.2), 0 0 0 1px rgba(212, 175, 55, 0.05)',
+        boxShadow: '0 24px 48px rgba(30, 41, 59, 0.2), 0 0 0 1px rgba(65, 105, 225, 0.05)',
     },
     successIcon: {
         marginBottom: '24px',
@@ -424,7 +423,7 @@ const styles = {
     modalButton: {
         width: '100%',
         padding: '12px 28px',
-        background: 'linear-gradient(135deg, #D4AF37 0%, #E8C547 50%, #D4AF37 100%)',
+        background: 'linear-gradient(135deg, #4169E1 0%, #6B8DF5 50%, #4169E1 100%)',
         color: '#0F172A',
         border: 'none',
         borderRadius: '12px',
@@ -432,6 +431,6 @@ const styles = {
         fontSize: '14px',
         fontWeight: '600',
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        boxShadow: '0 4px 16px rgba(212, 175, 55, 0.35)',
+        boxShadow: '0 4px 16px rgba(65, 105, 225, 0.35)',
     },
 }

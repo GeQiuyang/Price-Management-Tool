@@ -466,7 +466,6 @@ const styles = {
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(15, 23, 42, 0.6)',
-    backdropFilter: 'blur(6px)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -479,7 +478,7 @@ const styles = {
     border: '1px solid rgba(30, 41, 59, 0.08)',
     width: '400px',
     maxWidth: '92%',
-    boxShadow: '0 24px 48px rgba(30, 41, 59, 0.2), 0 0 0 1px rgba(212, 175, 55, 0.05)',
+    boxShadow: '0 24px 48px rgba(30, 41, 59, 0.2), 0 0 0 1px rgba(65, 105, 225, 0.05)',
   },
   modalTitle: {
     fontFamily: "'Playfair Display', serif",

@@ -4,21 +4,21 @@ import * as XLSX from 'xlsx'
 const API_URL = 'http://localhost:3001/api'
 
 const modalAnimationStyles = `
-  @keyframes modalFadeIn {
+  @keyframes modalOverlayIn {
     from { opacity: 0; }
     to { opacity: 1; }
   }
-  @keyframes modalSlideIn {
-    from { opacity: 0; transform: scale(0.9) translateY(-20px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
-  }
-  @keyframes modalFadeOut {
+  @keyframes modalOverlayOut {
     from { opacity: 1; }
     to { opacity: 0; }
   }
+  @keyframes modalSlideIn {
+    from { opacity: 0; transform: translateY(32px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
   @keyframes modalSlideOut {
-    from { opacity: 1; transform: scale(1) translateY(0); }
-    to { opacity: 0; transform: scale(0.9) translateY(-20px); }
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to { opacity: 0; transform: translateY(24px) scale(0.97); }
   }
   @keyframes spin {
     to { transform: rotate(360deg); }
@@ -112,9 +112,7 @@ export default function QuoteGenerator() {
     // 清除确认对话框
     const [showClearModal, setShowClearModal] = useState(false)
     const [isClearClosing, setIsClearClosing] = useState(false)
-    // 删除报价单确认对话框
-    const [deleteListId, setDeleteListId] = useState(null)
-    const [isDeleteListClosing, setIsDeleteListClosing] = useState(false)
+
 
     // 初始化加载基础数据
     useEffect(() => {
@@ -168,36 +166,23 @@ export default function QuoteGenerator() {
         }
     }
 
-    const handleDeleteQuoteListClick = (id, e) => {
+    const handleDeleteQuoteListClick = async (id, e) => {
         e.stopPropagation()
         if (quoteLists.length <= 1) {
             alert('必须保留至少一个报价单')
             return
         }
-        setDeleteListId(id)
-    }
 
-    const handleConfirmDeleteList = async () => {
-        if (!deleteListId) return
         try {
-            await fetch(`${API_URL}/quote-lists/${deleteListId}`, { method: 'DELETE' })
-            const newLists = quoteLists.filter(list => list.id !== deleteListId)
+            await fetch(`${API_URL}/quote-lists/${id}`, { method: 'DELETE' })
+            const newLists = quoteLists.filter(list => list.id !== id)
             setQuoteLists(newLists)
-            if (activeQuoteListId === deleteListId) {
+            if (activeQuoteListId === id) {
                 setActiveQuoteListId(newLists[0].id)
             }
         } catch (err) {
             console.error('删除报价单失败:', err)
         }
-        handleCloseDeleteListModal()
-    }
-
-    const handleCloseDeleteListModal = () => {
-        setIsDeleteListClosing(true)
-        setTimeout(() => {
-            setDeleteListId(null)
-            setIsDeleteListClosing(false)
-        }, 200)
     }
 
     const handleUpdateListName = async (id) => {
@@ -309,16 +294,20 @@ export default function QuoteGenerator() {
     const handleDecreaseFromModal = (product, e) => {
         e.stopPropagation()
         const existing = quoteItems.find(item => item.productId === product.id)
-        if (existing && existing.quantity > 1) {
+        if (existing) {
             const newQty = existing.quantity - 1
-            setQuoteItems(quoteItems.map(item =>
-                item.productId === product.id ? { ...item, quantity: newQty } : item
-            ))
-            fetch(`${API_URL}/quote-items/${existing.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ price: existing.price, quantity: newQty }),
-            })
+            if (newQty <= 0) {
+                handleRemoveItem(existing.id)
+            } else {
+                setQuoteItems(quoteItems.map(item =>
+                    item.productId === product.id ? { ...item, quantity: newQty } : item
+                ))
+                fetch(`${API_URL}/quote-items/${existing.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ price: existing.price, quantity: newQty }),
+                })
+            }
         }
     }
 
@@ -333,15 +322,19 @@ export default function QuoteGenerator() {
         e.stopPropagation()
         const existing = quoteItems.find(item => item.productId === product.id)
         if (existing) {
-            const num = Math.max(1, parseInt(value) || 1)
-            setQuoteItems(quoteItems.map(item =>
-                item.productId === product.id ? { ...item, quantity: num, qtyInput: undefined } : item
-            ))
-            fetch(`${API_URL}/quote-items/${existing.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ price: existing.price, quantity: num }),
-            })
+            const num = Math.max(0, parseInt(value) || 0)
+            if (num <= 0) {
+                handleRemoveItem(existing.id)
+            } else {
+                setQuoteItems(quoteItems.map(item =>
+                    item.productId === product.id ? { ...item, quantity: num, qtyInput: undefined } : item
+                ))
+                fetch(`${API_URL}/quote-items/${existing.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ price: existing.price, quantity: num }),
+                })
+            }
         }
     }
 
@@ -352,17 +345,21 @@ export default function QuoteGenerator() {
     }
 
     const handleQuantityBlur = (id, value) => {
-        const num = Math.max(1, parseInt(value) || 1)
-        setQuoteItems(quoteItems.map(item =>
-            item.id === id ? { ...item, quantity: num, qtyInput: undefined } : item
-        ))
-        const item = quoteItems.find(i => i.id === id)
-        if (item) {
-            fetch(`${API_URL}/quote-items/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ price: item.price, quantity: num }),
-            })
+        const num = Math.max(0, parseInt(value) || 0)
+        if (num <= 0) {
+            handleRemoveItem(id)
+        } else {
+            setQuoteItems(quoteItems.map(item =>
+                item.id === id ? { ...item, quantity: num, qtyInput: undefined } : item
+            ))
+            const item = quoteItems.find(i => i.id === id)
+            if (item) {
+                fetch(`${API_URL}/quote-items/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ price: item.price, quantity: num }),
+                })
+            }
         }
     }
 
@@ -383,16 +380,20 @@ export default function QuoteGenerator() {
 
     const handleDecreaseQuantity = (id) => {
         const item = quoteItems.find(i => i.id === id)
-        if (item && item.quantity > 1) {
+        if (item) {
             const newQty = item.quantity - 1
-            setQuoteItems(quoteItems.map(i =>
-                i.id === id ? { ...i, quantity: newQty } : i
-            ))
-            fetch(`${API_URL}/quote-items/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ price: item.price, quantity: newQty }),
-            })
+            if (newQty <= 0) {
+                handleRemoveItem(id)
+            } else {
+                setQuoteItems(quoteItems.map(i =>
+                    i.id === id ? { ...i, quantity: newQty } : i
+                ))
+                fetch(`${API_URL}/quote-items/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ price: item.price, quantity: newQty }),
+                })
+            }
         }
     }
 
@@ -461,88 +462,104 @@ export default function QuoteGenerator() {
         const numberPart = numbers ? numbers.join('') : ''
         const isNumericOnly = /^\d+$/.test(keyword)
 
-        // 导管类智能搜索：将自然语言提取为结构化 JSON
-        const parsePipeQuery = (kw) => {
-            const pipeTypeMatch = kw.match(/(300|260|273|219)/)
-            const pipeType = pipeTypeMatch ? pipeTypeMatch[1] : null
 
-            let threadType = null
-            if (/尖丝|尖/.test(kw)) threadType = '尖丝'
-            else if (/方丝|方/.test(kw)) threadType = '方丝'
-
-            let name = null
-            if (pipeType && threadType) {
-                name = `${pipeType}${threadType}导管`
-            }
-
-            let jointSpec = null
-            if (/公扣/.test(kw)) jointSpec = '公扣'
-            else if (/母扣/.test(kw)) jointSpec = '母扣'
-            else if (/衬套/.test(kw)) jointSpec = '衬套'
-            const isJointQuery = /接头|衬套/.test(kw) || jointSpec !== null
-
-            // 长度 (L)：支持 "1米"/"1m"/"0.5米"/"1.5m" 等 (排除了 mm)
-            const lengthMatch = kw.match(/(\d+\.?\d*)\s*(?:m|米)(?!m|毫米)/i)
-            const L = lengthMatch ? parseFloat(lengthMatch[1]) : null
-
-            let T = null
-            const thickMatch1 = kw.match(/(\d+\.?\d*)\s*(?:mm|毫米|厚|壁厚|外径)/i)
-            const thickMatch2 = kw.match(/(?:厚度|壁厚|外径)[：:]?\s*(\d+\.?\d*)/)
-            const thickMatch3 = kw.match(/(?:(?:米|m)(?!m|毫米)[^+]*\+\s*|\+\s*)(\d+\.?\d*)\s*(?:mm|毫米)?\s*$/i)
-
-            if (thickMatch1) {
-                T = parseFloat(thickMatch1[1])
-            } else if (thickMatch2) {
-                T = parseFloat(thickMatch2[1])
-            } else if (thickMatch3) {
-                T = parseFloat(thickMatch3[1])
-            } else {
-                const allNums = [...kw.matchAll(/(?<!\d\.)\d+(?:\.\d+)?(?!m|米|mm)/gi)].map(m => parseFloat(m[0]))
-                for (const n of allNums) {
-                    if (n !== L && n !== parseInt(pipeType) && n !== 6) {
-                        T = n;
-                        break;
-                    }
+        // 导管类严格搜索：基于【产品名称】+【产品描述中的长度和厚度】
+        // 导管搜索格式：300+尖丝+导管+长度+厚度
+        // 料斗搜索格式：料斗+尺寸+厚度
+        // 接头搜索格式：300+尖丝+接头+公扣/母扣/衬套
+        const levelPipe = (() => {
+            let remaining = keyword.replace(/[\s+]+/g, '')
+            let queryDiameter = null
+            const dm = remaining.match(/^(\d{3})/)
+            if (dm) { queryDiameter = dm[1]; remaining = remaining.slice(3) }
+            let queryThread = null
+            const tm = remaining.match(/(尖丝|方丝)/)
+            if (tm) { queryThread = tm[1]; remaining = remaining.replace(tm[1], '') }
+            let queryType = null
+            const tym = remaining.match(/(导管|接头|衬套|公扣|母扣|料斗)/)
+            if (tym) { queryType = tym[1]; remaining = remaining.replace(tym[1], '') }
+            let queryThickness = null
+            const thm = remaining.match(/(\d+\.?\d*)mm/)
+            if (thm) { queryThickness = thm[1]; remaining = remaining.replace(thm[0], '') }
+            let queryLength = null
+            const lm = remaining.match(/(\d+\.?\d*)m/)
+            if (lm) { queryLength = lm[1]; remaining = remaining.replace(lm[0], '') }
+            const remainingNums = remaining.match(/\d+\.?\d*/g) || []
+            let queryHopperSize = null
+            if (queryType === '料斗') {
+                const hopperNums = keyword.match(/\d+\.?\d*/g) || []
+                if (hopperNums.length >= 2) {
+                    queryHopperSize = hopperNums[0]
+                    if (!queryThickness) queryThickness = hopperNums[1]
+                } else if (hopperNums.length === 1) {
+                    queryHopperSize = hopperNums[0]
                 }
+            } else {
+                if (!queryThickness && remainingNums.length > 0) queryThickness = remainingNums[0]
             }
 
-            const hasPipeKeywords = pipeType || kw.includes('导管') || isJointQuery || L !== null || T !== null
-            return { name, pipeType, threadType, L, T, hasPipeKeywords, isJointQuery, jointSpec }
-        }
-        const pipeQuery = parsePipeQuery(keyword)
-        if (pipeQuery.hasPipeKeywords && (pipeQuery.pipeType || pipeQuery.threadType || pipeQuery.L !== null || pipeQuery.T !== null || pipeQuery.isJointQuery)) {
-            const pipeResults = products.filter((p) => {
+            return products.filter(p => {
                 if (p.category !== '导管类') return false
 
-                // 严禁返回钻宝、SMS6系、钻金 (除非用户输入包含)
                 const excludeWords = ['钻宝', 'SMS6系', '钻金']
                 for (const word of excludeWords) {
                     if (p.name.includes(word) && !keyword.includes(word)) return false
                 }
 
-                if (pipeQuery.isJointQuery) {
-                    if (!p.name.includes('接头') && !p.name.includes('衬套')) return false
-                    if (pipeQuery.pipeType && !p.name.includes(pipeQuery.pipeType)) return false
-                    if (pipeQuery.threadType && !p.name.includes(pipeQuery.threadType)) return false
-                    if (pipeQuery.jointSpec && !p.name.includes(pipeQuery.jointSpec)) return false
+                const name = p.name
+                const desc = p.description || ''
+                const isHopper = name.includes('料斗')
+                const isPipe = name.includes('导管')
+                const isJoint = name.includes('接头') || name.includes('公扣') || name.includes('母扣') || name.includes('衬套')
 
-                    if (pipeQuery.T !== null && !(p.description && p.description.includes(`外径：${pipeQuery.T}`))) return false
+                if (isHopper) {
+                    if (queryType && queryType !== '料斗') return false
+                    if (queryHopperSize) {
+                        const nameSize = name.match(/^(\d+\.?\d*)/)
+                        if (!nameSize || nameSize[1] !== queryHopperSize) return false
+                    }
+                    if (queryThickness) {
+                        const descThickness = desc.match(/厚度[：:]?\s*(\d+\.?\d*)mm/)
+                        if (!descThickness || descThickness[1] !== queryThickness) return false
+                    }
+                    if (queryDiameter || queryThread) return false
                     return true
                 }
 
-                if (pipeQuery.name) {
-                    if (!p.name.includes(pipeQuery.name)) return false
-                } else {
-                    if (pipeQuery.pipeType && !p.name.includes(pipeQuery.pipeType)) return false
-                    if (pipeQuery.threadType && !p.name.includes(pipeQuery.threadType)) return false
+                if (isPipe) {
+                    if (queryType && queryType !== '导管') return false
+                    if (queryDiameter) {
+                        const nameDiameter = name.match(/^(\d+)/)
+                        if (!nameDiameter || nameDiameter[1] !== queryDiameter) return false
+                    }
+                    if (queryThread && !name.includes(queryThread)) return false
+                    if (queryLength) {
+                        const descLength = desc.match(/长度[：:]?\s*(\d+\.?\d*)m/)
+                        if (!descLength || descLength[1] !== queryLength) return false
+                    }
+                    if (queryThickness) {
+                        const descThickness = desc.match(/壁厚[：:]?\s*(\d+\.?\d*)mm/)
+                        if (!descThickness || descThickness[1] !== queryThickness) return false
+                    }
+                    return true
                 }
 
-                if (pipeQuery.L !== null && !p.name.includes(`${pipeQuery.L}m`)) return false
-                if (pipeQuery.T !== null && !(p.description && p.description.includes(`壁厚：${pipeQuery.T}`))) return false
-                return true
+                if (isJoint) {
+                    if (queryType && !name.includes(queryType)) return false
+                    if (queryDiameter) {
+                        const nameDiameter = name.match(/^(\d+)/)
+                        if (!nameDiameter || nameDiameter[1] !== queryDiameter) return false
+                    }
+                    if (queryThread && !name.includes(queryThread)) return false
+                    if (queryLength || queryThickness) return false
+                    return true
+                }
+
+                const searchableText = `${name} ${desc}`.toLowerCase()
+                const segments = keyword.toLowerCase().match(/[\u4e00-\u9fff]+|[a-z0-9.]+/gi) || [keyword.toLowerCase()]
+                return segments.every(seg => searchableText.includes(seg))
             })
-            if (pipeResults.length > 0) return pipeResults
-        }
+        })()
 
         // 钻具类专有搜索规则：提取【产品名称】和【型号】，组合后作为搜索关键词
         const drillKeyword = keyword.replace(/[\s\-]+/g, '').toLowerCase()
@@ -608,7 +625,7 @@ export default function QuoteGenerator() {
 
         const seen = new Set()
         const result = []
-        for (const list of [levelDrill, level0, level1, level2, level3, level4]) {
+        for (const list of [levelPipe, levelDrill, level0, level1, level2, level3, level4]) {
             for (const p of list) {
                 if (!seen.has(p.id)) {
                     seen.add(p.id)
@@ -701,8 +718,12 @@ export default function QuoteGenerator() {
 
     // ─── 导出 ───
     const handleExportQuote = () => {
-        if (quoteItems.length === 0) return
-        const exportData = quoteItems.map(item => ({
+        const activeItems = quoteItems.filter(item => item.quantity > 0)
+        if (activeItems.length === 0) {
+            alert('没有数量大于0的产品，无法导出')
+            return
+        }
+        const exportData = activeItems.map(item => ({
             产品名称: item.name,
             产品规格: item.description || '',
             单价: item.price,
@@ -765,14 +786,14 @@ export default function QuoteGenerator() {
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '6px',
-                                    padding: '6px 16px',
-                                    borderRadius: '8px',
+                                    padding: '10px 18px',
+                                    borderRadius: '12px',
                                     cursor: 'pointer',
-                                    backgroundColor: activeQuoteListId === list.id ? '#1E293B' : 'white',
+                                    backgroundColor: activeQuoteListId === list.id ? '#4169E1' : 'white',
                                     color: activeQuoteListId === list.id ? 'white' : '#4b5563',
-                                    border: `1px solid ${activeQuoteListId === list.id ? '#1E293B' : '#e5e7eb'}`,
-                                    boxShadow: activeQuoteListId === list.id ? '0 1px 2px rgba(79, 70, 229, 0.1)' : 'none',
-                                    transition: 'all 0.2s',
+                                    border: `1px solid ${activeQuoteListId === list.id ? '#4169E1' : '#e5e7eb'}`,
+                                    boxShadow: activeQuoteListId === list.id ? '0 4px 12px rgba(65, 105, 225, 0.2)' : 'none',
+                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                                     whiteSpace: 'nowrap',
                                     fontSize: '14px',
                                     fontWeight: activeQuoteListId === list.id ? '500' : '400',
@@ -848,8 +869,8 @@ export default function QuoteGenerator() {
                                 }}
                                 title="添加报价单"
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.borderColor = '#1E293B';
-                                    e.currentTarget.style.color = '#1E293B';
+                                    e.currentTarget.style.borderColor = '#4169E1';
+                                    e.currentTarget.style.color = '#4169E1';
                                 }}
                                 onMouseLeave={(e) => {
                                     e.currentTarget.style.borderColor = '#d1d5db';
@@ -941,7 +962,6 @@ export default function QuoteGenerator() {
                                             <button
                                                 style={styles.quantityBtn}
                                                 onClick={() => handleDecreaseQuantity(item.id)}
-                                                disabled={item.quantity <= 1}
                                             >
                                                 −
                                             </button>
@@ -1063,14 +1083,14 @@ export default function QuoteGenerator() {
                 <div
                     style={{
                         ...styles.modalOverlay,
-                        animation: isClosing ? 'modalFadeOut 0.2s ease-out forwards' : 'modalFadeIn 0.2s ease-out forwards',
+                        backgroundColor: 'transparent',
                     }}
                     onClick={handleCloseProductModal}
                 >
                     <div
                         style={{
                             ...styles.modal,
-                            animation: isClosing ? 'modalSlideOut 0.2s ease-out forwards' : 'modalSlideIn 0.2s ease-out forwards',
+                            animation: isClosing ? 'modalSlideOut 0.2s ease forwards' : 'modalSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
                         }}
                         onClick={(e) => e.stopPropagation()}
                     >
@@ -1099,9 +1119,9 @@ export default function QuoteGenerator() {
                                         border: '1px solid',
                                         borderRadius: '6px',
                                         cursor: 'pointer',
-                                        borderColor: !useDealerPrice ? '#1E293B' : '#d1d5db',
-                                        backgroundColor: !useDealerPrice ? '#F8FAFC' : 'white',
-                                        color: !useDealerPrice ? '#1E293B' : '#6b7280',
+                                        borderColor: !useDealerPrice ? '#4169E1' : '#d1d5db',
+                                        backgroundColor: !useDealerPrice ? 'rgba(65, 105, 225, 0.05)' : 'white',
+                                        color: !useDealerPrice ? '#4169E1' : '#6b7280',
                                     }}
                                     onClick={() => setUseDealerPrice(false)}
                                 >终端价</button>
@@ -1114,9 +1134,9 @@ export default function QuoteGenerator() {
                                         border: '1px solid',
                                         borderRadius: '6px',
                                         cursor: 'pointer',
-                                        borderColor: useDealerPrice ? '#1E293B' : '#d1d5db',
-                                        backgroundColor: useDealerPrice ? '#F8FAFC' : 'white',
-                                        color: useDealerPrice ? '#1E293B' : '#6b7280',
+                                        borderColor: useDealerPrice ? '#4169E1' : '#d1d5db',
+                                        backgroundColor: useDealerPrice ? 'rgba(65, 105, 225, 0.05)' : 'white',
+                                        color: useDealerPrice ? '#4169E1' : '#6b7280',
                                     }}
                                     onClick={() => setUseDealerPrice(true)}
                                 >经销商价</button>
@@ -1153,13 +1173,12 @@ export default function QuoteGenerator() {
                                                         <button
                                                             style={styles.productActionBtn}
                                                             onClick={(e) => handleDecreaseFromModal(product, e)}
-                                                            disabled={inQuote.quantity <= 1}
                                                         >
                                                             −
                                                         </button>
                                                         <input
                                                             type="number"
-                                                            min="1"
+                                                            min="0"
                                                             className="product-quantity-input"
                                                             style={styles.productQuantityInput}
                                                             value={inQuote.qtyInput !== undefined ? inQuote.qtyInput : inQuote.quantity}
@@ -1290,13 +1309,13 @@ export default function QuoteGenerator() {
                                     cy="32"
                                     r="28"
                                     fill="none"
-                                    stroke="#DC2626"
+                                    stroke="#0F172A"
                                     strokeWidth="3"
                                     style={{ animation: 'warningPulse 2s ease-in-out infinite' }}
                                 />
                                 <path
                                     d="M20 32 L44 32"
-                                    stroke="#DC2626"
+                                    stroke="#0F172A"
                                     strokeWidth="3"
                                     strokeLinecap="round"
                                 />
@@ -1328,46 +1347,7 @@ export default function QuoteGenerator() {
                     </div>
                 </div>
             )}
-            {/* ─── 删除报价单确认弹窗 ─── */}
-            {deleteListId && (
-                <div
-                    style={{
-                        ...styles.modalOverlay,
-                        animation: isDeleteListClosing ? 'modalFadeOut 0.2s ease-out forwards' : 'modalFadeIn 0.2s ease-out forwards',
-                    }}
-                    onClick={handleCloseDeleteListModal}
-                >
-                    <div
-                        style={{
-                            ...styles.clearModal,
-                            animation: isDeleteListClosing ? 'modalSlideOut 0.2s ease-out forwards' : 'modalSlideIn 0.2s ease-out forwards',
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div style={styles.clearModalIcon}>
-                            <div style={{
-                                width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#FEF2F2',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#E11D48'
-                            }}>
-                                <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                            </div>
-                        </div>
-                        <h3 style={styles.clearModalTitle}>删除报价单</h3>
-                        <p style={styles.clearModalMessage}>确定要删除该报价单及其包含的所有产品数据吗？此操作不可恢复。</p>
 
-                        <div style={styles.clearModalButtons}>
-                            <button style={styles.clearModalCancel} onClick={handleCloseDeleteListModal}>
-                                取消
-                            </button>
-                            <button style={styles.clearModalConfirm} onClick={handleConfirmDeleteList}>
-                                确定删除
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     )
 }
@@ -1378,9 +1358,9 @@ const styles = {
     pageTitle: { fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: '28px', fontWeight: '700', color: '#0F172A', margin: 0, letterSpacing: '-0.02em' },
     topActions: { display: 'flex', alignItems: 'center', gap: '14px', position: 'relative', zIndex: 100 },
     addButton: {
-        padding: '12px 26px', background: 'linear-gradient(135deg, #D4AF37 0%, #E8C547 50%, #D4AF37 100%)', color: '#0F172A', border: 'none',
+        padding: '12px 26px', background: 'linear-gradient(135deg, #4169E1 0%, #6B8DF5 50%, #4169E1 100%)', color: '#0F172A', border: 'none',
         borderRadius: '12px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        boxShadow: '0 4px 16px rgba(212, 175, 55, 0.35)', letterSpacing: '-0.1px', zIndex: 100, position: 'relative'
+        boxShadow: '0 4px 16px rgba(65, 105, 225, 0.35)', letterSpacing: '-0.1px', zIndex: 100, position: 'relative'
     },
     importButton: {
         padding: '12px 26px', backgroundColor: '#FFFFFF', color: '#64748B',
@@ -1406,11 +1386,11 @@ const styles = {
         padding: '12px 24px', backgroundColor: 'transparent', border: 'none', borderRadius: '10px', cursor: 'pointer',
         fontSize: '14px', fontWeight: '500', color: '#64748B', display: 'flex', alignItems: 'center', gap: '10px', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
     },
-    tabActive: { background: 'linear-gradient(135deg, #1E293B 0%, #334155 100%)', color: '#FFFFFF', boxShadow: '0 4px 12px rgba(30, 41, 59, 0.25)' },
+    tabActive: { background: 'linear-gradient(135deg, #4169E1 0%, #3355C0 100%)', color: '#FFFFFF', boxShadow: '0 4px 12px rgba(65, 105, 225, 0.25)' },
     tableCard: { backgroundColor: '#FFFFFF', borderRadius: '18px', border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 2px 12px rgba(30, 41, 59, 0.04), 0 0 0 1px rgba(30, 41, 59, 0.02)', transition: 'box-shadow 0.3s ease, transform 0.3s ease' },
     tableToolbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #E2E8F0' },
     tableTitle: { fontSize: '16px', fontWeight: '600', color: '#1E293B' },
-    importMoreBtn: { padding: '8px 18px', backgroundColor: 'rgba(212, 175, 55, 0.08)', color: '#B8860B', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '10px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' },
+    importMoreBtn: { padding: '8px 18px', backgroundColor: 'rgba(65, 105, 225, 0.08)', color: '#3355C0', border: '1px solid rgba(65, 105, 225, 0.2)', borderRadius: '10px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' },
     tableScroll: { overflowX: 'auto' },
     table: { width: '100%', borderCollapse: 'collapse' },
     tableHeader: { backgroundColor: '#F8FAFC' },
@@ -1419,7 +1399,7 @@ const styles = {
     td: { padding: '18px 24px', fontSize: '14px', color: '#1E293B' },
     tdSku: { padding: '18px 24px', fontSize: '13px', color: '#64748B', fontFamily: 'monospace', fontWeight: '500' },
     tdDesc: { padding: '18px 24px', fontSize: '13px', color: '#64748B', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-    tdTotal: { padding: '18px 24px', fontSize: '16px', fontWeight: '700', color: '#D4AF37' },
+    tdTotal: { padding: '18px 24px', fontSize: '16px', fontWeight: '700', color: '#4169E1' },
     tdIndex: { padding: '18px 24px', fontSize: '12px', color: '#64748B', fontWeight: '500' },
     inlineInput: {
         width: '80px', padding: '8px 12px', border: '1px solid #E2E8F0', borderRadius: '10px',
@@ -1437,7 +1417,7 @@ const styles = {
     },
     totalRow: { backgroundColor: '#F8FAFC' },
     totalLabel: { padding: '18px 24px', fontSize: '14px', fontWeight: '700', color: '#1E293B', textAlign: 'right' },
-    totalValue: { padding: '18px 24px', fontSize: '18px', fontWeight: '700', color: '#D4AF37' },
+    totalValue: { padding: '18px 24px', fontSize: '18px', fontWeight: '700', color: '#4169E1' },
     dropZone: { borderRadius: '20px', border: '2px dashed #E2E8F0', padding: '60px 40px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s ease', backgroundColor: '#FAFAF9' },
     dropIcon: { fontSize: '56px', marginBottom: '16px' },
     dropTitle: { fontSize: '16px', fontWeight: '600', color: '#1E293B', marginBottom: '8px' },
@@ -1446,8 +1426,8 @@ const styles = {
     spinner: { width: '32px', height: '32px', border: '3px solid #E2E8F0', borderTopColor: '#0F172A', borderRadius: '50%', animation: 'spin 0.8s linear infinite' },
     loadingText: { fontSize: '14px', color: '#64748B' },
     // Modal
-    modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
-    modal: { backgroundColor: '#FFFFFF', padding: '0', borderRadius: '20px', border: '1px solid rgba(30, 41, 59, 0.08)', width: '600px', maxWidth: '92%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 48px rgba(30, 41, 59, 0.2), 0 0 0 1px rgba(212, 175, 55, 0.05)' },
+    modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
+    modal: { backgroundColor: '#FFFFFF', padding: '0', borderRadius: '24px', border: 'none', width: '600px', maxWidth: '92%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255,255,255,0.1)' },
     modalHeader: { padding: '24px 28px', borderBottom: '1px solid #F1F5F9', backgroundColor: '#FDFCFB', borderRadius: '20px 20px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 },
     modalTitle: { fontFamily: "'Playfair Display', serif", fontSize: '20px', fontWeight: '600', margin: 0, color: '#1E293B' },
     modalSubtitle: { fontSize: '13px', color: '#64748B' },
@@ -1459,7 +1439,7 @@ const styles = {
     productName: { fontSize: '15px', fontWeight: '600', color: '#1E293B', marginBottom: '4px' },
     productSku: { fontSize: '13px', color: '#64748B', fontFamily: 'monospace' },
     productRight: { display: 'flex', alignItems: 'center', gap: '12px' },
-    productPrice: { fontSize: '16px', fontWeight: '700', color: '#D4AF37' },
+    productPrice: { fontSize: '16px', fontWeight: '700', color: '#4169E1' },
     productActions: { display: 'flex', alignItems: 'center', gap: '4px' },
     productActionBtn: {
         width: '28px', height: '28px', padding: '0', border: '1px solid #E2E8F0', borderRadius: '8px',
@@ -1478,7 +1458,7 @@ const styles = {
     rowBadge: { fontSize: '12px', color: '#059669', backgroundColor: '#ECFDF5', padding: '4px 12px', borderRadius: '10px', fontWeight: '600' },
     sheetTabs: { display: 'flex', gap: '6px', padding: '16px 24px', borderBottom: '1px solid #E2E8F0', overflowX: 'auto', flexShrink: 0 },
     sheetTab: { padding: '8px 16px', border: '1px solid #E2E8F0', borderRadius: '10px', backgroundColor: 'transparent', color: '#64748B', cursor: 'pointer', fontSize: '14px', fontWeight: '600', whiteSpace: 'nowrap', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' },
-    sheetTabActive: { background: 'linear-gradient(135deg, #1E293B 0%, #334155 100%)', color: '#FFFFFF', borderColor: 'transparent', boxShadow: '0 4px 12px rgba(30, 41, 59, 0.25)' },
+    sheetTabActive: { background: 'linear-gradient(135deg, #4169E1 0%, #3355C0 100%)', color: '#FFFFFF', borderColor: 'transparent', boxShadow: '0 4px 12px rgba(65, 105, 225, 0.25)' },
     previewScroll: { flex: 1, overflowY: 'auto', overflowX: 'auto' },
     previewTable: { width: '100%', borderCollapse: 'collapse', minWidth: '500px' },
     previewTh: { padding: '14px 20px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#64748B', backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0', whiteSpace: 'nowrap', position: 'sticky', top: 0, textTransform: 'uppercase', letterSpacing: '1px' },
@@ -1486,18 +1466,18 @@ const styles = {
     moreRows: { padding: '16px', textAlign: 'center', fontSize: '13px', color: '#64748B', backgroundColor: '#F8FAFC' },
     modalButtons: { display: 'flex', justifyContent: 'flex-end', gap: '14px', padding: '20px 28px', backgroundColor: '#F8FAFC', borderTop: '1px solid #F1F5F9', flexShrink: 0, borderRadius: '0 0 20px 20px' },
     cancelButton: { padding: '12px 28px', backgroundColor: '#FFFFFF', color: '#64748B', border: '1px solid #E2E8F0', borderRadius: '12px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' },
-    submitButton: { padding: '12px 28px', background: 'linear-gradient(135deg, #D4AF37 0%, #E8C547 50%, #D4AF37 100%)', color: '#0F172A', border: 'none', borderRadius: '12px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 4px 16px rgba(212, 175, 55, 0.35)' },
-    // Clear Modal
-    clearModal: { backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid rgba(30, 41, 59, 0.08)', width: '420px', maxWidth: '94%', padding: '40px 32px', textAlign: 'center', boxShadow: '0 24px 48px rgba(30, 41, 59, 0.2), 0 0 0 1px rgba(212, 175, 55, 0.05)' },
-    clearModalIcon: { marginBottom: '24px', display: 'flex', justifyContent: 'center' },
-    clearModalTitle: { fontFamily: "'Playfair Display', serif", fontSize: '24px', fontWeight: '600', color: '#1E293B', margin: '0 0 16px 0' },
-    clearModalMessage: { fontSize: '15px', color: '#64748B', lineHeight: '1.6', margin: '0 0 32px 0' },
-    clearModalStats: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '24px', marginBottom: '32px', padding: '24px', backgroundColor: '#F8FAFC', borderRadius: '16px', border: '1px solid #E2E8F0' },
+    submitButton: { padding: '12px 28px', background: 'linear-gradient(135deg, #4169E1 0%, #6B8DF5 50%, #4169E1 100%)', color: '#0F172A', border: 'none', borderRadius: '12px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 4px 16px rgba(65, 105, 225, 0.35)' },
+    // Clear/Delete Modal
+    clearModal: { backgroundColor: 'rgba(255, 255, 255, 1)', borderRadius: '24px', border: '1px solid rgba(226, 232, 240, 0.8)', width: '400px', maxWidth: '90%', padding: '32px', textAlign: 'center', boxShadow: '0 20px 40px rgba(15, 23, 42, 0.1)' },
+    clearModalIcon: { marginBottom: '20px', display: 'flex', justifyContent: 'center' },
+    clearModalTitle: { fontFamily: "'Inter', -apple-system, sans-serif", fontSize: '20px', fontWeight: '700', color: '#0F172A', margin: '0 0 12px 0', letterSpacing: '-0.02em' },
+    clearModalMessage: { fontSize: '14px', color: '#475569', lineHeight: '1.6', margin: '0 0 28px 0' },
+    clearModalStats: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '24px', marginBottom: '32px', padding: '24px', backgroundColor: 'rgba(248, 250, 252, 0.5)', borderRadius: '16px', border: '1px solid rgba(226, 232, 240, 0.5)' },
     statItem: { flex: 1 },
     statValue: { fontSize: '28px', fontWeight: '700', color: '#1E293B', marginBottom: '6px' },
     statLabel: { fontSize: '12px', color: '#64748B', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '1px' },
-    statDivider: { width: '1px', height: '48px', backgroundColor: '#E2E8F0' },
-    clearModalButtons: { display: 'flex', gap: '14px', justifyContent: 'center' },
-    clearModalCancel: { flex: 1, padding: '14px 24px', backgroundColor: '#FFFFFF', color: '#64748B', border: '1px solid #E2E8F0', borderRadius: '12px', cursor: 'pointer', fontSize: '15px', fontWeight: '600', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' },
-    clearModalConfirm: { flex: 1, padding: '14px 24px', backgroundColor: '#E11D48', color: '#fff', border: 'none', borderRadius: '12px', cursor: 'pointer', fontSize: '15px', fontWeight: '600', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 4px 16px rgba(225, 29, 72, 0.35)' },
+    statDivider: { width: '1px', height: '48px', backgroundColor: 'rgba(226, 232, 240, 0.5)' },
+    clearModalButtons: { display: 'flex', gap: '12px', justifyContent: 'center' },
+    clearModalCancel: { flex: 1, padding: '12px 20px', backgroundColor: 'rgba(248, 250, 252, 0.6)', color: '#475569', border: '1px solid rgba(226, 232, 240, 0.8)', borderRadius: '12px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s ease', outline: 'none' },
+    clearModalConfirm: { flex: 1, padding: '12px 20px', backgroundColor: '#4169E1', color: '#FFFFFF', border: '1px solid #4169E1', borderRadius: '12px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s ease', outline: 'none', boxShadow: '0 4px 12px rgba(65, 105, 225, 0.15)' },
 };
