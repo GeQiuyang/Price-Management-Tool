@@ -297,7 +297,7 @@ async function initDB() {
   const initSettings = db.exec('SELECT COUNT(*) as count FROM system_settings')
   if (initSettings[0]?.values[0]?.[0] === 0) {
     const defaults = [
-      ['companyName', 'SalesForce'],
+      ['companyName', 'Vector'],
       ['defaultCurrency', 'CNY'],
       ['language', 'zh-CN'],
       ['timezone', 'Asia/Shanghai'],
@@ -485,7 +485,7 @@ app.post('/api/currencies', (req, res) => {
 
     const result = runSQL(
       'INSERT INTO currencies (code, name, symbol, exchange_rate, is_default) VALUES (?, ?, ?, ?, ?)',
-      [code, name, symbol, exchange_rate, is_default ?1 : 0]
+      [code, name, symbol, exchange_rate, is_default ? 1 : 0]
     )
 
     const newCurrency = queryOne('SELECT * FROM currencies WHERE id = ?', [result.lastInsertRowid])
@@ -508,7 +508,7 @@ app.put('/api/currencies/:id', (req, res) => {
 
     db.run(
       'UPDATE currencies SET code = ?, name = ?, symbol = ?, exchange_rate = ?, is_default = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [code, name, symbol, exchange_rate, is_default ?1 : 0, req.params.id]
+      [code, name, symbol, exchange_rate, is_default ? 1 : 0, req.params.id]
     )
     saveDB()
 
@@ -715,7 +715,7 @@ app.post('/api/ports', (req, res) => {
   try {
     const result = runSQL(
       'INSERT INTO ports (code, name, country, type, is_active) VALUES (?, ?, ?, ?, ?)',
-      [code, name, country, type, is_active !== undefined ? (is_active ?1 : 0) : 1]
+      [code, name, country, type, is_active !== undefined ? (is_active ? 1 : 0) : 1]
     )
 
     const newPort = queryOne('SELECT * FROM ports WHERE id = ?', [result.lastInsertRowid])
@@ -734,7 +734,7 @@ app.put('/api/ports/:id', (req, res) => {
   try {
     db.run(
       'UPDATE ports SET code = ?, name = ?, country = ?, type = ?, is_active = ? WHERE id = ?',
-      [code, name, country, type, is_active !== undefined ? (is_active ?1 : 0) : 1, req.params.id]
+      [code, name, country, type, is_active !== undefined ? (is_active ? 1 : 0) : 1, req.params.id]
     )
     saveDB()
 
@@ -831,7 +831,7 @@ app.post('/api/cost-types', (req, res) => {
   try {
     const result = runSQL(
       'INSERT INTO cost_types (code, name, category, is_seller_responsibility) VALUES (?, ?, ?, ?)',
-      [code, name, category, is_seller_responsibility !== undefined ? (is_seller_responsibility ?1 : 0) : 1]
+      [code, name, category, is_seller_responsibility !== undefined ? (is_seller_responsibility ? 1 : 0) : 1]
     )
 
     const newCostType = queryOne('SELECT * FROM cost_types WHERE id = ?', [result.lastInsertRowid])
@@ -850,7 +850,7 @@ app.put('/api/cost-types/:id', (req, res) => {
   try {
     db.run(
       'UPDATE cost_types SET code = ?, name = ?, category = ?, is_seller_responsibility = ? WHERE id = ?',
-      [code, name, category, is_seller_responsibility !== undefined ? (is_seller_responsibility ?1 : 0) : 1, req.params.id]
+      [code, name, category, is_seller_responsibility !== undefined ? (is_seller_responsibility ? 1 : 0) : 1, req.params.id]
     )
     saveDB()
 
@@ -1022,13 +1022,13 @@ app.use(errorHandler)
 async function startServer() {
   try {
     await initDB()
-    
+
     try {
       await connectRedis()
     } catch (redisError) {
       console.warn('Redis连接失败，将不使用缓存功能:', redisError.message)
     }
-    
+
     app.listen(PORT, () => {
       console.log(`服务器运行在 http://localhost:${PORT}`)
       console.log(`环境: ${process.env.NODE_ENV || 'development'}`)

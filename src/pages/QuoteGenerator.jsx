@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import * as XLSX from 'xlsx'
+import Modal from '../components/Modal'
 
 const API_URL = 'http://localhost:3001/api'
 
@@ -454,8 +455,17 @@ export default function QuoteGenerator() {
     }
 
     const filteredProducts = (() => {
-        if (!searchTerm.trim()) return products
-        const keyword = searchTerm.trim().replace(/-/g, '')
+        const trimmedQuery = searchTerm.trim()
+        if (!trimmedQuery) return products
+
+        // 全局排除 "SMSCC" 品牌干扰项
+        const keyword = trimmedQuery.replace(/SMSCC/gi, '').trim().replace(/-/g, '')
+
+        // 如果剔除品牌名后关键词为空，且原始输入包含品牌名，则认为无有效搜索内容
+        if (!keyword && trimmedQuery.toLowerCase().includes('smscc')) {
+            return []
+        }
+
         const lowerKeyword = keyword.toLowerCase()
         const numbers = keyword.match(/\d+/g)
         const chinesePart = keyword.replace(/[\d\s]+/g, '').toLowerCase()
@@ -512,6 +522,10 @@ export default function QuoteGenerator() {
                 const isPipe = name.includes('导管')
                 const isJoint = name.includes('接头') || name.includes('公扣') || name.includes('母扣') || name.includes('衬套')
 
+                const searchableText = `${name} ${desc}`.toLowerCase()
+                const segments = keyword.toLowerCase().match(/[\u4e00-\u9fff]+|[a-z0-9.]+/gi) || [keyword.toLowerCase()]
+                const textMatch = segments.every(seg => searchableText.includes(seg))
+
                 if (isHopper) {
                     if (queryType && queryType !== '料斗') return false
                     if (queryHopperSize) {
@@ -523,7 +537,7 @@ export default function QuoteGenerator() {
                         if (!descThickness || descThickness[1] !== queryThickness) return false
                     }
                     if (queryDiameter || queryThread) return false
-                    return true
+                    return textMatch
                 }
 
                 if (isPipe) {
@@ -541,7 +555,7 @@ export default function QuoteGenerator() {
                         const descThickness = desc.match(/壁厚[：:]?\s*(\d+\.?\d*)mm/)
                         if (!descThickness || descThickness[1] !== queryThickness) return false
                     }
-                    return true
+                    return textMatch
                 }
 
                 if (isJoint) {
@@ -552,28 +566,23 @@ export default function QuoteGenerator() {
                     }
                     if (queryThread && !name.includes(queryThread)) return false
                     if (queryLength || queryThickness) return false
-                    return true
+                    return textMatch
                 }
 
-                const searchableText = `${name} ${desc}`.toLowerCase()
-                const segments = keyword.toLowerCase().match(/[\u4e00-\u9fff]+|[a-z0-9.]+/gi) || [keyword.toLowerCase()]
-                return segments.every(seg => searchableText.includes(seg))
+                return textMatch
             })
         })()
 
         // 钻具类专有搜索规则：提取【产品名称】和【型号】，组合后作为搜索关键词
-        const drillKeyword = keyword.replace(/[\s\-]+/g, '').toLowerCase()
-        const drillSegments = drillKeyword.match(/[\u4e00-\u9fff]+|[a-zA-Z0-9]+/g) || [drillKeyword]
-
         const levelDrill = products.filter(p => {
             if (p.category !== '钻具类') return false
 
-            const specMatch = p.description && p.description.match(/(?:规格)?型号[：:]?\s*([a-zA-Z0-9\-]+)/)
-            const model = specMatch ? specMatch[1].replace(/[\s\-]+/g, '').toLowerCase() : ''
-            const productName = p.name.replace(/[\s\-]+/g, '').toLowerCase()
-            const targetString = productName + model
+            // 钻具类搜索：合并名称和完整描述进行搜索
+            // 匹配目标也排除 "SMSCC" 以保持一致
+            const searchTarget = `${p.name} ${p.description || ''}`.replace(/SMSCC/gi, '').replace(/[\s\-]+/g, '').toLowerCase()
+            const drillSegments = keyword.match(/[\u4e00-\u9fff]+|[a-zA-Z0-9]+/g) || [keyword]
 
-            return drillSegments.every(seg => targetString.includes(seg))
+            return drillSegments.every(seg => searchTarget.includes(seg.toLowerCase()))
         })
 
         // Level 0: 名称+型号组合精准匹配
@@ -1079,274 +1088,218 @@ export default function QuoteGenerator() {
             )}
 
             {/* ─── 添加产品弹窗 ─── */}
-            {showProductModal && (
-                <div
-                    style={{
-                        ...styles.modalOverlay,
-                        backgroundColor: 'transparent',
-                    }}
-                    onClick={handleCloseProductModal}
-                >
-                    <div
-                        style={{
-                            ...styles.modal,
-                            animation: isClosing ? 'modalSlideOut 0.2s ease forwards' : 'modalSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div style={styles.modalHeader}>
-                            <h3 style={styles.modalTitle}>添加产品</h3>
-                            <span style={styles.modalSubtitle}>{products.length} 个可选产品</span>
-                        </div>
-
-                        <div style={styles.searchBox}>
-                            <input
-                                className="quote-search-input"
-                                style={{ ...styles.searchInput, flex: 1 }}
-                                placeholder="搜索产品名称..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                autoFocus
-                            />
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px' }}>
-                                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>价格类型：</span>
-                                <button
-                                    type="button"
-                                    style={{
-                                        padding: '5px 14px',
-                                        fontSize: '13px',
-                                        fontWeight: '500',
-                                        border: '1px solid',
-                                        borderRadius: '6px',
-                                        cursor: 'pointer',
-                                        borderColor: !useDealerPrice ? '#4169E1' : '#d1d5db',
-                                        backgroundColor: !useDealerPrice ? 'rgba(65, 105, 225, 0.05)' : 'white',
-                                        color: !useDealerPrice ? '#4169E1' : '#6b7280',
-                                    }}
-                                    onClick={() => setUseDealerPrice(false)}
-                                >终端价</button>
-                                <button
-                                    type="button"
-                                    style={{
-                                        padding: '5px 14px',
-                                        fontSize: '13px',
-                                        fontWeight: '500',
-                                        border: '1px solid',
-                                        borderRadius: '6px',
-                                        cursor: 'pointer',
-                                        borderColor: useDealerPrice ? '#4169E1' : '#d1d5db',
-                                        backgroundColor: useDealerPrice ? 'rgba(65, 105, 225, 0.05)' : 'white',
-                                        color: useDealerPrice ? '#4169E1' : '#6b7280',
-                                    }}
-                                    onClick={() => setUseDealerPrice(true)}
-                                >经销商价</button>
-                            </div>
-                        </div>
-
-                        <div style={styles.productList}>
-                            {filteredProducts.length === 0 ? (
-                                <div style={styles.noResult}>未找到匹配产品</div>
-                            ) : (
-                                filteredProducts.map((product) => {
-                                    const inQuote = quoteItems.find(i => i.productId === product.id)
-                                    return (
-                                        <div
-                                            key={product.id}
-                                            style={styles.productItem}
-                                            onClick={() => handleAddProduct(product)}
-                                        >
-                                            <div style={styles.productInfo}>
-                                                <div style={styles.productName}>{product.name}</div>
-                                                <div style={styles.productSku}>{product.description || '-'}</div>
-                                            </div>
-                                            <div style={styles.productRight}>
-                                                <div style={styles.productPrice}>
-                                                    ¥{getProductPrice(product).toLocaleString()}
-                                                    {dualPriceCategories.includes(product.category) && product.dealer_price && (
-                                                        <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '400', marginLeft: '4px' }}>
-                                                            ({useDealerPrice ? '经销' : '终端'})
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                {inQuote ? (
-                                                    <div style={styles.productActions}>
-                                                        <button
-                                                            style={styles.productActionBtn}
-                                                            onClick={(e) => handleDecreaseFromModal(product, e)}
-                                                        >
-                                                            −
-                                                        </button>
-                                                        <input
-                                                            type="number"
-                                                            min="0"
-                                                            className="product-quantity-input"
-                                                            style={styles.productQuantityInput}
-                                                            value={inQuote.qtyInput !== undefined ? inQuote.qtyInput : inQuote.quantity}
-                                                            onChange={(e) => handleQuantityInputChange(product, e.target.value, e)}
-                                                            onBlur={(e) => handleQuantityInputBlur(product, e.target.value, e)}
-                                                            onClick={(e) => e.stopPropagation()}
-                                                        />
-                                                        <button
-                                                            style={styles.productActionBtn}
-                                                            onClick={(e) => handleIncreaseFromModal(product, e)}
-                                                        >
-                                                            ＋
-                                                        </button>
-                                                    </div>
-                                                ) : (
-                                                    <span style={styles.addBadge}>添加</span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )
-                                })
-                            )}
-                        </div>
-
-                        <div style={styles.modalButtons}>
-                            <button style={styles.cancelButton} onClick={handleCloseProductModal}>完成</button>
+            <Modal
+                isOpen={showProductModal}
+                onClose={handleCloseProductModal}
+                title="添加产品"
+                width={600}
+                headerRightContent={<span>{products.length} 个可选产品</span>}
+                footer={
+                    <button className="sf-btn sf-btn-confirm" onClick={handleCloseProductModal}>完成</button>
+                }
+            >
+                <div style={styles.searchBox}>
+                    <input
+                        className="sf-input"
+                        placeholder="搜索产品名称..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        autoFocus
+                    />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px' }}>
+                        <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>价格类型：</span>
+                        <div className="sf-capsule-group">
+                            <button
+                                type="button"
+                                className={`sf-capsule ${!useDealerPrice ? 'active' : ''}`}
+                                onClick={() => setUseDealerPrice(false)}
+                            >终端价</button>
+                            <button
+                                type="button"
+                                className={`sf-capsule ${useDealerPrice ? 'active' : ''}`}
+                                onClick={() => setUseDealerPrice(true)}
+                            >经销商价</button>
                         </div>
                     </div>
                 </div>
-            )}
+
+                <div style={styles.productList}>
+                    {filteredProducts.length === 0 ? (
+                        <div style={styles.noResult}>未找到匹配产品</div>
+                    ) : (
+                        filteredProducts.map((product) => {
+                            const inQuote = quoteItems.find(i => i.productId === product.id)
+                            return (
+                                <div
+                                    key={product.id}
+                                    className="sf-list-item"
+                                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px' }}
+                                    onClick={() => handleAddProduct(product)}
+                                >
+                                    <div style={styles.productInfo}>
+                                        <div style={styles.productName}>{product.name}</div>
+                                        <div style={styles.productSku}>{product.description || '-'}</div>
+                                    </div>
+                                    <div style={styles.productRight}>
+                                        <div style={styles.productPrice}>
+                                            ¥{getProductPrice(product).toLocaleString()}
+                                            {dualPriceCategories.includes(product.category) && product.dealer_price && (
+                                                <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '400', marginLeft: '4px' }}>
+                                                    ({useDealerPrice ? '经销' : '终端'})
+                                                </span>
+                                            )}
+                                        </div>
+                                        {inQuote ? (
+                                            <div style={styles.productActions} onClick={(e) => e.stopPropagation()}>
+                                                <button
+                                                    style={styles.productActionBtn}
+                                                    onClick={(e) => handleDecreaseFromModal(product, e)}
+                                                >
+                                                    −
+                                                </button>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    className="product-quantity-input"
+                                                    style={styles.productQuantityInput}
+                                                    value={inQuote.qtyInput !== undefined ? inQuote.qtyInput : inQuote.quantity}
+                                                    onChange={(e) => handleQuantityInputChange(product, e.target.value, e)}
+                                                    onBlur={(e) => handleQuantityInputBlur(product, e.target.value, e)}
+                                                />
+                                                <button
+                                                    style={styles.productActionBtn}
+                                                    onClick={(e) => handleIncreaseFromModal(product, e)}
+                                                >
+                                                    ＋
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <span style={styles.addBadge}>添加</span>
+                                        )}
+                                    </div>
+                                </div>
+                            )
+                        })
+                    )}
+                </div>
+            </Modal>
 
             {/* ─── Excel 预览弹窗 ─── */}
-            {showPreview && currentSheet && (
-                <div
-                    style={{
-                        ...styles.modalOverlay,
-                        animation: isPreviewClosing ? 'modalFadeOut 0.2s ease-out forwards' : 'modalFadeIn 0.2s ease-out forwards',
-                    }}
-                    onClick={handleClosePreview}
-                >
-                    <div
-                        style={{
-                            ...styles.modal, width: '900px',
-                            animation: isPreviewClosing ? 'modalSlideOut 0.2s ease-out forwards' : 'modalSlideIn 0.2s ease-out forwards',
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div style={styles.modalHeader}>
-                            <h3 style={styles.modalTitle}>📄 {fileName}</h3>
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                                {importedSheets.length > 1 && (
-                                    <span style={styles.sheetBadge}>
-                                        {importedSheets.length} 个工作表
-                                    </span>
-                                )}
-                                <span style={styles.rowBadge}>{currentSheet.rows.length} 行</span>
-                            </div>
-                        </div>
-
+            {/* ─── Excel 预览弹窗 ─── */}
+            <Modal
+                isOpen={showPreview && currentSheet}
+                onClose={handleClosePreview}
+                title={`📄 ${fileName}`}
+                width={900}
+                headerRightContent={
+                    <div style={{ display: 'flex', gap: '8px' }}>
                         {importedSheets.length > 1 && (
-                            <div style={styles.sheetTabs}>
-                                {importedSheets.map((sheet, i) => (
-                                    <button
-                                        key={sheet.name}
-                                        style={{ ...styles.sheetTab, ...(i === activeSheet ? styles.sheetTabActive : {}) }}
-                                        onClick={() => setActiveSheet(i)}
-                                    >
-                                        {sheet.name} ({sheet.rows.length})
-                                    </button>
-                                ))}
-                            </div>
+                            <span style={styles.sheetBadge}>
+                                {importedSheets.length} 个工作表
+                            </span>
                         )}
-
-                        <div style={styles.previewScroll}>
-                            <table style={styles.previewTable}>
-                                <thead>
-                                    <tr>
-                                        {currentSheet.headers.map((h, i) => (
-                                            <th key={i} style={styles.previewTh}>{h || `列${i + 1}`}</th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {currentSheet.rows.slice(0, 50).map((row, rowIdx) => (
-                                        <tr key={rowIdx}>
-                                            {currentSheet.headers.map((_, colIdx) => (
-                                                <td key={colIdx} style={styles.previewTd}>{row[colIdx] ?? ''}</td>
-                                            ))}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            {currentSheet.rows.length > 50 && (
-                                <div style={styles.moreRows}>... 还有 {currentSheet.rows.length - 50} 行</div>
-                            )}
-                        </div>
-
-                        <div style={styles.modalButtons}>
-                            <button style={styles.cancelButton} onClick={handleClosePreview}>取消</button>
-                            <button style={styles.submitButton} onClick={handleConfirmImport}>
-                                确认导入 ({importedSheets.reduce((s, sh) => s + sh.rows.length, 0)} 行)
-                            </button>
-                        </div>
+                        <span style={styles.rowBadge}>{currentSheet?.rows?.length} 行</span>
                     </div>
+                }
+                footer={
+                    <>
+                        <button className="sf-btn sf-btn-cancel" onClick={handleClosePreview}>取消</button>
+                        <button className="sf-btn sf-btn-confirm" onClick={handleConfirmImport}>
+                            确认导入 ({importedSheets.reduce((s, sh) => s + sh.rows.length, 0)} 行)
+                        </button>
+                    </>
+                }
+            >
+                {importedSheets.length > 1 && (
+                    <div className="sf-capsule-group" style={{ paddingBottom: '16px', borderBottom: '1px solid #E2E8F0', marginBottom: '16px' }}>
+                        {importedSheets.map((sheet, i) => (
+                            <button
+                                key={sheet.name}
+                                className={`sf-capsule ${i === activeSheet ? 'active' : ''}`}
+                                onClick={() => setActiveSheet(i)}
+                            >
+                                {sheet.name} ({sheet.rows.length})
+                            </button>
+                        ))}
+                    </div>
+                )}
+
+                <div style={styles.previewScroll}>
+                    <table style={styles.previewTable}>
+                        <thead>
+                            <tr>
+                                {currentSheet?.headers.map((h, i) => (
+                                    <th key={i} style={styles.previewTh}>{h || `列${i + 1}`}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {currentSheet?.rows.slice(0, 50).map((row, rowIdx) => (
+                                <tr key={rowIdx}>
+                                    {currentSheet.headers.map((_, colIdx) => (
+                                        <td key={colIdx} style={styles.previewTd}>{row[colIdx] ?? ''}</td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    {currentSheet?.rows.length > 50 && (
+                        <div style={styles.moreRows}>... 还有 {currentSheet.rows.length - 50} 行</div>
+                    )}
                 </div>
-            )}
+            </Modal>
 
             {/* ─── 清除确认对话框 ─── */}
-            {showClearModal && (
-                <div
-                    style={{
-                        ...styles.modalOverlay,
-                        animation: isClearClosing ? 'modalFadeOut 0.2s ease-out forwards' : 'modalFadeIn 0.2s ease-out forwards',
-                    }}
-                    onClick={handleCloseClearModal}
-                >
-                    <div
-                        style={{
-                            ...styles.clearModal,
-                            animation: isClearClosing ? 'modalSlideOut 0.2s ease-out forwards' : 'modalSlideIn 0.2s ease-out forwards',
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div style={styles.clearModalIcon}>
-                            <svg width="64" height="64" viewBox="0 0 64 64">
-                                <circle
-                                    cx="32"
-                                    cy="32"
-                                    r="28"
-                                    fill="none"
-                                    stroke="#0F172A"
-                                    strokeWidth="3"
-                                    style={{ animation: 'warningPulse 2s ease-in-out infinite' }}
-                                />
-                                <path
-                                    d="M20 32 L44 32"
-                                    stroke="#0F172A"
-                                    strokeWidth="3"
-                                    strokeLinecap="round"
-                                />
-                            </svg>
+            <Modal
+                isOpen={showClearModal}
+                onClose={handleCloseClearModal}
+                title="确认清除"
+                width={400}
+                footer={
+                    <>
+                        <button className="sf-btn sf-btn-cancel" onClick={handleCloseClearModal}>取消</button>
+                        <button className="sf-btn sf-btn-confirm" style={{ backgroundColor: '#E11D48', borderColor: '#E11D48' }} onClick={handleConfirmClear}>
+                            确认清除
+                        </button>
+                    </>
+                }
+            >
+                <div style={{ textAlign: 'center' }}>
+                    <div style={styles.clearModalIcon}>
+                        <svg width="64" height="64" viewBox="0 0 64 64">
+                            <circle
+                                cx="32"
+                                cy="32"
+                                r="28"
+                                fill="none"
+                                stroke="#E11D48" /* Changed from dark slate to red for emphasis */
+                                strokeWidth="3"
+                                style={{ animation: 'warningPulse 2s ease-in-out infinite' }}
+                            />
+                            <path
+                                d="M20 32 L44 32"
+                                stroke="#E11D48"
+                                strokeWidth="3"
+                                strokeLinecap="round"
+                            />
+                        </svg>
+                    </div>
+                    <p style={styles.clearModalMessage}>
+                        确定要清除所有报价信息吗？此操作不可撤销，所有数据将被永久删除。
+                    </p>
+                    <div style={styles.clearModalStats}>
+                        <div style={styles.statItem}>
+                            <div style={styles.statValue}>{quoteItems.length}</div>
+                            <div style={styles.statLabel}>产品项</div>
                         </div>
-                        <h3 style={styles.clearModalTitle}>确认清除</h3>
-                        <p style={styles.clearModalMessage}>
-                            确定要清除所有报价信息吗？此操作不可撤销，所有数据将被永久删除。
-                        </p>
-                        <div style={styles.clearModalStats}>
-                            <div style={styles.statItem}>
-                                <div style={styles.statValue}>{quoteItems.length}</div>
-                                <div style={styles.statLabel}>产品项</div>
-                            </div>
-                            <div style={styles.statDivider}></div>
-                            <div style={styles.statItem}>
-                                <div style={styles.statValue}>¥{totalAmount.toLocaleString()}</div>
-                                <div style={styles.statLabel}>总金额</div>
-                            </div>
-                        </div>
-                        <div style={styles.clearModalButtons}>
-                            <button style={styles.clearModalCancel} onClick={handleCloseClearModal}>
-                                取消
-                            </button>
-                            <button style={styles.clearModalConfirm} onClick={handleConfirmClear}>
-                                确认清除
-                            </button>
+                        <div style={styles.statDivider}></div>
+                        <div style={styles.statItem}>
+                            <div style={styles.statValue}>¥{totalAmount.toLocaleString()}</div>
+                            <div style={styles.statLabel}>总金额</div>
                         </div>
                     </div>
                 </div>
-            )}
+            </Modal>
 
         </div>
     )

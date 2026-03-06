@@ -209,7 +209,7 @@ export default function Dashboard() {
           color: 'var(--text-tertiary)',
           fontWeight: '400',
         }}>
-          欢迎使用 SalesForce 价格管理系统
+          欢迎使用 Vector 价格管理系统
         </p>
       </div>
 
@@ -288,7 +288,7 @@ export default function Dashboard() {
             lineHeight: '1.8',
             marginBottom: '20px',
           }}>
-            SalesForce 提供完整的价格管理功能，涵盖产品目录、成本数据、客户分段、货币管理、
+            Vector 提供完整的价格管理功能，涵盖产品目录、成本数据、客户分段、货币管理、
             税费设置、市场渠道管理以及海运费模拟等核心模块。所有数据实时同步，助力高效决策。
           </p>
 

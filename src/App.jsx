@@ -2,7 +2,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import Products from './pages/Products'
-
 import Customers from './pages/Customers'
 import Currencies from './pages/Currencies'
 import TaxesUnits from './pages/TaxesUnits'

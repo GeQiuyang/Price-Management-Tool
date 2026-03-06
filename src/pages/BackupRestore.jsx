@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import Modal from '../components/Modal'
 import './BackupRestore.css'
 
 function BackupRestore() {
@@ -350,45 +351,44 @@ function BackupRestore() {
       )}
 
       {showRestoreConfirm && selectedBackup && (
-        <div className="modal-overlay" onClick={() => setShowRestoreConfirm(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>确认恢复备份</h2>
-              <button className="close-btn" onClick={() => setShowRestoreConfirm(false)}>×</button>
-            </div>
-            <div className="modal-body">
-              <div className="warning-box">
-                <div className="warning-icon">⚠️</div>
-                <div className="warning-text">
-                  <p><strong>警告：此操作将覆盖当前所有数据！</strong></p>
-                  <p>恢复后，当前的所有更改将丢失。</p>
-                </div>
-              </div>
-              <div className="backup-detail">
-                <p><strong>备份文件：</strong> {selectedBackup.backup_path.split('/').pop()}</p>
-                <p><strong>文件大小：</strong> {formatFileSize(selectedBackup.file_size)}</p>
-                <p><strong>创建时间：</strong> {new Date(selectedBackup.created_at).toLocaleString('zh-CN')}</p>
-                <p><strong>创建者：</strong> {selectedBackup.full_name || selectedBackup.username}</p>
-              </div>
-              <div className="modal-actions">
-                <button
-                  className="cancel-btn"
-                  onClick={() => setShowRestoreConfirm(false)}
-                  disabled={loading}
-                >
-                  取消
-                </button>
-                <button
-                  className="confirm-btn"
-                  onClick={handleRestoreBackup}
-                  disabled={loading}
-                >
-                  {loading ? '恢复中...' : '确认恢复'}
-                </button>
-              </div>
+        <Modal
+          isOpen={showRestoreConfirm}
+          onClose={() => setShowRestoreConfirm(false)}
+          title="确认恢复备份"
+          width={500}
+          footer={null}
+        >
+          <div style={{ backgroundColor: '#FEF2F2', padding: '16px', borderRadius: '8px', display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '20px' }}>
+            <div style={{ fontSize: '24px', lineHeight: '1' }}>⚠️</div>
+            <div style={{ color: '#991B1B', fontSize: '14px', lineHeight: '1.5' }}>
+              <p style={{ margin: '0 0 8px', fontWeight: 'bold' }}>警告：此操作将覆盖当前所有数据！</p>
+              <p style={{ margin: 0 }}>恢复后，当前的所有更改将丢失。</p>
             </div>
           </div>
-        </div>
+          <div style={{ fontSize: '14px', color: '#4B5563', lineHeight: '1.8', backgroundColor: '#F9FAFB', padding: '16px', borderRadius: '8px' }}>
+            <p style={{ margin: '4px 0' }}><strong>备份文件：</strong> {selectedBackup.backup_path.split('/').pop()}</p>
+            <p style={{ margin: '4px 0' }}><strong>文件大小：</strong> {formatFileSize(selectedBackup.file_size)}</p>
+            <p style={{ margin: '4px 0' }}><strong>创建时间：</strong> {new Date(selectedBackup.created_at).toLocaleString('zh-CN')}</p>
+            <p style={{ margin: '4px 0' }}><strong>创建者：</strong> {selectedBackup.full_name || selectedBackup.username}</p>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+            <button
+              className="sf-btn sf-btn-cancel"
+              onClick={() => setShowRestoreConfirm(false)}
+              disabled={loading}
+            >
+              取消
+            </button>
+            <button
+              className="sf-btn sf-btn-confirm"
+              style={{ backgroundColor: '#DC2626', color: '#FFF', border: 'none' }}
+              onClick={handleRestoreBackup}
+              disabled={loading}
+            >
+              {loading ? '恢复中...' : '确认恢复'}
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   )

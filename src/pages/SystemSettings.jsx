@@ -1,37 +1,12 @@
 import { useState, useEffect } from 'react'
-
+import Modal from '../components/Modal'
 const API_URL = 'http://localhost:3001/api'
 
-const modalAnimationStyles = `
-  @keyframes modalFadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  @keyframes modalSlideIn {
-    from { opacity: 0; transform: scale(0.9) translateY(-20px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
-  }
-  @keyframes modalFadeOut {
-    from { opacity: 1; }
-    to { opacity: 0; }
-  }
-  @keyframes modalSlideOut {
-    from { opacity: 1; transform: scale(1) translateY(0); }
-    to { opacity: 0; transform: scale(0.9) translateY(-20px); }
-  }
-  @keyframes checkmark {
-    0% { stroke-dashoffset: 100; }
-    100% { stroke-dashoffset: 0; }
-  }
-  @keyframes checkmarkCircle {
-    0% { stroke-dashoffset: 100; }
-    100% { stroke-dashoffset: 0; }
-  }
-`
+
 
 export default function SystemSettings() {
     const [settings, setSettings] = useState({
-        companyName: 'SalesForce',
+        companyName: 'Vector',
         defaultCurrency: 'CNY',
         language: 'zh-CN',
         timezone: 'Asia/Shanghai',
@@ -82,18 +57,14 @@ export default function SystemSettings() {
     }
 
     const handleCloseModal = () => {
-        setIsClosing(true)
-        setTimeout(() => {
-            setShowSaveModal(false)
-            setIsClosing(false)
-        }, 200)
+        setShowSaveModal(false)
+        setIsClosing(false)
     }
 
     if (loading) return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-tertiary)' }}>加载中...</div>
 
     return (
         <div style={styles.container}>
-            <style>{modalAnimationStyles}</style>
 
             <div style={styles.topBar}>
                 <h2 style={styles.pageTitle}>系统参数</h2>
@@ -187,69 +158,55 @@ export default function SystemSettings() {
                 </div>
             </div>
 
-            {showSaveModal && (
-                <div
-                    style={{
-                        ...styles.modalOverlay,
-                        animation: isClosing ? 'modalFadeOut 0.2s ease-out forwards' : 'modalFadeIn 0.2s ease-out forwards',
-                    }}
-                    onClick={handleCloseModal}
-                >
-                    <div
-                        style={{
-                            ...styles.modal,
-                            animation: isClosing ? 'modalSlideOut 0.2s ease-out forwards' : 'modalSlideIn 0.2s ease-out forwards',
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {saveStatus === 'success' ? (
-                            <>
-                                <div style={styles.successIcon}>
-                                    <svg width="80" height="80" viewBox="0 0 80 80">
-                                        <circle
-                                            cx="40"
-                                            cy="40"
-                                            r="36"
-                                            fill="none"
-                                            stroke="#10B981"
-                                            strokeWidth="4"
-                                            style={{
-                                                animation: 'checkmarkCircle 0.6s ease-in-out forwards',
-                                                strokeDasharray: 226,
-                                                strokeDashoffset: 226,
-                                            }}
-                                        />
-                                        <path
-                                            d="M24 40 L36 52 L56 28"
-                                            fill="none"
-                                            stroke="#10B981"
-                                            strokeWidth="4"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            style={{
-                                                animation: 'checkmark 0.4s ease-in-out 0.3s forwards',
-                                                strokeDasharray: 50,
-                                                strokeDashoffset: 50,
-                                            }}
-                                        />
-                                    </svg>
-                                </div>
-                                <h3 style={styles.modalTitle}>保存成功</h3>
-                                <p style={styles.modalMessage}>系统参数已成功保存</p>
-                            </>
-                        ) : (
-                            <>
-                                <div style={styles.errorIcon}>✕</div>
-                                <h3 style={styles.modalTitle}>保存失败</h3>
-                                <p style={styles.modalMessage}>保存设置时出错，请重试</p>
-                            </>
-                        )}
-                        <button style={styles.modalButton} onClick={handleCloseModal}>
-                            确定
-                        </button>
-                    </div>
+            <Modal
+                isOpen={showSaveModal}
+                onClose={handleCloseModal}
+                title=""
+                width={400}
+                footer={null}
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '10px 0' }}>
+                    {saveStatus === 'success' ? (
+                        <>
+                            <div style={styles.successIcon}>
+                                <svg width="80" height="80" viewBox="0 0 80 80">
+                                    <circle
+                                        cx="40"
+                                        cy="40"
+                                        r="36"
+                                        fill="none"
+                                        stroke="#10B981"
+                                        strokeWidth="4"
+                                        style={{
+                                            strokeDasharray: 226,
+                                            strokeDashoffset: 0,
+                                        }}
+                                    />
+                                    <path
+                                        d="M24 40 L36 52 L56 28"
+                                        fill="none"
+                                        stroke="#10B981"
+                                        strokeWidth="4"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    />
+                                </svg>
+                            </div>
+                            <h3 style={styles.modalTitle}>保存成功</h3>
+                            <p style={styles.modalMessage}>系统参数已成功保存</p>
+                        </>
+                    ) : (
+                        <>
+                            <div style={styles.errorIcon}>✕</div>
+                            <h3 style={styles.modalTitle}>保存失败</h3>
+                            <p style={styles.modalMessage}>保存设置时出错，请重试</p>
+                        </>
+                    )}
+                    <button className="sf-btn sf-btn-confirm" style={{ width: '100%', marginTop: '20px' }} onClick={handleCloseModal}>
+                        确定
+                    </button>
                 </div>
-            )}
+            </Modal>
         </div>
     )
 }

@@ -302,7 +302,7 @@ export default function Layout({ children }) {
       <aside className="sidebar">
         <div className="sidebar-header">
           <Link to="/" className="sidebar-logo">
-            <span className="sidebar-logo-text">SalesForce</span>
+            <span className="sidebar-logo-text">Vector</span>
           </Link>
         </div>
         <nav>
@@ -350,7 +350,7 @@ export default function Layout({ children }) {
           <button className="logout-button" onClick={handleLogout}>
             退出登录
           </button>
-          <div className="sidebar-footer-text">SalesForce v1.0</div>
+          <div className="sidebar-footer-text">Vector v1.0</div>
         </div>
       </aside>
       <main className="main-content" key={location.pathname}>

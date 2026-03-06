@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import Modal from '../components/Modal'
 
 const API_URL = 'http://localhost:3001/api'
 
@@ -190,11 +191,8 @@ export default function Products() {
   }
 
   const handleCloseModal = () => {
-    setIsClosing(true)
-    setTimeout(() => {
-      setShowModal(false)
-      setIsClosing(false)
-    }, 200)
+    setShowModal(false)
+    setIsClosing(false)
   }
 
   const handleDelete = (product) => {
@@ -330,8 +328,16 @@ export default function Products() {
 
 
   const getDisplayProducts = () => {
-    if (searchQuery.trim()) {
-      const keyword = searchQuery.trim().replace(/-/g, '')
+    const trimmedQuery = searchQuery.trim()
+    if (trimmedQuery) {
+      // 全局排除 "SMSCC" 品牌干扰项：在处理关键词和匹配目标时均忽略它
+      const keyword = trimmedQuery.replace(/SMSCC/gi, '').trim().replace(/-/g, '')
+
+      // 如果剔除品牌名后关键词为空，且原始输入包含品牌名，则认为无有效搜索内容（不显示全列表）
+      if (!keyword && trimmedQuery.toLowerCase().includes('smscc')) {
+        return []
+      }
+
       const lowerKeyword = keyword.toLowerCase()
       const numbers = keyword.match(/\d+/g)
       // 提取中文部分和数字部分，用于组合匹配
@@ -396,6 +402,10 @@ export default function Products() {
           const isPipe = name.includes('导管')
           const isJoint = name.includes('接头') || name.includes('公扣') || name.includes('母扣') || name.includes('衬套')
 
+          const searchableText = `${name} ${desc}`.toLowerCase()
+          const segments = keyword.toLowerCase().match(/[\u4e00-\u9fff]+|[a-z0-9.]+/gi) || [keyword.toLowerCase()]
+          const textMatch = segments.every(seg => searchableText.includes(seg))
+
           // ── 料斗匹配 ──
           if (isHopper) {
             if (queryType && queryType !== '料斗') return false
@@ -411,7 +421,7 @@ export default function Products() {
             }
             // 如果搜索词包含导管/接头特有关键词，跳过料斗
             if (queryDiameter || queryThread) return false
-            return true
+            return textMatch
           }
 
           // ── 导管匹配 ──
@@ -434,7 +444,7 @@ export default function Products() {
               const descThickness = desc.match(/壁厚[：:]?\s*(\d+\.?\d*)mm/)
               if (!descThickness || descThickness[1] !== queryThickness) return false
             }
-            return true
+            return textMatch
           }
 
           // ── 接头匹配 ──
@@ -449,29 +459,23 @@ export default function Products() {
             if (queryThread && !name.includes(queryThread)) return false
             // 接头没有长度/厚度，如果搜索了这些就不匹配
             if (queryLength || queryThickness) return false
-            return true
+            return textMatch
           }
 
           // ── 兜底：其他导管类产品，用通用文本匹配 ──
-          const searchableText = `${name} ${desc}`.toLowerCase()
-          const segments = keyword.toLowerCase().match(/[\u4e00-\u9fff]+|[a-z0-9.]+/gi) || [keyword.toLowerCase()]
-          return segments.every(seg => searchableText.includes(seg))
+          return textMatch
         })
       })()
 
       // 钻具类专有搜索规则：提取【产品名称】和【型号】，组合后作为搜索关键词
-      const drillKeyword = keyword.replace(/[\s\-]+/g, '').toLowerCase()
-      const drillSegments = drillKeyword.match(/[\u4e00-\u9fff]+|[a-zA-Z0-9]+/g) || [drillKeyword]
-
       const levelDrill = products.filter(p => {
         if (p.category !== '钻具类') return false
+        // 钻具类搜索：合并名称和完整描述进行搜索
+        // 匹配目标也排除 "SMSCC" 以保持一致
+        const searchTarget = `${p.name} ${p.description || ''}`.replace(/SMSCC/gi, '').replace(/[\s\-]+/g, '').toLowerCase()
+        const drillSegments = keyword.match(/[\u4e00-\u9fff]+|[a-zA-Z0-9]+/g) || [keyword]
 
-        const specMatch = p.description && p.description.match(/(?:规格)?型号[：:]?\s*([a-zA-Z0-9\-]+)/)
-        const model = specMatch ? specMatch[1].replace(/[\s\-]+/g, '').toLowerCase() : ''
-        const productName = p.name.replace(/[\s\-]+/g, '').toLowerCase()
-        const targetString = productName + model
-
-        return drillSegments.every(seg => targetString.includes(seg))
+        return drillSegments.every(seg => searchTarget.includes(seg.toLowerCase()))
       })
 
       // Level 0: 名称+型号组合精准匹配（支持正反序）
@@ -542,6 +546,15 @@ export default function Products() {
           }
         }
       }
+
+      // 额外逻辑：如果用户输入包含 SMSCC 但过滤后没有任何有效片段，则返回空结果（防止显示全列表）
+      const hasSmscc = searchQuery.toLowerCase().includes('smscc')
+      if (hasSmscc && result.length > 0) {
+        // 验证结果中是否真的匹配了除 SMSCC 以外的内容
+        // 这里我们信任各 level 内部的过滤，但如果最终结果是因为 SMSCC 导致的匹配（虽然逻辑上不应该），
+        // 可以在这里做二次检查。不过目前各 level 已有 category 隔离或其他检查。
+      }
+
       return result
     }
     return getProductsByCategory(activeCategory)
@@ -685,226 +698,107 @@ export default function Products() {
         </table>
       </div>
 
-      {showModal && createPortal(
-        <>
-          <style>{`
-          @keyframes modalOverlayIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-          }
-          @keyframes modalOverlayOut {
-            from { opacity: 1; }
-            to { opacity: 0; }
-          }
-          @keyframes modalSlideIn {
-            from { opacity: 0; transform: translateY(32px) scale(0.95); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-          }
-          @keyframes modalSlideOut {
-            from { opacity: 1; transform: translateY(0) scale(1); }
-            to { opacity: 0; transform: translateY(24px) scale(0.97); }
-          }
-          .product-template-chip {
-            transition: all 0.15s ease;
-          }
-          .product-template-chip:hover {
-            transform: scale(1.05);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            border-color: #9ca3af !important;
-          }
-          .product-template-chip:active {
-            transform: scale(0.97);
-          }
-        `}</style>
-          <div
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.5)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 9999,
-              padding: '20px',
-              animation: isClosing ? 'modalOverlayOut 0.2s ease forwards' : 'modalOverlayIn 0.25s ease forwards'
-            }}
-            onClick={handleCloseModal}
-          >
-            <div
-              style={{
-                backgroundColor: 'white',
-                borderRadius: '24px',
-                width: '100%',
-                maxWidth: '600px',
-                maxHeight: '90vh',
-                overflow: 'auto',
-                boxShadow: '0 25px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255,255,255,0.1)',
-                animation: isClosing ? 'modalSlideOut 0.2s ease forwards' : 'modalSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards'
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div style={{ padding: '24px 28px', borderBottom: '1px solid #e5e7eb' }}>
-                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '600', color: '#111827' }}>
-                  {editingProduct ? '编辑产品' : '添加产品'}
-                </h3>
+      <Modal
+        isOpen={showModal}
+        onClose={handleCloseModal}
+        title={editingProduct ? '编辑产品' : '添加产品'}
+        width={600}
+        footer={null}
+      >
+        <div style={{ padding: '0 4px', paddingBottom: '24px' }}>
+          {!editingProduct && productTemplates[formData.category] && (
+            <div style={{ marginBottom: '24px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+              <div style={{ fontSize: '12px', fontWeight: '600', color: '#6b7280', marginBottom: '12px', textTransform: 'uppercase' }}>
+                快速添加模板
               </div>
-
-              <div style={{ padding: '24px 28px' }}>
-                {!editingProduct && productTemplates[formData.category] && (
-                  <div style={{ marginBottom: '24px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#6b7280', marginBottom: '12px', textTransform: 'uppercase' }}>
-                      快速添加模板
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                      {productTemplates[formData.category].map((template, index) => (
-                        <button
-                          key={index}
-                          type="button"
-                          className="product-template-chip"
-                          style={{
-                            padding: '8px 14px',
-                            backgroundColor: hoveredTemplate === index ? '#f3f4f6' : 'white',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '20px',
-                            cursor: 'pointer',
-                            fontSize: '13px',
-                            color: '#374151',
-                            fontWeight: '500'
-                          }}
-                          onClick={() => applyTemplate(template)}
-                          onMouseEnter={() => setHoveredTemplate(index)}
-                          onMouseLeave={() => setHoveredTemplate(null)}
-                        >
-                          {template.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <form onSubmit={handleSubmit}>
-                  <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-                      产品名称
-                    </label>
-                    <input
-                      type="text"
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '8px',
-                        fontSize: '14px'
-                      }}
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      required
-                    />
-                  </div>
-
-
-
-
-                  <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-                      规格描述
-                    </label>
-                    <input
-                      type="text"
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '8px',
-                        fontSize: '14px'
-                      }}
-                      value={formData.description}
-                      onChange={(e) => handleDescriptionChange(e.target.value)}
-                    />
-                  </div>
-
-                  <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-                      {hasDualPrice(formData.category) ? '终端价' : '价格'}
-                    </label>
-                    <input
-                      type="number"
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '8px',
-                        fontSize: '14px'
-                      }}
-                      value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                      required
-                    />
-                  </div>
-
-                  {hasDualPrice(formData.category) && (
-                    <div style={{ marginBottom: '20px' }}>
-                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-                        经销商价
-                      </label>
-                      <input
-                        type="number"
-                        style={{
-                          width: '100%',
-                          padding: '10px 12px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '8px',
-                          fontSize: '14px'
-                        }}
-                        value={formData.dealer_price}
-                        onChange={(e) => setFormData({ ...formData, dealer_price: e.target.value })}
-                      />
-                    </div>
-                  )}
-
-                  <div style={{ padding: '20px 0', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '4px' }}>
-                    <button
-                      type="button"
-                      style={{
-                        padding: '10px 20px',
-                        backgroundColor: 'white',
-                        color: '#6b7280',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        fontWeight: '500'
-                      }}
-                      onClick={handleCloseModal}
-                    >
-                      取消
-                    </button>
-                    <button
-                      type="submit"
-                      style={{
-                        padding: '10px 20px',
-                        backgroundColor: '#4169E1',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        fontWeight: '500'
-                      }}
-                    >
-                      {editingProduct ? '保存修改' : '添加'}
-                    </button>
-                  </div>
-                </form>
+              <div className="sf-capsule-group">
+                {productTemplates[formData.category].map((template, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    className={`sf-capsule ${hoveredTemplate === index ? 'active' : ''}`}
+                    onClick={() => applyTemplate(template)}
+                    onMouseEnter={() => setHoveredTemplate(index)}
+                    onMouseLeave={() => setHoveredTemplate(null)}
+                  >
+                    {template.name}
+                  </button>
+                ))}
               </div>
             </div>
-          </div>
-        </>,
-        document.body
-      )}
+          )}
+
+          <form onSubmit={handleSubmit}>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                产品名称
+              </label>
+              <input
+                type="text"
+                className="sf-input"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                required
+              />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                规格描述
+              </label>
+              <input
+                type="text"
+                className="sf-input"
+                value={formData.description}
+                onChange={(e) => handleDescriptionChange(e.target.value)}
+              />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                {hasDualPrice(formData.category) ? '终端价' : '价格'}
+              </label>
+              <input
+                type="number"
+                className="sf-input"
+                value={formData.price}
+                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                required
+              />
+            </div>
+
+            {hasDualPrice(formData.category) && (
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                  经销商价
+                </label>
+                <input
+                  type="number"
+                  className="sf-input"
+                  value={formData.dealer_price}
+                  onChange={(e) => setFormData({ ...formData, dealer_price: e.target.value })}
+                />
+              </div>
+            )}
+
+            <div style={{ paddingTop: '20px', borderTop: '1px solid #EBEDF0', display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
+              <button
+                type="button"
+                className="sf-btn sf-btn-cancel"
+                onClick={handleCloseModal}
+              >
+                取消
+              </button>
+              <button
+                type="submit"
+                className="sf-btn sf-btn-confirm"
+              >
+                {editingProduct ? '保存修改' : '添加'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </Modal>
     </div>
   )
 }

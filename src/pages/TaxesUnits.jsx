@@ -1,48 +1,9 @@
 import { useState, useRef } from 'react'
+import Modal from '../components/Modal'
 
 const API_URL = 'http://localhost:3001/api'
 
-const modalAnimationStyles = `
-  @keyframes modalFadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-  
-  @keyframes modalSlideIn {
-    from {
-      opacity: 0;
-      transform: scale(0.9) translateY(-20px);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1) translateY(0);
-    }
-  }
-  
-  @keyframes modalFadeOut {
-    from {
-      opacity: 1;
-    }
-    to {
-      opacity: 0;
-    }
-  }
-  
-  @keyframes modalSlideOut {
-    from {
-      opacity: 1;
-      transform: scale(1) translateY(0);
-    }
-    to {
-      opacity: 0;
-      transform: scale(0.9) translateY(-20px);
-    }
-  }
-  
+const toastAnimationStyles = `
   @keyframes toastSlideIn {
     from {
       opacity: 0;
@@ -100,11 +61,8 @@ export default function TaxesUnits() {
   }
 
   const handleCloseModal = () => {
-    setIsClosing(true)
-    setTimeout(() => {
-      setShowModal(false)
-      setIsClosing(false)
-    }, 200)
+    setShowModal(false)
+    setIsClosing(false)
   }
 
   const handleDelete = (item, type) => {
@@ -205,7 +163,7 @@ export default function TaxesUnits() {
             }, 5000)
           }}
         >
-          <style>{modalAnimationStyles}</style>
+          <style>{toastAnimationStyles}</style>
           <div style={styles.undoToastContent}>
             <div style={styles.undoToastIcon}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -383,156 +341,144 @@ export default function TaxesUnits() {
       )}
 
       {showModal && (
-        <div
-          style={{
-            ...styles.modalOverlay,
-            animation: isClosing ? 'modalFadeOut 0.2s ease-out forwards' : 'modalFadeIn 0.2s ease-out forwards',
-          }}
-          onClick={handleCloseModal}
+        <Modal
+          isOpen={showModal}
+          onClose={handleCloseModal}
+          title={`${editingItem ? '编辑' : '添加'}${activeTab === 'taxes' ? '税费' : '计量单位'}`}
+          width={480}
+          footer={null}
         >
-          <style>{modalAnimationStyles}</style>
-          <div
-            style={{
-              ...styles.modal,
-              animation: isClosing ? 'modalSlideOut 0.2s ease-out forwards' : 'modalSlideIn 0.2s ease-out forwards',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={styles.modalTitle}>
-              {editingItem ? '编辑' : '添加'}{activeTab === 'taxes' ? '税费' : '计量单位'}
-            </h3>
-            <div style={styles.formScroll}>
-              <form onSubmit={handleSubmit}>
-                {activeTab === 'taxes' ? (
-                  <>
-                    <div style={styles.formSection}>
-                      <div style={styles.sectionTitle}>基础信息</div>
-                      <div style={styles.formGroup}>
-                        <label style={styles.label}>税费名称</label>
+          <div style={styles.formScroll}>
+            <form onSubmit={handleSubmit}>
+              {activeTab === 'taxes' ? (
+                <>
+                  <div style={styles.formSection}>
+                    <div style={styles.sectionTitle}>基础信息</div>
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>税费名称</label>
+                      <input
+                        className="sf-input"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>描述</label>
+                      <input
+                        className="sf-input"
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={styles.formSection}>
+                    <div style={styles.sectionTitle}>税率设置</div>
+                    <div style={styles.formRow}>
+                      <div style={{ ...styles.formGroup, flex: 1 }}>
+                        <label style={styles.label}>税率 (%)</label>
                         <input
-                          style={styles.input}
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="100"
+                          className="sf-input"
+                          value={formData.rate}
+                          onChange={(e) => setFormData({ ...formData, rate: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div style={{ ...styles.formGroup, flex: 1 }}>
+                        <label style={styles.label}>类型</label>
+                        <select
+                          className="sf-input"
+                          value={formData.type}
+                          onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                        >
+                          <option value="percentage">百分比</option>
+                          <option value="fixed">固定金额</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div style={styles.checkboxGroup}>
+                      <input
+                        type="checkbox"
+                        id="isDefault"
+                        checked={formData.isDefault}
+                        onChange={(e) => setFormData({ ...formData, isDefault: e.target.checked })}
+                      />
+                      <label htmlFor="isDefault" style={styles.checkboxLabel}>
+                        设为默认税费
+                      </label>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={styles.formSection}>
+                    <div style={styles.sectionTitle}>基础信息</div>
+                    <div style={styles.formRow}>
+                      <div style={{ ...styles.formGroup, flex: 1 }}>
+                        <label style={styles.label}>单位名称</label>
+                        <input
+                          className="sf-input"
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                           required
                         />
                       </div>
-                      <div style={styles.formGroup}>
-                        <label style={styles.label}>描述</label>
+                      <div style={{ ...styles.formGroup, flex: 1 }}>
+                        <label style={styles.label}>单位代码</label>
                         <input
-                          style={styles.input}
-                          value={formData.description}
-                          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                          className="sf-input"
+                          value={formData.code}
+                          onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                          placeholder="例如: KG"
+                          required
                         />
                       </div>
                     </div>
+                  </div>
 
-                    <div style={styles.formSection}>
-                      <div style={styles.sectionTitle}>税率设置</div>
-                      <div style={styles.formRow}>
-                        <div style={{ ...styles.formGroup, flex: 1 }}>
-                          <label style={styles.label}>税率 (%)</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            max="100"
-                            style={styles.input}
-                            value={formData.rate}
-                            onChange={(e) => setFormData({ ...formData, rate: e.target.value })}
-                            required
-                          />
-                        </div>
-                        <div style={{ ...styles.formGroup, flex: 1 }}>
-                          <label style={styles.label}>类型</label>
-                          <select
-                            style={styles.input}
-                            value={formData.type}
-                            onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                          >
-                            <option value="percentage">百分比</option>
-                            <option value="fixed">固定金额</option>
-                          </select>
-                        </div>
-                      </div>
-                      <div style={styles.checkboxGroup}>
-                        <input
-                          type="checkbox"
-                          id="isDefault"
-                          checked={formData.isDefault}
-                          onChange={(e) => setFormData({ ...formData, isDefault: e.target.checked })}
-                        />
-                        <label htmlFor="isDefault" style={styles.checkboxLabel}>
-                          设为默认税费
-                        </label>
-                      </div>
+                  <div style={styles.formSection}>
+                    <div style={styles.sectionTitle}>分类设置</div>
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>分类</label>
+                      <select
+                        className="sf-input"
+                        value={formData.category}
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      >
+                        <option value="数量">数量</option>
+                        <option value="重量">重量</option>
+                        <option value="长度">长度</option>
+                        <option value="体积">体积</option>
+                        <option value="面积">面积</option>
+                      </select>
                     </div>
-                  </>
-                ) : (
-                  <>
-                    <div style={styles.formSection}>
-                      <div style={styles.sectionTitle}>基础信息</div>
-                      <div style={styles.formRow}>
-                        <div style={{ ...styles.formGroup, flex: 1 }}>
-                          <label style={styles.label}>单位名称</label>
-                          <input
-                            style={styles.input}
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            required
-                          />
-                        </div>
-                        <div style={{ ...styles.formGroup, flex: 1 }}>
-                          <label style={styles.label}>单位代码</label>
-                          <input
-                            style={styles.input}
-                            value={formData.code}
-                            onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                            placeholder="例如: KG"
-                            required
-                          />
-                        </div>
-                      </div>
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>描述</label>
+                      <input
+                        className="sf-input"
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      />
                     </div>
-
-                    <div style={styles.formSection}>
-                      <div style={styles.sectionTitle}>分类设置</div>
-                      <div style={styles.formGroup}>
-                        <label style={styles.label}>分类</label>
-                        <select
-                          style={styles.input}
-                          value={formData.category}
-                          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                        >
-                          <option value="数量">数量</option>
-                          <option value="重量">重量</option>
-                          <option value="长度">长度</option>
-                          <option value="体积">体积</option>
-                          <option value="面积">面积</option>
-                        </select>
-                      </div>
-                      <div style={styles.formGroup}>
-                        <label style={styles.label}>描述</label>
-                        <input
-                          style={styles.input}
-                          value={formData.description}
-                          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                  </>
-                )}
-              </form>
-            </div>
-            <div style={styles.modalButtons}>
-              <button type="button" style={styles.cancelButton} onClick={handleCloseModal}>
-                取消
-              </button>
-              <button type="button" style={styles.submitButton} onClick={handleSubmit}>
-                {editingItem ? '保存修改' : '添加'}
-              </button>
-            </div>
+                  </div>
+                </>
+              )}
+            </form>
           </div>
-        </div>
+          <div style={{ padding: '20px 0 0', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+            <button type="button" className="sf-btn sf-btn-cancel" onClick={handleCloseModal}>
+              取消
+            </button>
+            <button type="button" className="sf-btn sf-btn-confirm" onClick={handleSubmit}>
+              {editingItem ? '保存修改' : '添加'}
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   )

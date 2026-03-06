@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { createPortal } from 'react-dom'
+import Modal from '../components/Modal'
 import './AuditLogs.css'
 
 function AuditLogs() {
@@ -218,64 +218,66 @@ function AuditLogs() {
         </div>
       )}
 
-      {showDetail && selectedLog && createPortal(
-        <div className="modal-overlay" onClick={() => setShowDetail(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>审计日志详情</h2>
-              <button className="close-btn" onClick={() => setShowDetail(false)}>×</button>
+      {showDetail && selectedLog && (
+        <Modal
+          isOpen={showDetail}
+          onClose={() => setShowDetail(false)}
+          title="审计日志详情"
+          width={700}
+          footer={null}
+        >
+          <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+            <div className="detail-row">
+              <label>ID:</label>
+              <span>{selectedLog.id}</span>
             </div>
-            <div className="modal-body">
-              <div className="detail-row">
-                <label>ID:</label>
-                <span>{selectedLog.id}</span>
-              </div>
-              <div className="detail-row">
-                <label>操作:</label>
-                <span>{getActionBadge(selectedLog.action)}</span>
-              </div>
-              <div className="detail-row">
-                <label>实体类型:</label>
-                <span>{selectedLog.entity_type}</span>
-              </div>
-              <div className="detail-row">
-                <label>实体ID:</label>
-                <span>{selectedLog.entity_id || '-'}</span>
-              </div>
-              <div className="detail-row">
-                <label>用户:</label>
-                <span>{selectedLog.full_name || selectedLog.username}</span>
-              </div>
-              <div className="detail-row">
-                <label>IP地址:</label>
-                <span>{selectedLog.ip_address || '-'}</span>
-              </div>
-              <div className="detail-row">
-                <label>时间:</label>
-                <span>{new Date(selectedLog.created_at).toLocaleString('zh-CN')}</span>
-              </div>
-              {selectedLog.old_data && (
-                <div className="detail-section">
-                  <label>旧数据:</label>
-                  <pre>{formatData(selectedLog.old_data)}</pre>
-                </div>
-              )}
-              {selectedLog.new_data && (
-                <div className="detail-section">
-                  <label>新数据:</label>
-                  <pre>{formatData(selectedLog.new_data)}</pre>
-                </div>
-              )}
-              {selectedLog.user_agent && (
-                <div className="detail-section">
-                  <label>User Agent:</label>
-                  <pre>{selectedLog.user_agent}</pre>
-                </div>
-              )}
+            <div className="detail-row">
+              <label>操作:</label>
+              <span>{getActionBadge(selectedLog.action)}</span>
             </div>
+            <div className="detail-row">
+              <label>实体类型:</label>
+              <span>{selectedLog.entity_type}</span>
+            </div>
+            <div className="detail-row">
+              <label>实体ID:</label>
+              <span>{selectedLog.entity_id || '-'}</span>
+            </div>
+            <div className="detail-row">
+              <label>用户:</label>
+              <span>{selectedLog.full_name || selectedLog.username}</span>
+            </div>
+            <div className="detail-row">
+              <label>IP地址:</label>
+              <span>{selectedLog.ip_address || '-'}</span>
+            </div>
+            <div className="detail-row">
+              <label>时间:</label>
+              <span>{new Date(selectedLog.created_at).toLocaleString('zh-CN')}</span>
+            </div>
+            {selectedLog.old_data && (
+              <div className="detail-section">
+                <label>旧数据:</label>
+                <pre>{formatData(selectedLog.old_data)}</pre>
+              </div>
+            )}
+            {selectedLog.new_data && (
+              <div className="detail-section">
+                <label>新数据:</label>
+                <pre>{formatData(selectedLog.new_data)}</pre>
+              </div>
+            )}
+            {selectedLog.user_agent && (
+              <div className="detail-section">
+                <label>User Agent:</label>
+                <pre>{selectedLog.user_agent}</pre>
+              </div>
+            )}
           </div>
-        </div>,
-        document.body
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
+            <button className="sf-btn sf-btn-cancel" onClick={() => setShowDetail(false)}>关闭</button>
+          </div>
+        </Modal>
       )}
     </div>
   )

@@ -1,48 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
-
+import Modal from '../components/Modal'
 const API_URL = 'http://localhost:3001/api'
 
-const modalAnimationStyles = `
-  @keyframes modalFadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-  
-  @keyframes modalSlideIn {
-    from {
-      opacity: 0;
-      transform: scale(0.9) translateY(-20px);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1) translateY(0);
-    }
-  }
-  
-  @keyframes modalFadeOut {
-    from {
-      opacity: 1;
-    }
-    to {
-      opacity: 0;
-    }
-  }
-  
-  @keyframes modalSlideOut {
-    from {
-      opacity: 1;
-      transform: scale(1) translateY(0);
-    }
-    to {
-      opacity: 0;
-      transform: scale(0.9) translateY(-20px);
-    }
-  }
-  
+const toastAnimationStyles = `
   @keyframes toastSlideIn {
     from {
       opacity: 0;
@@ -112,11 +72,8 @@ export default function Currencies() {
   }
 
   const handleCloseModal = () => {
-    setIsClosing(true)
-    setTimeout(() => {
-      setShowModal(false)
-      setIsClosing(false)
-    }, 200)
+    setShowModal(false)
+    setIsClosing(false)
   }
 
   const handleDelete = (currency) => {
@@ -245,7 +202,7 @@ export default function Currencies() {
             }, 5000)
           }}
         >
-          <style>{modalAnimationStyles}</style>
+          <style>{toastAnimationStyles}</style>
           <div style={styles.undoToastContent}>
             <div style={styles.undoToastIcon}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -377,101 +334,90 @@ export default function Currencies() {
         </table>
       </div>
 
-      {showModal && (
-        <div
-          style={{
-            ...styles.modalOverlay,
-            animation: isClosing ? 'modalFadeOut 0.2s ease-out forwards' : 'modalFadeIn 0.2s ease-out forwards',
-          }}
-          onClick={handleCloseModal}
-        >
-          <style>{modalAnimationStyles}</style>
-          <div
-            style={{
-              ...styles.modal,
-              animation: isClosing ? 'modalSlideOut 0.2s ease-out forwards' : 'modalSlideIn 0.2s ease-out forwards',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={styles.modalTitle}>{editingCurrency ? '编辑货币' : '添加货币'}</h3>
-            <div style={styles.formScroll}>
-              <form onSubmit={handleSubmit}>
-                <div style={styles.formSection}>
-                  <div style={styles.sectionTitle}>基础信息</div>
-                  <div style={styles.formRow}>
-                    <div style={{ ...styles.formGroup, flex: 1 }}>
-                      <label style={styles.label}>货币代码</label>
-                      <input
-                        style={styles.input}
-                        value={formData.code}
-                        onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                        placeholder="例如: USD"
-                        required
-                      />
-                    </div>
-                    <div style={{ ...styles.formGroup, flex: 1 }}>
-                      <label style={styles.label}>货币符号</label>
-                      <input
-                        style={styles.input}
-                        value={formData.symbol}
-                        onChange={(e) => setFormData({ ...formData, symbol: e.target.value })}
-                        placeholder="例如: $"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>货币名称</label>
-                    <input
-                      style={styles.input}
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="例如: 美元"
-                      required
-                    />
-                  </div>
+      <Modal
+        isOpen={showModal}
+        onClose={handleCloseModal}
+        title={editingCurrency ? '编辑货币' : '添加货币'}
+        width={480}
+        footer={null}
+      >
+        <div style={styles.formScroll}>
+          <form onSubmit={handleSubmit}>
+            <div style={styles.formSection}>
+              <div style={styles.sectionTitle}>基础信息</div>
+              <div style={styles.formRow}>
+                <div style={{ ...styles.formGroup, flex: 1 }}>
+                  <label style={styles.label}>货币代码</label>
+                  <input
+                    className="sf-input"
+                    value={formData.code}
+                    onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                    placeholder="例如: USD"
+                    required
+                  />
                 </div>
-
-                <div style={styles.formSection}>
-                  <div style={styles.sectionTitle}>汇率设置</div>
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>汇率 (对人民币)</label>
-                    <input
-                      type="number"
-                      step="0.0001"
-                      min="0"
-                      style={styles.input}
-                      value={formData.exchangeRate}
-                      onChange={(e) => setFormData({ ...formData, exchangeRate: e.target.value })}
-                      placeholder="1人民币 = ? 此货币"
-                      required
-                    />
-                  </div>
-                  <div style={styles.checkboxGroup}>
-                    <input
-                      type="checkbox"
-                      id="isDefault"
-                      checked={formData.isDefault}
-                      onChange={(e) => setFormData({ ...formData, isDefault: e.target.checked })}
-                    />
-                    <label htmlFor="isDefault" style={styles.checkboxLabel}>
-                      设为默认货币
-                    </label>
-                  </div>
+                <div style={{ ...styles.formGroup, flex: 1 }}>
+                  <label style={styles.label}>货币符号</label>
+                  <input
+                    className="sf-input"
+                    value={formData.symbol}
+                    onChange={(e) => setFormData({ ...formData, symbol: e.target.value })}
+                    placeholder="例如: $"
+                    required
+                  />
                 </div>
-              </form>
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>货币名称</label>
+                <input
+                  className="sf-input"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="例如: 美元"
+                  required
+                />
+              </div>
             </div>
-            <div style={styles.modalButtons}>
-              <button type="button" style={styles.cancelButton} onClick={handleCloseModal}>
+
+            <div style={styles.formSection}>
+              <div style={styles.sectionTitle}>汇率设置</div>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>汇率 (对人民币)</label>
+                <input
+                  type="number"
+                  step="0.0001"
+                  min="0"
+                  className="sf-input"
+                  value={formData.exchangeRate}
+                  onChange={(e) => setFormData({ ...formData, exchangeRate: e.target.value })}
+                  placeholder="1人民币 = ? 此货币"
+                  required
+                />
+              </div>
+              <div style={styles.checkboxGroup}>
+                <input
+                  type="checkbox"
+                  id="isDefault"
+                  checked={formData.isDefault}
+                  onChange={(e) => setFormData({ ...formData, isDefault: e.target.checked })}
+                />
+                <label htmlFor="isDefault" style={styles.checkboxLabel}>
+                  设为默认货币
+                </label>
+              </div>
+            </div>
+
+            <div style={{ padding: '20px 0 0', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button type="button" className="sf-btn sf-btn-cancel" onClick={handleCloseModal}>
                 取消
               </button>
-              <button type="button" style={styles.submitButton} onClick={handleSubmit}>
+              <button type="submit" className="sf-btn sf-btn-confirm">
                 {editingCurrency ? '保存修改' : '添加'}
               </button>
             </div>
-          </div>
+          </form>
         </div>
-      )}
+      </Modal>
     </div>
   )
 }

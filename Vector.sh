@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# SalesForce 价格管理工具 - 全局启动脚本
+# Vector 价格管理工具 - 全局启动脚本
 # 用法: 在任意目录下运行此脚本即可启动项目
-# 安装: ln -sf ~/Downloads/Coding/AICoding/P1/salesforce.sh /usr/local/bin/salesforce
+# 安装: sudo ln -sf ~/Downloads/Coding/AICoding/P1/Vector.sh /usr/local/bin/Vector
 
 PROJECT_DIR="$HOME/Downloads/Coding/AICoding/P1"
 
@@ -12,7 +12,7 @@ if [ ! -d "$PROJECT_DIR" ]; then
     exit 1
 fi
 
-echo "🚀 启动 SalesForce 价格管理工具..."
+echo "🚀 启动 Vector 价格管理工具..."
 echo "📁 项目路径: $PROJECT_DIR"
 
 # 检查端口3001是否被占用
@@ -23,9 +23,11 @@ if lsof -ti :3001 > /dev/null 2>&1; then
 fi
 
 # 检查端口5173是否被占用
-if lsof -ti :5173 > /dev/null 2>&1; then
-    echo "⚠️  端口5173已被占用，正在停止..."
-    lsof -ti :5173 | xargs kill -9
+if lsof -ti :5174 > /dev/null 2>&1 || lsof -ti :5175 > /dev/null 2>&1 || lsof -ti :5173 > /dev/null 2>&1; then
+    echo "⚠️  端口517x已被占用，正在停止..."
+    lsof -ti :5173 | xargs kill -9 2>/dev/null
+    lsof -ti :5174 | xargs kill -9 2>/dev/null
+    lsof -ti :5175 | xargs kill -9 2>/dev/null
     sleep 1
 fi
 

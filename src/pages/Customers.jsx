@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
+import Modal from "../components/Modal";
 
 const API_URL = "http://localhost:3001/api";
 
@@ -281,11 +281,8 @@ export default function Customers() {
   };
 
   const handleCloseModal = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      setShowModal(false);
-      setIsClosing(false);
-    }, 200);
+    setShowModal(false);
+    setIsClosing(false);
   };
 
   const handleDelete = (customer) => {
@@ -506,152 +503,126 @@ export default function Customers() {
         </table>
       </div>
 
-      {showModal &&
-        createPortal(
-          <>
-            <style>{modalAnimationStyles}</style>
-            <div
-              style={{
-                ...styles.modalOverlay,
-                animation: isClosing
-                  ? "modalOverlayOut 0.2s ease forwards"
-                  : "modalOverlayIn 0.25s ease forwards",
-              }}
-              onClick={handleCloseModal}
-            >
-              <div
-                style={{
-                  ...styles.modal,
-                  animation: isClosing
-                    ? "modalSlideOut 0.2s ease forwards"
-                    : "modalSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards",
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div style={styles.modalHeader}>
-                  <h3 style={styles.modalTitle}>
-                    {editingCustomer ? "编辑客户" : "添加客户"}
-                  </h3>
-                </div>
-                <div style={styles.formScroll}>
-                  <form onSubmit={handleSubmit}>
-                    <div style={styles.formSection}>
-                      <div style={styles.sectionTitle}>客户信息</div>
+      <Modal
+        isOpen={showModal}
+        onClose={handleCloseModal}
+        title={editingCustomer ? "编辑客户" : "添加客户"}
+        width={540}
+        footer={null}
+      >
+        <div style={styles.formScroll}>
+          <form onSubmit={handleSubmit}>
+            <div style={styles.formSection}>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>客户类型</label>
+                <select
+                  className="sf-input"
+                  value={formData.customer_type}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      customer_type: e.target.value,
+                    })
+                  }
+                  required
+                >
+                  {CUSTOMER_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                      <div style={styles.formGroup}>
-                        <label style={styles.label}>客户类型</label>
-                        <select
-                          style={styles.select}
-                          value={formData.customer_type}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              customer_type: e.target.value,
-                            })
-                          }
-                          required
-                        >
-                          {CUSTOMER_TYPES.map((t) => (
-                            <option key={t} value={t}>
-                              {t}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div style={styles.formRow}>
-                        <div style={{ ...styles.formGroup, flex: 1 }}>
-                          <label style={styles.label}>国家</label>
-                          <select
-                            style={styles.select}
-                            value={formData.country}
-                            onChange={(e) =>
-                              handleCountryChange(e.target.value)
-                            }
-                            required
-                          >
-                            {COUNTRIES.map((c) => (
-                              <option key={c} value={c}>
-                                {c}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div style={{ ...styles.formGroup, flex: 1 }}>
-                          <label style={styles.label}>城市</label>
-                          <select
-                            style={styles.select}
-                            value={formData.city}
-                            onChange={(e) =>
-                              setFormData({ ...formData, city: e.target.value })
-                            }
-                            required
-                          >
-                            <option value="">请选择城市</option>
-                            {availableCities.map((c) => (
-                              <option key={c} value={c}>
-                                {c}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-
-                      <div style={styles.formRow}>
-                        <div style={{ ...styles.formGroup, flex: 1 }}>
-                          <label style={styles.label}>联系方式</label>
-                          <input
-                            style={styles.input}
-                            value={formData.contact}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                contact: e.target.value,
-                              })
-                            }
-                            placeholder="电话/邮箱"
-                          />
-                        </div>
-                        <div style={{ ...styles.formGroup, flex: 1 }}>
-                          <label style={styles.label}>成交次数</label>
-                          <input
-                            type="number"
-                            min="0"
-                            style={styles.input}
-                            value={formData.deal_count}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                deal_count: e.target.value,
-                              })
-                            }
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </form>
-                </div>
-                <div style={styles.modalButtons}>
-                  <button
-                    type="button"
-                    style={styles.cancelButton}
-                    onClick={handleCloseModal}
+              <div style={styles.formRow}>
+                <div style={{ ...styles.formGroup, flex: 1 }}>
+                  <label style={styles.label}>国家</label>
+                  <select
+                    className="sf-input"
+                    value={formData.country}
+                    onChange={(e) =>
+                      handleCountryChange(e.target.value)
+                    }
+                    required
                   >
-                    取消
-                  </button>
-                  <button
-                    type="button"
-                    style={styles.submitButton}
-                    onClick={handleSubmit}
+                    {COUNTRIES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ ...styles.formGroup, flex: 1 }}>
+                  <label style={styles.label}>城市</label>
+                  <select
+                    className="sf-input"
+                    value={formData.city}
+                    onChange={(e) =>
+                      setFormData({ ...formData, city: e.target.value })
+                    }
+                    required
                   >
-                    {editingCustomer ? "保存修改" : "添加"}
-                  </button>
+                    <option value="">请选择城市</option>
+                    {availableCities.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div style={styles.formRow}>
+                <div style={{ ...styles.formGroup, flex: 1 }}>
+                  <label style={styles.label}>联系方式</label>
+                  <input
+                    className="sf-input"
+                    value={formData.contact}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        contact: e.target.value,
+                      })
+                    }
+                    placeholder="电话/邮箱"
+                  />
+                </div>
+                <div style={{ ...styles.formGroup, flex: 1 }}>
+                  <label style={styles.label}>成交次数</label>
+                  <input
+                    type="number"
+                    min="0"
+                    className="sf-input"
+                    value={formData.deal_count}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        deal_count: e.target.value,
+                      })
+                    }
+                  />
                 </div>
               </div>
             </div>
-          </>,
-          document.body,
-        )}
+
+            <div style={{ padding: '20px 0 0', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button
+                type="button"
+                className="sf-btn sf-btn-cancel"
+                onClick={handleCloseModal}
+              >
+                取消
+              </button>
+              <button
+                type="submit"
+                className="sf-btn sf-btn-confirm"
+              >
+                {editingCustomer ? "保存修改" : "添加"}
+              </button>
+            </div>
+          </form>
+        </div>
+      </Modal>
     </div>
   );
 }

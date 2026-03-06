@@ -1,0 +1,189 @@
+/* 1. 基础容器与遮罩层 */
+.sf-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.45);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.sf-modal-no-overlay {
+    background-color: transparent;
+    pointer-events: none;
+    left: 268px;
+    right: 0;
+    width: auto;
+}
+
+.sf-modal-no-overlay .sf-modal-container {
+    pointer-events: auto;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+    max-width: calc(100vw - 268px - 64px);
+}
+
+.sf-modal-container {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 32px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    max-height: 80vh;
+}
+
+/* 2. 头部 */
+.sf-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-right: 28px;
+    /* 防遮挡右侧关闭按钮 */
+}
+
+.sf-modal-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: #1D2129;
+    line-height: 1.5;
+}
+
+.sf-modal-header-right {
+    font-size: 14px;
+    color: #86909C;
+}
+
+.sf-modal-close {
+    position: absolute;
+    top: 32px;
+    right: 32px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.2s;
+}
+
+.sf-modal-close:hover {
+    opacity: 0.7;
+}
+
+/* 主体 */
+.sf-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 24px;
+}
+
+/* 3. 表单与交互规范类名 (可直接用于传入 children 的节点) */
+.sf-input {
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid #D9D9D9;
+    padding: 0 12px;
+    font-size: 14px;
+    color: #1D2129;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.sf-input:focus {
+    border-color: #4E75EC;
+}
+
+.sf-capsule-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.sf-capsule {
+    padding: 6px 16px;
+    border-radius: 100px;
+    font-size: 14px;
+    cursor: pointer;
+    background-color: #F2F3F5;
+    color: #1D2129;
+    border: none;
+    transition: all 0.2s;
+    font-weight: 400;
+}
+
+.sf-capsule.active {
+    background-color: #E8EFFF;
+    color: #4E75EC;
+    font-weight: 500;
+}
+
+.sf-list-item {
+    padding: 12px 0;
+    border: none;
+    border-bottom: 1px solid #EBEDF0;
+    transition: background-color 0.2s;
+    cursor: pointer;
+    margin: 0;
+}
+
+.sf-list-item:hover {
+    background-color: #F2F3F5;
+    padding-left: 8px;
+    /* hover 时可加少许缩进增强交互反馈，或者去掉此行纯改背景色 */
+    padding-right: 8px;
+    margin: 0 -8px;
+    border-radius: 4px;
+    border-bottom-color: transparent;
+}
+
+/* 4. 底部操作区 */
+.sf-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+/* 底部按钮公共样式 */
+.sf-btn {
+    height: 36px;
+    min-width: 80px;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 16px;
+    font-weight: 500;
+    transition: all 0.2s;
+    box-sizing: border-box;
+}
+
+.sf-btn-cancel {
+    background-color: #ffffff;
+    border: 1px solid #D9D9D9;
+    color: #1D2129;
+}
+
+.sf-btn-cancel:hover {
+    background-color: #F2F3F5;
+}
+
+.sf-btn-confirm {
+    background-color: #4E75EC;
+    border: none;
+    color: #ffffff;
+}
+
+.sf-btn-confirm:hover {
+    background-color: #3f60c4;
+}

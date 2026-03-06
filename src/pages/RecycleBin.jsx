@@ -1,28 +1,8 @@
 import { useState, useEffect } from 'react'
-
+import Modal from '../components/Modal'
 const API_URL = 'http://localhost:3001/api'
 
-const modalAnimationStyles = `
-  @keyframes modalFadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  
-  @keyframes modalSlideIn {
-    from { opacity: 0; transform: scale(0.9) translateY(-20px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
-  }
-  
-  @keyframes modalFadeOut {
-    from { opacity: 1; }
-    to { opacity: 0; }
-  }
-  
-  @keyframes modalSlideOut {
-    from { opacity: 1; transform: scale(1) translateY(0); }
-    to { opacity: 0; transform: scale(0.9) translateY(-20px); }
-  }
-`
+
 
 const TYPE_LABELS = {
   products: '产品',
@@ -123,12 +103,9 @@ export default function RecycleBin() {
   }
 
   const handleCloseModal = () => {
-    setIsClosing(true)
-    setTimeout(() => {
-      setShowModal(false)
-      setIsClosing(false)
-      setSelectedItem(null)
-    }, 200)
+    setShowModal(false)
+    setIsClosing(false)
+    setSelectedItem(null)
   }
 
   const confirmPermanentDelete = async () => {
@@ -251,40 +228,28 @@ export default function RecycleBin() {
         </div>
       )}
 
-      {showModal && (
-        <div
-          style={{
-            ...styles.modalOverlay,
-            animation: isClosing ? 'modalFadeOut 0.2s ease-out forwards' : 'modalFadeIn 0.2s ease-out forwards',
-          }}
-          onClick={handleCloseModal}
-        >
-          <style>{modalAnimationStyles}</style>
-          <div
-            style={{
-              ...styles.modal,
-              animation: isClosing ? 'modalSlideOut 0.2s ease-out forwards' : 'modalSlideIn 0.2s ease-out forwards',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={styles.modalTitle}>确认永久删除</h3>
-            <div style={styles.modalContent}>
-              <p style={styles.warningText}>
-                确定要永久删除 <strong>{selectedItem?.item_data?.name || selectedItem?.item_data?.productName || selectedItem?.item_data?.title}</strong> 吗？
-              </p>
-              <p style={styles.warningDesc}>此操作不可恢复，数据将被永久删除。</p>
-            </div>
-            <div style={styles.modalButtons}>
-              <button type="button" style={styles.cancelButton} onClick={handleCloseModal}>
-                取消
-              </button>
-              <button type="button" style={styles.confirmButton} onClick={confirmPermanentDelete}>
-                确认删除
-              </button>
-            </div>
-          </div>
+      <Modal
+        isOpen={showModal}
+        onClose={handleCloseModal}
+        title="确认永久删除"
+        width={400}
+        footer={null}
+      >
+        <div style={styles.modalContent}>
+          <p style={styles.warningText}>
+            确定要永久删除 <strong>{selectedItem?.item_data?.name || selectedItem?.item_data?.productName || selectedItem?.item_data?.title}</strong> 吗？
+          </p>
+          <p style={styles.warningDesc}>此操作不可恢复，数据将被永久删除。</p>
         </div>
-      )}
+        <div style={{ padding: '0 28px 24px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+          <button type="button" className="sf-btn sf-btn-cancel" onClick={handleCloseModal}>
+            取消
+          </button>
+          <button type="button" className="sf-btn sf-btn-confirm" style={{ backgroundColor: '#E11D48', color: '#fff', border: 'none' }} onClick={confirmPermanentDelete}>
+            确认删除
+          </button>
+        </div>
+      </Modal>
     </div>
   )
 }
