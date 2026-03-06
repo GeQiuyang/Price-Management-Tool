@@ -98,6 +98,11 @@ export default function QuoteGenerator() {
     const [isClosing, setIsClosing] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
     const [useDealerPrice, setUseDealerPrice] = useState(false)
+
+    // 自定义产品弹窗
+    const [showCustomProductModal, setShowCustomProductModal] = useState(false)
+    const [customProduct, setCustomProduct] = useState({ name: '', description: '', price: '', quantity: 1 })
+
     // Excel 导入相关
     const [importedData, setImportedData] = useState([])
     const [importedSheets, setImportedSheets] = useState([])
@@ -114,6 +119,9 @@ export default function QuoteGenerator() {
     const [showClearModal, setShowClearModal] = useState(false)
     const [isClearClosing, setIsClearClosing] = useState(false)
 
+    // 拖拽排序
+    const [dragIndex, setDragIndex] = useState(null)
+    const [dragOverIndex, setDragOverIndex] = useState(null)
 
     // 初始化加载基础数据
     useEffect(() => {
@@ -241,6 +249,35 @@ export default function QuoteGenerator() {
         return product.price
     }
 
+    const insertItemAndReorder = async (newItem) => {
+        let targetIdx = -1;
+        for (let i = quoteItems.length - 1; i >= 0; i--) {
+            if (quoteItems[i].name === newItem.name) {
+                targetIdx = i;
+                break;
+            }
+        }
+
+        if (targetIdx !== -1) {
+            const newItems = [...quoteItems];
+            newItems.splice(targetIdx + 1, 0, newItem);
+            setQuoteItems(newItems);
+
+            try {
+                // 触发重新排序同步到数据库
+                await fetch(`${API_URL}/quote-items/reorder`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ itemIds: newItems.map(i => i.id) })
+                })
+            } catch (err) {
+                console.error('排序同步失败:', err)
+            }
+        } else {
+            setQuoteItems(prev => [...prev, newItem]);
+        }
+    }
+
     const handleAddProduct = async (product) => {
         const selectedPrice = getProductPrice(product)
         const existing = quoteItems.find(item => item.productId === product.id)
@@ -269,10 +306,45 @@ export default function QuoteGenerator() {
                     }),
                 })
                 const newItem = await res.json()
-                setQuoteItems(prev => [...prev, newItem])
+                await insertItemAndReorder(newItem)
             } catch (err) {
                 console.error('添加报价项失败:', err)
             }
+        }
+    }
+
+    const handleAddCustomProduct = async () => {
+        if (!customProduct.name.trim()) return alert('请输入产品名称')
+        if (!customProduct.price || isNaN(customProduct.price)) return alert('请输入有效的单价')
+        if (!customProduct.quantity || customProduct.quantity < 1) return alert('请输入有效的数量')
+
+        try {
+            // 获取当前列表的最大 order_index
+            let nextOrder = 0;
+            if (quoteItems.length > 0) {
+                nextOrder = Math.max(...quoteItems.map(i => i.order_index || 0)) + 1;
+            }
+
+            const res = await fetch(`${API_URL}/quote-items`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    productId: '', // 自定义产品没有在产品库中的ID
+                    name: customProduct.name.trim(),
+                    description: customProduct.description.trim(),
+                    price: parseFloat(customProduct.price),
+                    quantity: parseInt(customProduct.quantity, 10),
+                    order_index: nextOrder,
+                    list_id: activeQuoteListId,
+                }),
+            })
+            const newItem = await res.json()
+            await insertItemAndReorder(newItem)
+            setShowCustomProductModal(false)
+            setCustomProduct({ name: '', description: '', price: '', quantity: 1 })
+            setShowProductModal(false) // 添加成功后也可以顺便关掉主弹窗
+        } catch (err) {
+            console.error('添加自定义产品失败:', err)
         }
     }
 
@@ -750,6 +822,51 @@ export default function QuoteGenerator() {
         XLSX.writeFile(wb, `${sheetName}_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.xlsx`)
     }
 
+    // ─── 拖拽排序 ───
+    const handleDragStart = (e, index) => {
+        setDragIndex(index)
+        setDragOverIndex(null)
+        e.dataTransfer.effectAllowed = 'move'
+        e.dataTransfer.setData('text/plain', index)
+    }
+
+    const handleDragEnter = (e, index) => {
+        e.preventDefault()
+        if (dragIndex !== null && dragIndex !== index) {
+            setDragOverIndex(index)
+        }
+    }
+
+    const handleDropItem = async (e, dropIndex) => {
+        e.preventDefault()
+        const startIndex = dragIndex
+        setDragIndex(null)
+        setDragOverIndex(null)
+
+        if (startIndex === null || startIndex === dropIndex) return
+
+        const newItems = [...quoteItems]
+        const [movedItem] = newItems.splice(startIndex, 1)
+        newItems.splice(dropIndex, 0, movedItem)
+
+        setQuoteItems(newItems)
+
+        try {
+            await fetch(`${API_URL}/quote-items/reorder`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ itemIds: newItems.map(i => i.id) })
+            })
+        } catch (err) {
+            console.error('排序更新失败:', err)
+        }
+    }
+
+    const handleDragEnd = () => {
+        setDragIndex(null)
+        setDragOverIndex(null)
+    }
+
     const currentSheet = importedSheets[activeSheet]
     const importColumns = importedData.length > 0
         ? [...new Set(importedData.flatMap(q => Object.keys(q).filter(k => k !== '_dbId' && k !== 'sheetName')))]
@@ -946,9 +1063,32 @@ export default function QuoteGenerator() {
                             </tr>
                         </thead>
                         <tbody>
-                            {quoteItems.map((item) => (
-                                <tr key={item.id} className="quote-product-row" style={styles.tableRow}>
-                                    <td style={styles.td}>{item.name}</td>
+                            {quoteItems.map((item, index) => (
+                                <tr
+                                    key={item.id}
+                                    className="quote-product-row"
+                                    style={{
+                                        ...styles.tableRow,
+                                        cursor: dragIndex !== null ? 'grabbing' : 'grab',
+                                        opacity: dragIndex === index ? 0.3 : 1,
+                                        borderTop: dragOverIndex === index && dragIndex > index ? '2px solid #4169E1' : 'none',
+                                        borderBottom: dragOverIndex === index && dragIndex < index ? '2px solid #4169E1' : '1px solid #F1F5F9',
+                                        backgroundColor: dragOverIndex === index ? '#F8FAFC' : 'transparent',
+                                        transition: 'all 0.2s ease',
+                                    }}
+                                    draggable
+                                    onDragStart={(e) => handleDragStart(e, index)}
+                                    onDragEnter={(e) => handleDragEnter(e, index)}
+                                    onDragOver={(e) => e.preventDefault()}
+                                    onDrop={(e) => handleDropItem(e, index)}
+                                    onDragEnd={handleDragEnd}
+                                >
+                                    <td style={styles.td}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <span style={{ color: '#94A3B8', cursor: 'inherit' }}>⋮⋮</span>
+                                            {item.name}
+                                        </div>
+                                    </td>
                                     <td style={styles.tdDesc} className="quote-desc-cell">
                                         {item.description || '-'}
                                         {item.description && (
@@ -1099,14 +1239,24 @@ export default function QuoteGenerator() {
                 }
             >
                 <div style={styles.searchBox}>
-                    <input
-                        className="sf-input"
-                        placeholder="搜索产品名称..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        autoFocus
-                    />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px' }}>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                        <input
+                            className="sf-input"
+                            placeholder="搜索产品名称..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            autoFocus
+                            style={{ flex: 1 }}
+                        />
+                        <button
+                            className="sf-btn"
+                            style={{ backgroundColor: '#F1F5F9', color: '#0F172A', border: '1px solid #E2E8F0', padding: '0 20px', fontWeight: '600' }}
+                            onClick={() => setShowCustomProductModal(true)}
+                        >
+                            ＋ 自定义产品
+                        </button>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px' }}>
                         <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>价格类型：</span>
                         <div className="sf-capsule-group">
                             <button
@@ -1181,6 +1331,69 @@ export default function QuoteGenerator() {
                             )
                         })
                     )}
+                </div>
+            </Modal>
+
+            {/* ─── 添加自定义产品弹窗 ─── */}
+            <Modal
+                isOpen={showCustomProductModal}
+                onClose={() => setShowCustomProductModal(false)}
+                title="添加自定义产品"
+                width={480}
+                footer={
+                    <>
+                        <button className="sf-btn sf-btn-cancel" onClick={() => setShowCustomProductModal(false)}>取消</button>
+                        <button className="sf-btn sf-btn-confirm" onClick={handleAddCustomProduct}>直接添加到报价单</button>
+                    </>
+                }
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '24px 28px' }}>
+                    <div>
+                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>产品名称 <span style={{ color: '#E11D48' }}>*</span></label>
+                        <input
+                            className="sf-input"
+                            style={{ width: '100%', boxSizing: 'border-box' }}
+                            placeholder="必填..."
+                            value={customProduct.name}
+                            onChange={(e) => setCustomProduct({ ...customProduct, name: e.target.value })}
+                        />
+                    </div>
+                    <div>
+                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>规格描述</label>
+                        <input
+                            className="sf-input"
+                            style={{ width: '100%', boxSizing: 'border-box' }}
+                            placeholder="选填..."
+                            value={customProduct.description}
+                            onChange={(e) => setCustomProduct({ ...customProduct, description: e.target.value })}
+                        />
+                    </div>
+                    <div style={{ display: 'flex', gap: '20px' }}>
+                        <div style={{ flex: 1 }}>
+                            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>单价 <span style={{ color: '#E11D48' }}>*</span></label>
+                            <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                className="sf-input"
+                                style={{ width: '100%', boxSizing: 'border-box' }}
+                                placeholder="0.00"
+                                value={customProduct.price}
+                                onChange={(e) => setCustomProduct({ ...customProduct, price: e.target.value })}
+                            />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>数量 <span style={{ color: '#E11D48' }}>*</span></label>
+                            <input
+                                type="number"
+                                min="1"
+                                className="sf-input"
+                                style={{ width: '100%', boxSizing: 'border-box' }}
+                                value={customProduct.quantity}
+                                onChange={(e) => setCustomProduct({ ...customProduct, quantity: e.target.value })}
+                            />
+                        </div>
+                    </div>
                 </div>
             </Modal>
 

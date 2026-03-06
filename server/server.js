@@ -226,9 +226,22 @@ async function initDB() {
       description TEXT,
       price REAL NOT NULL,
       quantity INTEGER DEFAULT 1,
+      order_index INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `)
+
+  // 兼容旧数据库：添加 quote_list_id 列和 order_index 列
+  try {
+    db.run('ALTER TABLE quote_items ADD COLUMN quote_list_id TEXT')
+  } catch (e) {
+    // 列已存在则忽略
+  }
+  try {
+    db.run('ALTER TABLE quote_items ADD COLUMN order_index INTEGER DEFAULT 0')
+  } catch (e) {
+    // 列已存在则忽略
+  }
 
   db.run(`
     CREATE TABLE IF NOT EXISTS quote_imported_data (
@@ -1710,7 +1723,7 @@ app.get('/api/quote-items', (req, res) => {
     sql += ' WHERE quote_list_id = ?'
     params.push(list_id)
   }
-  sql += ' ORDER BY id ASC'
+  sql += ' ORDER BY order_index ASC, id ASC'
   const items = queryAll(sql, params)
   // Map sku field to productId for frontend
   res.json(items.map(item => ({ ...item, productId: Number(item.sku) || null })))
@@ -1719,15 +1732,42 @@ app.get('/api/quote-items', (req, res) => {
 app.post('/api/quote-items', (req, res) => {
   const { productId, name, description, price, quantity, list_id } = req.body
   try {
+    // 默认放到最后：获取当前列表的最大 order_index
+    const maxOrderRes = queryOne('SELECT MAX(order_index) as max_idx FROM quote_items WHERE quote_list_id = ?', [list_id || 'default-quote'])
+    const nextOrder = (maxOrderRes && maxOrderRes.max_idx != null) ? maxOrderRes.max_idx + 1 : 0
+
     const result = runSQL(
-      'INSERT INTO quote_items (sku, name, description, price, quantity, quote_list_id) VALUES (?, ?, ?, ?, ?, ?)',
-      [String(productId || ''), name, description || '', price, quantity || 1, list_id || 'default-quote']
+      'INSERT INTO quote_items (sku, name, description, price, quantity, order_index, quote_list_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [String(productId || ''), name, description || '', price, quantity || 1, nextOrder, list_id || 'default-quote']
     )
     const item = queryOne('SELECT * FROM quote_items WHERE id = ?', [result.lastInsertRowid])
     // Map sku field to productId for frontend
     res.status(201).json({ ...item, productId: Number(item.sku) || null })
   } catch (error) {
     res.status(500).json({ error: '添加报价项失败' })
+  }
+})
+
+app.put('/api/quote-items/reorder', (req, res) => {
+  const { itemIds } = req.body
+  if (!Array.isArray(itemIds)) {
+    return res.status(400).json({ error: 'itemIds 必须是数组' })
+  }
+
+  try {
+    db.run('BEGIN TRANSACTION')
+    // SQLite doesn't have a simple bulk update for arrays, so we loop and prepare statements
+    const stmt = db.prepare('UPDATE quote_items SET order_index = ? WHERE id = ?')
+    itemIds.forEach((id, index) => {
+      stmt.run([index, id])
+    })
+    stmt.free()
+    db.run('COMMIT')
+    saveDB()
+    res.json({ message: '排序更新成功' })
+  } catch (error) {
+    db.run('ROLLBACK')
+    res.status(500).json({ error: '排序更新失败' })
   }
 })
 
