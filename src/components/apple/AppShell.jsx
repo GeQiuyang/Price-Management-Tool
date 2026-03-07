@@ -24,7 +24,7 @@ export default function AppShell({ children, user }) {
         ? 'overflow-hidden rounded-[32px] border border-white/60 bg-white/[0.74] py-4 shadow-apple backdrop-blur-2xl md:py-6 xl:py-7'
         : 'rounded-[32px] border border-white/60 bg-white/[0.74] p-4 shadow-apple backdrop-blur-2xl md:p-6 xl:p-7'
 
-  const asideClassName = `${mobileOpen ? 'flex' : 'hidden'} glass-panel flex-col p-4 lg:sticky lg:top-5 lg:flex lg:max-h-[calc(100vh-40px)] lg:self-start lg:overflow-y-auto lg:p-5`
+  const asideClassName = `${mobileOpen ? 'flex' : 'hidden'} glass-panel flex-col p-4 lg:sticky lg:top-5 lg:flex lg:h-[calc(100vh-40px)] lg:self-start lg:overflow-y-auto lg:p-5`
   const mainClassName = `min-w-0 ${contentClassName}`
 
   return (
@@ -34,54 +34,56 @@ export default function AppShell({ children, user }) {
           <aside
             className={asideClassName}
           >
-            <div className="mb-6 flex h-12 w-full items-center justify-start rounded-[16px] bg-[linear-gradient(180deg,#ffffff_0%,#eef2f7_100%)] px-4 text-left">
-              <h2 className="text-xl font-semibold tracking-[0.06em] text-ink">Vector Deck</h2>
+            <div className="mb-6 flex h-14 w-full items-center justify-center rounded-[16px] bg-[linear-gradient(180deg,#ffffff_0%,#eef2f7_100%)] px-5 text-center">
+              <h2 className="text-2xl font-semibold tracking-[0.07em] text-ink">Vector</h2>
             </div>
 
-            <div className="rounded-[24px] bg-[linear-gradient(180deg,#ffffff_0%,#f6f7fa_100%)] p-4">
-              <div className="px-2 pb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#8b8b90]">
-                业务功能
+            <div className="flex flex-1 flex-col">
+              <div className="rounded-[24px] bg-[linear-gradient(180deg,#ffffff_0%,#f6f7fa_100%)] p-5">
+                <div className="px-2 pb-4 text-sm font-semibold uppercase tracking-[0.2em] text-[#8b8b90]">
+                  业务功能
+                </div>
+                <nav className="space-y-2.5">
+                  {primaryNavItems.map((item) => {
+                    const active = location.pathname === item.path
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setMobileOpen(false)}
+                        className={`flex w-full items-center justify-start rounded-2xl px-5 py-3.5 text-base tracking-[0.1em] transition ${
+                          active ? 'bg-black text-white shadow-float' : 'text-[#666666] hover:bg-black/[0.04] hover:text-ink'
+                        }`}
+                      >
+                        <span className="block w-full text-left">{item.label}</span>
+                      </Link>
+                    )
+                  })}
+                </nav>
               </div>
-              <nav className="space-y-2">
-                {primaryNavItems.map((item) => {
-                  const active = location.pathname === item.path
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      onClick={() => setMobileOpen(false)}
-                      className={`flex w-full items-center justify-start rounded-2xl px-4 py-3 text-sm tracking-[0.08em] transition ${
-                        active ? 'bg-black text-white shadow-float' : 'text-[#666666] hover:bg-black/[0.04] hover:text-ink'
-                      }`}
-                    >
-                      <span className="block w-full text-left">{item.label}</span>
-                    </Link>
-                  )
-                })}
-              </nav>
-            </div>
 
-            <div className="mt-6 rounded-[24px] bg-[linear-gradient(180deg,#ffffff_0%,#f6f7fa_100%)] p-4">
-              <div className="px-2 pb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#8b8b90]">
-                系统配置
+              <div className="mt-auto rounded-[24px] bg-[linear-gradient(180deg,#ffffff_0%,#f6f7fa_100%)] p-5">
+                <div className="px-2 pb-4 text-sm font-semibold uppercase tracking-[0.2em] text-[#8b8b90]">
+                  系统配置
+                </div>
+                <nav className="space-y-2.5">
+                  {secondaryNavItems.map((item) => {
+                    const active = location.pathname === item.path
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setMobileOpen(false)}
+                        className={`flex w-full items-center justify-start rounded-2xl px-5 py-3.5 text-base tracking-[0.1em] transition ${
+                          active ? 'bg-black text-white shadow-float' : 'text-[#666666] hover:bg-black/[0.04] hover:text-ink'
+                        }`}
+                      >
+                        <span className="block w-full text-left">{item.label}</span>
+                      </Link>
+                    )
+                  })}
+                </nav>
               </div>
-              <nav className="space-y-2">
-                {secondaryNavItems.map((item) => {
-                  const active = location.pathname === item.path
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      onClick={() => setMobileOpen(false)}
-                      className={`flex w-full items-center justify-start rounded-2xl px-4 py-3 text-sm tracking-[0.08em] transition ${
-                        active ? 'bg-black text-white shadow-float' : 'text-[#666666] hover:bg-black/[0.04] hover:text-ink'
-                      }`}
-                    >
-                      <span className="block w-full text-left">{item.label}</span>
-                    </Link>
-                  )
-                })}
-              </nav>
             </div>
           </aside>
 

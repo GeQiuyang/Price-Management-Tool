@@ -1573,7 +1573,7 @@ export default function QuoteGenerator() {
 }
 
 const styles = {
-    container: { display: 'flex', flexDirection: 'column', gap: '24px', animation: 'fadeInUp 0.4s ease forwards', padding: '24px 40px 0 40px' },
+    container: { display: 'flex', flexDirection: 'column', gap: '24px', animation: 'fadeInUp 0.4s ease forwards', padding: '12px 40px 0 40px' },
     topBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' },
     topBarContent: { display: 'flex', flexDirection: 'column', gap: '16px', flex: 1, minWidth: 0 },
     topBarRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '20px', flexWrap: 'wrap' },
