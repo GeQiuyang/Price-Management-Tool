@@ -10,7 +10,6 @@ const API_URL = 'http://localhost:3001/api'
 const defaultStats = {
   products: 0,
   customers: 0,
-  recycleBin: 0,
 }
 
 export default function Dashboard() {
@@ -19,16 +18,14 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [products, customers, recycleBin] = await Promise.all([
+        const [products, customers] = await Promise.all([
           fetch(`${API_URL}/products`).then((response) => response.json()),
           fetch(`${API_URL}/customers`).then((response) => response.json()),
-          fetch(`${API_URL}/recycle-bin`).then((response) => response.json()),
         ])
 
         setStats({
           products: Array.isArray(products) ? products.length : 0,
           customers: Array.isArray(customers) ? customers.length : 0,
-          recycleBin: Array.isArray(recycleBin) ? recycleBin.length : 0,
         })
       } catch (error) {
         console.error('Failed to fetch dashboard stats:', error)
@@ -56,7 +53,7 @@ export default function Dashboard() {
     {
       kicker: '系统治理',
       title: '系统管理',
-      description: `查看审计日志、备份恢复与回收站状态，当前有 ${stats.recycleBin} 条可恢复记录。`,
+      description: '查看系统设置、审计日志与备份恢复状态，集中处理系统级维护工作。',
       href: '/system-settings',
       visual: 'bg-[linear-gradient(180deg,#f6f6f6_0%,#e5e9f0_100%)]',
     },

@@ -3,8 +3,6 @@ import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import Products from './pages/Products'
 import Customers from './pages/Customers'
-
-import RecycleBin from './pages/RecycleBin'
 import QuoteGenerator from './pages/QuoteGenerator'
 import SystemSettings from './pages/SystemSettings'
 import AuditLogs from './pages/AuditLogs'
@@ -50,8 +48,6 @@ function App() {
                 <Route path="/products" element={<Products />} />
 
                 <Route path="/customers" element={<Customers />} />
-
-                <Route path="/recycle-bin" element={<RecycleBin />} />
                 <Route path="/quote-generator" element={<QuoteGenerator />} />
                 <Route path="/system-settings" element={<SystemSettings />} />
                 <Route path="/audit-logs" element={<AuditLogs />} />

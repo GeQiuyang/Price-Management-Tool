@@ -97,12 +97,11 @@ export default function SystemSettings() {
                 <div style={styles.sectionTitle}>基础设置</div>
 
                 <div style={styles.formGroup}>
-                    <label style={styles.label}>公司名称</label>
-                    <input
-                        style={styles.input}
-                        value={settings.companyName}
-                        onChange={(e) => handleChange('companyName', e.target.value)}
-                    />
+                    <label style={styles.label}>账户名称</label>
+                    <div style={styles.accountRow}>
+                        <div style={{ ...styles.accountName, flex: 1 }}>{user?.username || '访客'}</div>
+                        <button style={styles.accountButton} onClick={handleLogout}>LOGOUT</button>
+                    </div>
                 </div>
 
                 <div style={styles.formRow}>
@@ -177,14 +176,6 @@ export default function SystemSettings() {
                             }} />
                         </div>
                     </label>
-                </div>
-            </div>
-
-            <div style={styles.card}>
-                <div style={styles.sectionTitle}>账户</div>
-                <div style={styles.accountRow}>
-                    <div style={styles.accountName}>{user?.username || '访客'}</div>
-                    <button style={styles.accountButton} onClick={handleLogout}>退出登录</button>
                 </div>
             </div>
 

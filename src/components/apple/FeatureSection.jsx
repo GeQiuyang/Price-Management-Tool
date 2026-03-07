@@ -6,16 +6,16 @@ const features = [
     eyebrow: '核心流程',
     title: '围绕实际业务场景组织日常工作。',
     description:
-      '从产品管理、客户管理，到海运费测算和报价生成，常用操作都集中在统一入口中，减少页面切换成本。',
-    points: ['产品资料与价格集中维护', '客户与成交信息集中管理', '报价与海运费流程联动处理'],
+      '从产品管理、客户管理，到报价生成，常用操作都集中在统一入口中，减少页面切换成本。',
+    points: ['产品资料与价格集中维护', '客户与成交信息集中管理', '报价流程集中处理'],
   },
   {
     id: 'intelligence',
     eyebrow: '系统管理',
     title: '系统配置、审计与恢复能力集中可见。',
     description:
-      '系统参数、审计日志、备份恢复和回收站都保留在系统内，便于日常维护和风险追踪。',
-    points: ['系统参数集中配置', '审计日志保留操作轨迹', '备份、恢复与回收站支持数据回溯'],
+      '系统参数、审计日志和备份恢复都保留在系统内，便于日常维护和风险追踪。',
+    points: ['系统参数集中配置', '审计日志保留操作轨迹', '备份与恢复支持数据维护'],
   },
 ]
 
@@ -62,7 +62,7 @@ export default function FeatureSection() {
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="rounded-[24px] bg-[#f5f5f7] p-5">
-                      <p className="text-sm text-slate">海运费测算</p>
+                      <p className="text-sm text-slate">系统配置</p>
                       <div className="mt-6 h-28 rounded-[20px] bg-[linear-gradient(135deg,rgba(0,113,227,0.12),rgba(17,17,17,0.04))]" />
                     </div>
                     <div className="rounded-[24px] bg-[#f5f5f7] p-5">

@@ -119,7 +119,6 @@ function AuditLogs() {
     <div className="audit-logs-container">
       <div className="page-header">
         <h1>审计日志</h1>
-        <p>查看系统所有操作记录</p>
       </div>
 
       <div className="filters-section">

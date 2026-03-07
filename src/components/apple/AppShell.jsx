@@ -9,7 +9,6 @@ const navItems = [
   { path: '/audit-logs', label: '审计日志' },
   { path: '/backup-restore', label: '备份恢复' },
   { path: '/system-settings', label: '系统设置' },
-  { path: '/recycle-bin', label: '回收站' },
 ]
 
 export default function AppShell({ children, user }) {
@@ -34,7 +33,7 @@ export default function AppShell({ children, user }) {
             className={asideClassName}
           >
             <div className="mb-4 flex min-h-[180px] items-center justify-center rounded-[28px] bg-[linear-gradient(180deg,#ffffff_0%,#eef2f7_100%)] p-5 text-center">
-              <h2 className="text-3xl font-semibold tracking-[-0.04em] text-ink">工作台</h2>
+              <h2 className="text-3xl font-semibold tracking-[-0.04em] text-ink">Vector Deck</h2>
             </div>
 
             <nav className="space-y-1">

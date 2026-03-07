@@ -6,7 +6,7 @@ export default function Footer() {
     },
     {
       title: '运营',
-      items: ['报价中心', '审计日志', '备份恢复', '回收站'],
+      items: ['报价中心', '审计日志', '备份恢复', '系统设置'],
     },
     {
       title: '平台',
