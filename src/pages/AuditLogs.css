@@ -83,6 +83,11 @@
   background: #ffffff;
 }
 
+.logs-table th:last-child,
+.logs-table td:last-child {
+  text-align: left;
+}
+
 .logs-table td {
   padding: 18px 24px;
   font-size: 14px;
@@ -117,6 +122,10 @@
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .pagination {

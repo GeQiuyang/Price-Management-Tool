@@ -121,42 +121,6 @@ function AuditLogs() {
         <h1>审计日志</h1>
       </div>
 
-      <div className="filters-section">
-        <div className="filter-group">
-          <label>实体类型</label>
-          <select
-            name="entity_type"
-            value={filters.entity_type}
-            onChange={handleFilterChange}
-          >
-            <option value="">全部</option>
-            <option value="products">产品</option>
-            <option value="customers">客户</option>
-            <option value="currencies">货币</option>
-            <option value="costs">成本</option>
-            <option value="database">数据库</option>
-            <option value="snapshot">快照</option>
-          </select>
-        </div>
-
-        <div className="filter-group">
-          <label>操作类型</label>
-          <select
-            name="action"
-            value={filters.action}
-            onChange={handleFilterChange}
-          >
-            <option value="">全部</option>
-            <option value="create">创建</option>
-            <option value="update">更新</option>
-            <option value="delete">删除</option>
-            <option value="backup">备份</option>
-            <option value="restore">恢复</option>
-            <option value="snapshot">快照</option>
-          </select>
-        </div>
-      </div>
-
       <div className="logs-table">
         <table>
           <thead>
