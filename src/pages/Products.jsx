@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
-import { createPortal } from 'react-dom'
+import { useState, useEffect } from 'react'
 import Modal from '../components/Modal'
 
 const API_URL = 'http://localhost:3001/api'
@@ -50,16 +49,6 @@ const modalAnimationStyles = `
     }
   }
   
-  @keyframes toastSlideIn {
-    from {
-      opacity: 0;
-      transform: translateX(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
 `
 
 export default function Products() {
@@ -70,10 +59,7 @@ export default function Products() {
   const [showModal, setShowModal] = useState(false)
   const [isClosing, setIsClosing] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
-  const [deletedProduct, setDeletedProduct] = useState(null)
-  const [showUndoToast, setShowUndoToast] = useState(false)
-  const [deletingProductIds, setDeletingProductIds] = useState([])
-  const deleteTimerRef = useRef(null)
+  const [pendingDeleteProduct, setPendingDeleteProduct] = useState(null)
   const [formData, setFormData] = useState({
     name: '',
     category: '钻具类',
@@ -136,24 +122,8 @@ export default function Products() {
   }
 
   useEffect(() => {
-    const savedDeletingIds = localStorage.getItem('deletingProductIds')
-    if (savedDeletingIds) {
-      const parsedIds = JSON.parse(savedDeletingIds)
-      setDeletingProductIds(parsedIds)
-    }
-  }, [])
-
-  useEffect(() => {
     fetchProducts()
-  }, [deletingProductIds])
-
-  useEffect(() => {
-    if (deletingProductIds.length > 0) {
-      localStorage.setItem('deletingProductIds', JSON.stringify(deletingProductIds))
-    } else {
-      localStorage.removeItem('deletingProductIds')
-    }
-  }, [deletingProductIds])
+  }, [])
 
   const fetchProducts = async () => {
     try {
@@ -167,8 +137,7 @@ export default function Products() {
         }
       }
       const data = await response.json()
-      const filteredData = data.filter(p => !deletingProductIds.includes(p.id))
-      setProducts(filteredData)
+      setProducts(data)
       setLoading(false)
     } catch (error) {
       console.error('获取产品列表失败:', error)
@@ -196,14 +165,7 @@ export default function Products() {
   }
 
   const handleDelete = (product) => {
-    setDeletedProduct(product)
-    setDeletingProductIds(prev => [...prev, product.id])
-    setProducts(prev => prev.filter(p => p.id !== product.id))
-    setShowUndoToast(true)
-
-    deleteTimerRef.current = setTimeout(() => {
-      confirmDelete(product)
-    }, 5000)
+    setPendingDeleteProduct(product)
   }
 
   const addToRecycleBin = async (item, type) => {
@@ -223,36 +185,21 @@ export default function Products() {
     }
   }
 
-  const confirmDelete = async (product) => {
-    const itemToDelete = product || deletedProduct
-    if (itemToDelete) {
-      try {
-        await fetch(`${API_URL}/products/${itemToDelete.id}`, {
-          method: 'DELETE',
-          headers: {
-            ...getAuthHeaders(),
-          },
-        })
-        await addToRecycleBin(itemToDelete, 'products')
-      } catch (error) {
-        console.error('删除产品失败:', error)
-      }
+  const confirmDelete = async () => {
+    if (!pendingDeleteProduct) return
+    try {
+      await fetch(`${API_URL}/products/${pendingDeleteProduct.id}`, {
+        method: 'DELETE',
+        headers: {
+          ...getAuthHeaders(),
+        },
+      })
+      await addToRecycleBin(pendingDeleteProduct, 'products')
+      setProducts(prev => prev.filter((p) => p.id !== pendingDeleteProduct.id))
+    } catch (error) {
+      console.error('删除产品失败:', error)
     }
-    setDeletedProduct(null)
-    setDeletingProductIds(prev => prev.filter(id => id !== itemToDelete?.id))
-    setShowUndoToast(false)
-  }
-
-  const handleUndoDelete = () => {
-    if (deleteTimerRef.current) {
-      clearTimeout(deleteTimerRef.current)
-    }
-    if (deletedProduct) {
-      setProducts(prev => [...prev, deletedProduct])
-      setDeletingProductIds(prev => prev.filter(id => id !== deletedProduct.id))
-      setDeletedProduct(null)
-      setShowUndoToast(false)
-    }
+    setPendingDeleteProduct(null)
   }
 
   const handleDescriptionChange = (value) => {
@@ -583,37 +530,10 @@ export default function Products() {
 
   return (
     <div style={styles.container}>
-      {showUndoToast && (
-        <div
-          style={styles.undoToast}
-          onMouseEnter={() => deleteTimerRef.current && clearTimeout(deleteTimerRef.current)}
-          onMouseLeave={() => {
-            if (deletedProduct && !showUndoToast) return
-            deleteTimerRef.current = setTimeout(() => {
-              confirmDelete()
-            }, 5000)
-          }}
-        >
-          <style>{modalAnimationStyles}</style>
-          <div style={styles.undoToastContent}>
-            <div style={styles.undoToastIcon}>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm4 10.4H4c-.4 0-.8-.4-.8-.8s.4-.8.8-.8h8c.4 0 .8.4.8.8s-.4.8-.8.8z" fill="#10B981" />
-              </svg>
-            </div>
-            <div style={styles.undoToastText}>
-              <div style={styles.undoToastTitle}>产品已删除</div>
-              <div style={styles.undoToastDesc}>5秒后自动消失</div>
-            </div>
-          </div>
-          <button style={styles.undoButton} onClick={handleUndoDelete}>
-            撤销
-          </button>
-        </div>
-      )}
+      <style>{modalAnimationStyles}</style>
 
       <div style={styles.topBar}>
-        <h2 style={styles.pageTitle}>产品目录管理</h2>
+        <h2 style={styles.pageTitle}>产品管理</h2>
         <div style={styles.topActions}>
           <input
             type="text"
@@ -664,7 +584,7 @@ export default function Products() {
               <th style={styles.th}>产品规格</th>
               <th style={styles.th}>{hasDualPrice(activeCategory) ? '终端价' : '价格'}</th>
               {hasDualPrice(activeCategory) && <th style={styles.th}>经销商价</th>}
-              {!isReadOnly && <th style={styles.th}>操作</th>}
+              {!isReadOnly && <th aria-label="操作" style={styles.th}></th>}
             </tr>
           </thead>
           <tbody>
@@ -683,7 +603,7 @@ export default function Products() {
                   </td>
                 )}
                 {!isReadOnly && (
-                  <td style={styles.td}>
+                  <td style={styles.tdActions}>
                     <button style={styles.editButton} onClick={() => handleEdit(product)}>
                       编辑
                     </button>
@@ -799,6 +719,29 @@ export default function Products() {
           </form>
         </div>
       </Modal>
+
+      <Modal
+        isOpen={Boolean(pendingDeleteProduct)}
+        onClose={() => setPendingDeleteProduct(null)}
+        title="确认删除"
+        width={600}
+        footer={null}
+      >
+        <div style={{ padding: '8px 4px 4px' }}>
+          <p style={styles.confirmMessage}>
+            确定要删除产品 <strong>{pendingDeleteProduct?.name}</strong> 吗？
+          </p>
+          <p style={styles.confirmHint}>删除后数据将进入回收站，可在回收站中恢复或永久删除。</p>
+          <div style={styles.confirmActions}>
+            <button type="button" className="sf-btn sf-btn-cancel" onClick={() => setPendingDeleteProduct(null)}>
+              取消
+            </button>
+            <button type="button" className="sf-btn sf-btn-confirm" onClick={confirmDelete}>
+              确认删除
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
@@ -886,11 +829,9 @@ const styles = {
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  pageTitle: {
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    fontSize: '28px',
+  pageTitle: {fontSize: '42px',
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#111111',
     margin: 0,
     letterSpacing: '-0.02em',
   },
@@ -904,7 +845,7 @@ const styles = {
   searchInput: {
     padding: '12px 18px',
     border: '1px solid #E2E8F0',
-    borderRadius: '12px',
+    borderRadius: '999px',
     fontSize: '14px',
     width: '280px',
     outline: 'none',
@@ -915,10 +856,10 @@ const styles = {
   },
   addButton: {
     padding: '12px 26px',
-    background: 'linear-gradient(135deg, #4169E1 0%, #6B8DF5 50%, #4169E1 100%)',
-    color: '#0F172A',
+    background: '#111111',
+    color: '#FFFFFF',
     border: 'none',
-    borderRadius: '12px',
+    borderRadius: '999px',
     cursor: 'pointer',
     fontSize: '14px',
     fontWeight: '600',
@@ -952,7 +893,7 @@ const styles = {
     transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
   },
   tabActive: {
-    background: 'linear-gradient(135deg, #4169E1 0%, #3355C0 100%)',
+    background: '#111111',
     color: '#FFFFFF',
     boxShadow: '0 4px 12px rgba(65, 105, 225, 0.25)',
   },
@@ -1017,30 +958,56 @@ const styles = {
     padding: '18px 24px',
     fontSize: '16px',
     fontWeight: '700',
-    color: '#4169E1',
+    color: '#111111',
+  },
+  tdActions: {
+    padding: '18px 24px',
+    fontSize: '14px',
+    color: '#1E293B',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    whiteSpace: 'nowrap',
   },
   editButton: {
     padding: '8px 18px',
-    backgroundColor: 'rgba(65, 105, 225, 0.08)',
-    color: '#3355C0',
-    border: '1px solid rgba(65, 105, 225, 0.2)',
-    borderRadius: '10px',
+    backgroundColor: 'transparent',
+    color: '#111111',
+    border: '1px solid transparent',
+    borderRadius: '999px',
     cursor: 'pointer',
     fontSize: '13px',
     fontWeight: '600',
-    marginRight: '10px',
     transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
   },
   deleteButton: {
     padding: '8px 18px',
-    backgroundColor: 'rgba(225, 29, 72, 0.06)',
-    color: '#E11D48',
-    border: '1px solid rgba(225, 29, 72, 0.12)',
-    borderRadius: '10px',
+    backgroundColor: 'transparent',
+    color: '#f87171',
+    border: '1px solid transparent',
+    borderRadius: '999px',
     cursor: 'pointer',
     fontSize: '13px',
     fontWeight: '600',
     transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+  },
+  confirmMessage: {
+    margin: 0,
+    fontSize: '16px',
+    lineHeight: '1.7',
+    color: '#111111',
+  },
+  confirmHint: {
+    margin: '12px 0 0',
+    fontSize: '13px',
+    lineHeight: '1.7',
+    color: '#64748B',
+  },
+  confirmActions: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: '12px',
+    marginTop: '24px',
   },
   modalOverlay: {
     position: 'fixed',
@@ -1144,7 +1111,7 @@ const styles = {
     width: '100%',
     padding: '12px 16px',
     border: '1px solid #E2E8F0',
-    borderRadius: '12px',
+    borderRadius: '999px',
     fontSize: '14px',
     backgroundColor: '#FFFFFF',
     transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -1165,7 +1132,7 @@ const styles = {
     backgroundColor: '#FFFFFF',
     color: '#64748B',
     border: '1px solid #E2E8F0',
-    borderRadius: '12px',
+    borderRadius: '999px',
     cursor: 'pointer',
     fontSize: '14px',
     fontWeight: '600',
@@ -1173,10 +1140,10 @@ const styles = {
   },
   submitButton: {
     padding: '12px 28px',
-    background: 'linear-gradient(135deg, #4169E1 0%, #6B8DF5 50%, #4169E1 100%)',
-    color: '#0F172A',
+    background: '#111111',
+    color: '#FFFFFF',
     border: 'none',
-    borderRadius: '12px',
+    borderRadius: '999px',
     cursor: 'pointer',
     fontSize: '14px',
     fontWeight: '600',

@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Modal from '../components/Modal'
 const API_URL = 'http://localhost:3001/api'
 
 
 
 export default function SystemSettings() {
+    const navigate = useNavigate()
     const [settings, setSettings] = useState({
         companyName: 'Vector',
         defaultCurrency: 'CNY',
@@ -17,6 +19,7 @@ export default function SystemSettings() {
     const [showSaveModal, setShowSaveModal] = useState(false)
     const [saveStatus, setSaveStatus] = useState('success')
     const [isClosing, setIsClosing] = useState(false)
+    const user = JSON.parse(localStorage.getItem('user') || '{}')
 
     useEffect(() => {
         fetchSettings()
@@ -61,13 +64,32 @@ export default function SystemSettings() {
         setIsClosing(false)
     }
 
+    const handleLogout = async () => {
+        try {
+            const token = localStorage.getItem('token')
+            await fetch('http://localhost:3001/api/auth/logout', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            })
+        } catch (error) {
+            console.error('退出登录失败:', error)
+        } finally {
+            localStorage.removeItem('token')
+            localStorage.removeItem('refreshToken')
+            localStorage.removeItem('user')
+            navigate('/login')
+        }
+    }
+
     if (loading) return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-tertiary)' }}>加载中...</div>
 
     return (
         <div style={styles.container}>
 
             <div style={styles.topBar}>
-                <h2 style={styles.pageTitle}>系统参数</h2>
+                <h2 style={styles.pageTitle}>系统设置</h2>
                 <button style={styles.saveButton} onClick={handleSave}>保存设置</button>
             </div>
 
@@ -145,7 +167,7 @@ export default function SystemSettings() {
                         <div
                             style={{
                                 ...styles.toggle,
-                                backgroundColor: settings.autoSave ? '#4169E1' : '#D1D5DB',
+                                backgroundColor: settings.autoSave ? '#111111' : '#D1D5DB',
                             }}
                             onClick={() => handleChange('autoSave', !settings.autoSave)}
                         >
@@ -158,11 +180,19 @@ export default function SystemSettings() {
                 </div>
             </div>
 
+            <div style={styles.card}>
+                <div style={styles.sectionTitle}>账户</div>
+                <div style={styles.accountRow}>
+                    <div style={styles.accountName}>{user?.username || '访客'}</div>
+                    <button style={styles.accountButton} onClick={handleLogout}>退出登录</button>
+                </div>
+            </div>
+
             <Modal
                 isOpen={showSaveModal}
                 onClose={handleCloseModal}
                 title=""
-                width={400}
+                width={600}
                 footer={null}
             >
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '10px 0' }}>
@@ -222,20 +252,18 @@ const styles = {
         justifyContent: 'space-between',
         alignItems: 'center',
     },
-    pageTitle: {
-        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-        fontSize: '28px',
+    pageTitle: {fontSize: '42px',
         fontWeight: '700',
-        color: '#0F172A',
+        color: '#111111',
         margin: 0,
         letterSpacing: '-0.02em',
     },
     saveButton: {
         padding: '12px 26px',
-        background: 'linear-gradient(135deg, #4169E1 0%, #6B8DF5 50%, #4169E1 100%)',
-        color: '#0F172A',
+        background: '#111111',
+        color: '#FFFFFF',
         border: 'none',
-        borderRadius: '12px',
+        borderRadius: '999px',
         cursor: 'pointer',
         fontSize: '14px',
         fontWeight: '600',
@@ -251,6 +279,34 @@ const styles = {
         borderRadius: '20px',
         border: '1px solid #E2E8F0',
         boxShadow: '0 2px 8px rgba(30, 41, 59, 0.04)',
+    },
+    accountRow: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: '16px',
+        flexWrap: 'wrap',
+    },
+    accountName: {
+        padding: '12px 18px',
+        borderRadius: '999px',
+        border: '1px solid #E2E8F0',
+        backgroundColor: '#FFFFFF',
+        color: '#64748B',
+        fontSize: '14px',
+        fontWeight: '500',
+        minWidth: '160px',
+    },
+    accountButton: {
+        padding: '12px 26px',
+        background: '#111111',
+        color: '#FFFFFF',
+        border: 'none',
+        borderRadius: '999px',
+        cursor: 'pointer',
+        fontSize: '14px',
+        fontWeight: '600',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
     },
     sectionTitle: {
         fontSize: '13px',
@@ -280,7 +336,7 @@ const styles = {
         width: "100%",
         padding: '12px 16px',
         border: '1px solid #E2E8F0',
-        borderRadius: '12px',
+        borderRadius: '999px',
         fontSize: '14px',
         backgroundColor: '#FFFFFF',
         transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -291,7 +347,7 @@ const styles = {
         width: "100%",
         padding: '12px 16px',
         border: '1px solid #E2E8F0',
-        borderRadius: '12px',
+        borderRadius: '999px',
         fontSize: '14px',
         backgroundColor: '#FFFFFF',
         transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -309,7 +365,7 @@ const styles = {
     toggle: {
         width: '44px',
         height: '24px',
-        borderRadius: '12px',
+        borderRadius: '999px',
         position: 'relative',
         cursor: 'pointer',
         transition: 'background-color 0.2s',
@@ -380,10 +436,10 @@ const styles = {
     modalButton: {
         width: '100%',
         padding: '12px 28px',
-        background: 'linear-gradient(135deg, #4169E1 0%, #6B8DF5 50%, #4169E1 100%)',
-        color: '#0F172A',
+        background: '#111111',
+        color: '#FFFFFF',
         border: 'none',
-        borderRadius: '12px',
+        borderRadius: '999px',
         cursor: 'pointer',
         fontSize: '14px',
         fontWeight: '600',

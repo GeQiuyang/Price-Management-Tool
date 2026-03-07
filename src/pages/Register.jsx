@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
-import './Auth.css'
+import { Link, useNavigate } from 'react-router-dom'
 
 function Register() {
   const [formData, setFormData] = useState({
@@ -9,17 +8,17 @@ function Register() {
     password: '',
     confirmPassword: '',
     full_name: '',
-    phone: ''
+    phone: '',
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const navigate = useNavigate()
 
-  const handleChange = (e) => {
+  const handleChange = (event) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [event.target.name]: event.target.value,
     })
     setError('')
   }
@@ -44,8 +43,8 @@ function Register() {
     return true
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const handleSubmit = async (event) => {
+    event.preventDefault()
     setError('')
 
     if (!validateForm()) {
@@ -59,9 +58,9 @@ function Register() {
       const response = await fetch('http://localhost:3001/api/auth/register', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(registerData)
+        body: JSON.stringify(registerData),
       })
 
       const data = await response.json()
@@ -71,10 +70,11 @@ function Register() {
         setTimeout(() => {
           navigate('/login')
         }, 2000)
-      } else {
-        setError(data.error?.message || '注册失败')
+        return
       }
-    } catch (err) {
+
+      setError(data.error?.message || '注册失败')
+    } catch (error) {
       setError('网络错误，请稍后重试')
     } finally {
       setLoading(false)
@@ -83,125 +83,136 @@ function Register() {
 
   if (success) {
     return (
-      <div className="auth-container">
-        <div className="auth-box">
-          <div className="auth-header">
-            <div className="success-icon">✓</div>
-            <h1>注册成功！</h1>
-            <p>正在跳转到登录页面...</p>
-          </div>
+      <div className="flex min-h-screen items-center justify-center bg-hero-glow px-6">
+        <div className="rounded-[36px] border border-white/70 bg-white/[0.78] px-10 py-14 text-center shadow-float backdrop-blur-2xl">
+          <p className="text-sm uppercase tracking-[0.32em] text-slate">账号已就绪</p>
+          <h1 className="mt-4 text-5xl font-semibold tracking-[-0.06em] text-ink">注册成功</h1>
+          <p className="mt-4 text-base text-slate">正在跳转到登录页面...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="auth-container">
-      <div className="auth-box">
-        <div className="auth-header">
-          <h1>创建账号</h1>
-          <p>注册以使用价格管理系统</p>
+    <div className="flex min-h-screen items-center justify-center bg-[linear-gradient(180deg,#ffffff_0%,#eef2f7_100%)] px-6 py-10">
+      <div className="grid w-full max-w-6xl overflow-hidden rounded-[40px] border border-white/70 bg-white/[0.72] shadow-float backdrop-blur-2xl lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="hidden bg-[#111111] p-12 text-white lg:flex lg:flex-col lg:justify-between">
+          <div>
+            <p className="text-sm uppercase tracking-[0.32em] text-white/55">创建账号</p>
+            <h1 className="mt-6 text-[4rem] font-semibold leading-[0.95] tracking-[-0.07em]">
+              开启更精致的业务工作台体验。
+            </h1>
+            <p className="mt-6 max-w-md text-lg leading-8 text-white/70">
+              注册流程延续同样的 Apple 风格克制感，用清晰留白、聚焦输入和轻量动效提升体验。
+            </p>
+          </div>
+          <div className="rounded-[32px] border border-white/10 bg-white/[0.06] p-6 backdrop-blur-xl">
+            <p className="text-3xl font-semibold tracking-[-0.05em]">默认安全</p>
+            <p className="mt-4 text-sm leading-7 text-white/[0.64]">在授予访问权限前，会先校验密码强度、身份字段和账号基础规范。</p>
+          </div>
         </div>
 
-        <form className="auth-form" onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="username">用户名 *</label>
-            <input
-              type="text"
-              id="username"
-              name="username"
-              value={formData.username}
-              onChange={handleChange}
-              placeholder="请输入用户名（3-50个字符）"
-              required
-              minLength={3}
-              maxLength={50}
-            />
-          </div>
+        <div className="p-6 md:p-10 lg:p-12">
+          <div className="mx-auto max-w-2xl">
+            <p className="text-sm uppercase tracking-[0.32em] text-slate">注册入口</p>
+            <h2 className="mt-4 text-5xl font-semibold tracking-[-0.06em] text-ink md:text-6xl">创建账号</h2>
+            <p className="mt-4 text-base leading-7 text-slate">注册后即可使用全新的 Apple 风格价格管理界面。</p>
 
-          <div className="form-group">
-            <label htmlFor="email">邮箱 *</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="请输入邮箱地址"
-              required
-            />
-          </div>
+            <form className="mt-10 grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
+              <label className="block">
+                <span className="mb-2 block text-sm text-slate">用户名 *</span>
+                <input
+                  type="text"
+                  name="username"
+                  value={formData.username}
+                  onChange={handleChange}
+                  required
+                  minLength={3}
+                  maxLength={50}
+                  className="w-full rounded-[22px] border border-black/8 bg-white/80 px-5 py-4 text-base outline-none transition focus:border-black/20 focus:shadow-apple"
+                />
+              </label>
 
-          <div className="form-group">
-            <label htmlFor="full_name">姓名</label>
-            <input
-              type="text"
-              id="full_name"
-              name="full_name"
-              value={formData.full_name}
-              onChange={handleChange}
-              placeholder="请输入您的姓名"
-              maxLength={100}
-            />
-          </div>
+              <label className="block">
+                <span className="mb-2 block text-sm text-slate">邮箱 *</span>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                  className="w-full rounded-[22px] border border-black/8 bg-white/80 px-5 py-4 text-base outline-none transition focus:border-black/20 focus:shadow-apple"
+                />
+              </label>
 
-          <div className="form-group">
-            <label htmlFor="phone">手机号</label>
-            <input
-              type="tel"
-              id="phone"
-              name="phone"
-              value={formData.phone}
-              onChange={handleChange}
-              placeholder="请输入手机号码"
-              pattern="1[3-9]\d{9}"
-            />
-          </div>
+              <label className="block">
+                <span className="mb-2 block text-sm text-slate">姓名</span>
+                <input
+                  type="text"
+                  name="full_name"
+                  value={formData.full_name}
+                  onChange={handleChange}
+                  maxLength={100}
+                  className="w-full rounded-[22px] border border-black/8 bg-white/80 px-5 py-4 text-base outline-none transition focus:border-black/20 focus:shadow-apple"
+                />
+              </label>
 
-          <div className="form-group">
-            <label htmlFor="password">密码 *</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="请输入密码（至少6个字符，包含大小写字母和数字）"
-              required
-              minLength={6}
-            />
-          </div>
+              <label className="block">
+                <span className="mb-2 block text-sm text-slate">手机号</span>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  pattern="1[3-9]\d{9}"
+                  className="w-full rounded-[22px] border border-black/8 bg-white/80 px-5 py-4 text-base outline-none transition focus:border-black/20 focus:shadow-apple"
+                />
+              </label>
 
-          <div className="form-group">
-            <label htmlFor="confirmPassword">确认密码 *</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              placeholder="请再次输入密码"
-              required
-              minLength={6}
-            />
-          </div>
+              <label className="block">
+                <span className="mb-2 block text-sm text-slate">密码 *</span>
+                <input
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                  minLength={6}
+                  className="w-full rounded-[22px] border border-black/8 bg-white/80 px-5 py-4 text-base outline-none transition focus:border-black/20 focus:shadow-apple"
+                />
+              </label>
 
-          {error && (
-            <div className="error-message">
-              {error}
+              <label className="block">
+                <span className="mb-2 block text-sm text-slate">确认密码 *</span>
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  required
+                  minLength={6}
+                  className="w-full rounded-[22px] border border-black/8 bg-white/80 px-5 py-4 text-base outline-none transition focus:border-black/20 focus:shadow-apple"
+                />
+              </label>
+
+              {error ? (
+                <div className="md:col-span-2 rounded-[22px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
+              ) : null}
+
+              <div className="md:col-span-2 pt-2">
+                <button type="submit" disabled={loading} className="apple-button-primary w-full py-4 text-base disabled:opacity-60">
+                  {loading ? '注册中...' : '注册'}
+                </button>
+              </div>
+            </form>
+
+            <div className="mt-8 text-sm text-slate">
+              已有账号？{' '}
+              <Link to="/login" className="text-ink transition hover:opacity-70">
+                立即登录
+              </Link>
             </div>
-          )}
-
-          <button type="submit" className="auth-button" disabled={loading}>
-            {loading ? '注册中...' : '注册'}
-          </button>
-        </form>
-
-        <div className="auth-footer">
-          <p>
-            已有账号？{' '}
-            <Link to="/login">立即登录</Link>
-          </p>
+          </div>
         </div>
       </div>
     </div>

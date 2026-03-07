@@ -183,7 +183,7 @@ export default function RecycleBin() {
                 <th style={styles.th}>名称</th>
                 <th style={styles.th}>删除时间</th>
                 <th style={styles.th}>剩余天数</th>
-                <th style={styles.th}>操作</th>
+                <th aria-label="操作" style={styles.th}></th>
               </tr>
             </thead>
             <tbody>
@@ -268,7 +268,7 @@ const styles = {
   },
   pageTitle: {
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    fontSize: '28px',
+    fontSize: '42px',
     fontWeight: '700',
     color: '#0F172A',
     margin: 0,

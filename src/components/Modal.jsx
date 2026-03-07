@@ -1,6 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import './Modal.css';
+
+let activeModalCount = 0;
 
 const Modal = ({
     isOpen,
@@ -17,18 +19,69 @@ const Modal = ({
     className = '',
     noOverlay = false
 }) => {
+    const [shouldRender, setShouldRender] = useState(isOpen);
+    const [isClosing, setIsClosing] = useState(false);
+    const closeTimerRef = useRef(null);
+
     useEffect(() => {
         if (isOpen) {
-            document.body.style.overflow = 'hidden';
-            return () => { document.body.style.overflow = ''; };
+            setShouldRender(true);
+            setIsClosing(false);
+        } else if (shouldRender) {
+            setIsClosing(true);
+            closeTimerRef.current = window.setTimeout(() => {
+                setShouldRender(false);
+                setIsClosing(false);
+            }, 420);
         }
-    }, [isOpen]);
 
-    if (!isOpen) return null;
+        return () => {
+            if (closeTimerRef.current) {
+                window.clearTimeout(closeTimerRef.current);
+            }
+        };
+    }, [isOpen, shouldRender]);
+
+    useEffect(() => {
+        if (shouldRender) {
+            activeModalCount += 1;
+
+            if (activeModalCount === 1) {
+                const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+                document.body.dataset.modalLock = 'true';
+                document.body.style.overflow = 'hidden';
+
+                if (scrollbarWidth > 0) {
+                    document.body.style.paddingRight = `${scrollbarWidth}px`;
+                }
+            }
+
+            return () => {
+                activeModalCount = Math.max(0, activeModalCount - 1);
+
+                if (activeModalCount === 0) {
+                    delete document.body.dataset.modalLock;
+                    document.body.style.overflow = '';
+                    document.body.style.paddingRight = '';
+                }
+            };
+        }
+
+        return undefined;
+    }, [shouldRender]);
+
+    if (!shouldRender) return null;
 
     return createPortal(
-        <div className={`sf-modal-overlay${noOverlay ? ' sf-modal-no-overlay' : ''}`} onClick={onClose}>
-            <div className={`sf-modal-container ${className}`} style={{ width }} onClick={e => e.stopPropagation()}>
+        <div
+            className={`sf-modal-overlay${noOverlay ? ' sf-modal-no-overlay' : ''}${isClosing ? ' sf-modal-overlay-closing' : ''}`}
+            onClick={onClose}
+        >
+            <div
+                className={`sf-modal-container ${className}${isClosing ? ' sf-modal-container-closing' : ''}`}
+                style={{ width }}
+                onClick={e => e.stopPropagation()}
+            >
                 {/* 关闭图标 */}
                 <button className="sf-modal-close" onClick={onClose}>
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">

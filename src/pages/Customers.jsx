@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Modal from "../components/Modal";
 
 const API_URL = "http://localhost:3001/api";
@@ -19,10 +19,6 @@ const modalAnimationStyles = `
   @keyframes modalSlideOut {
     from { opacity: 1; transform: translateY(0) scale(1); }
     to { opacity: 0; transform: translateY(24px) scale(0.97); }
-  }
-  @keyframes toastSlideIn {
-    from { opacity: 0; transform: translateX(20px); }
-    to { opacity: 1; transform: translateX(0); }
   }
 `;
 
@@ -249,9 +245,7 @@ export default function Customers() {
   const [showModal, setShowModal] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
-  const [deletedCustomer, setDeletedCustomer] = useState(null);
-  const [showUndoToast, setShowUndoToast] = useState(false);
-  const deleteTimerRef = useRef(null);
+  const [pendingDeleteCustomer, setPendingDeleteCustomer] = useState(null);
   const [formData, setFormData] = useState({
     customer_type: "终端",
     country: "中国",
@@ -286,12 +280,7 @@ export default function Customers() {
   };
 
   const handleDelete = (customer) => {
-    setDeletedCustomer(customer);
-    setCustomers((prev) => prev.filter((c) => c.id !== customer.id));
-    setShowUndoToast(true);
-    deleteTimerRef.current = setTimeout(() => {
-      confirmDelete(customer);
-    }, 5000);
+    setPendingDeleteCustomer(customer);
   };
 
   const addToRecycleBin = async (item, type) => {
@@ -311,29 +300,18 @@ export default function Customers() {
     }
   };
 
-  const confirmDelete = async (customer) => {
-    const itemToDelete = customer || deletedCustomer;
-    if (itemToDelete) {
-      try {
-        await fetch(`${API_URL}/customers/${itemToDelete.id}`, {
-          method: "DELETE",
-        });
-        await addToRecycleBin(itemToDelete, "customers");
-      } catch (err) {
-        console.error("删除失败:", err);
-      }
+  const confirmDelete = async () => {
+    if (!pendingDeleteCustomer) return;
+    try {
+      await fetch(`${API_URL}/customers/${pendingDeleteCustomer.id}`, {
+        method: "DELETE",
+      });
+      await addToRecycleBin(pendingDeleteCustomer, "customers");
+      setCustomers((prev) => prev.filter((c) => c.id !== pendingDeleteCustomer.id));
+    } catch (err) {
+      console.error("删除失败:", err);
     }
-    setDeletedCustomer(null);
-    setShowUndoToast(false);
-  };
-
-  const handleUndoDelete = () => {
-    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
-    if (deletedCustomer) {
-      setCustomers((prev) => [...prev, deletedCustomer]);
-      setDeletedCustomer(null);
-      setShowUndoToast(false);
-    }
+    setPendingDeleteCustomer(null);
   };
 
   const handleSubmit = async (e) => {
@@ -385,40 +363,10 @@ export default function Customers() {
 
   return (
     <div style={styles.container}>
-      {showUndoToast && (
-        <div
-          style={styles.undoToast}
-          onMouseEnter={() =>
-            deleteTimerRef.current && clearTimeout(deleteTimerRef.current)
-          }
-          onMouseLeave={() => {
-            if (deletedCustomer && !showUndoToast) return;
-            deleteTimerRef.current = setTimeout(() => confirmDelete(), 5000);
-          }}
-        >
-          <style>{modalAnimationStyles}</style>
-          <div style={styles.undoToastContent}>
-            <div style={styles.undoToastIcon}>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path
-                  d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm4 10.4H4c-.4 0-.8-.4-.8-.8s.4-.8.8-.8h8c.4 0 .8.4.8.8s-.4.8-.8.8z"
-                  fill="#10B981"
-                />
-              </svg>
-            </div>
-            <div style={styles.undoToastText}>
-              <div style={styles.undoToastTitle}>客户已删除</div>
-              <div style={styles.undoToastDesc}>5秒后自动消失</div>
-            </div>
-          </div>
-          <button style={styles.undoButton} onClick={handleUndoDelete}>
-            撤销
-          </button>
-        </div>
-      )}
+      <style>{modalAnimationStyles}</style>
 
       <div style={styles.topBar}>
-        <h2 style={styles.pageTitle}>客户类型</h2>
+        <h2 style={styles.pageTitle}>客户管理</h2>
         <div style={styles.topActions}>
           <button style={styles.addButton} onClick={handleAdd}>
             添加客户
@@ -454,7 +402,7 @@ export default function Customers() {
               <th style={styles.th}>城市</th>
               <th style={styles.th}>联系方式</th>
               <th style={styles.th}>成交次数</th>
-              <th style={styles.th}>操作</th>
+              <th aria-label="操作" style={styles.th}></th>
             </tr>
           </thead>
           <tbody>
@@ -507,7 +455,7 @@ export default function Customers() {
         isOpen={showModal}
         onClose={handleCloseModal}
         title={editingCustomer ? "编辑客户" : "添加客户"}
-        width={540}
+        width={600}
         footer={null}
       >
         <div style={styles.formScroll}>
@@ -623,6 +571,27 @@ export default function Customers() {
           </form>
         </div>
       </Modal>
+
+      <Modal
+        isOpen={Boolean(pendingDeleteCustomer)}
+        onClose={() => setPendingDeleteCustomer(null)}
+        title="确认删除"
+        width={600}
+        footer={null}
+      >
+        <div style={{ padding: "8px 4px 4px" }}>
+          <p style={styles.confirmMessage}>确定要删除该客户吗？</p>
+          <p style={styles.confirmHint}>删除后数据将进入回收站，可在回收站中恢复或永久删除。</p>
+          <div style={styles.confirmActions}>
+            <button type="button" className="sf-btn sf-btn-cancel" onClick={() => setPendingDeleteCustomer(null)}>
+              取消
+            </button>
+            <button type="button" className="sf-btn sf-btn-confirm" onClick={confirmDelete}>
+              确认删除
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -685,11 +654,9 @@ const styles = {
     justifyContent: "space-between",
     alignItems: "center",
   },
-  pageTitle: {
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    fontSize: '28px',
+  pageTitle: {fontSize: '42px',
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#111111',
     margin: 0,
     letterSpacing: '-0.02em',
   },
@@ -702,10 +669,10 @@ const styles = {
   },
   addButton: {
     padding: '12px 26px',
-    background: 'linear-gradient(135deg, #4169E1 0%, #6B8DF5 50%, #4169E1 100%)',
-    color: '#0F172A',
+    background: '#111111',
+    color: '#FFFFFF',
     border: 'none',
-    borderRadius: '12px',
+    borderRadius: '999px',
     cursor: 'pointer',
     fontSize: '14px',
     fontWeight: '600',
@@ -794,10 +761,10 @@ const styles = {
   },
   editButton: {
     padding: '8px 18px',
-    backgroundColor: 'rgba(65, 105, 225, 0.08)',
-    color: '#3355C0',
-    border: '1px solid rgba(65, 105, 225, 0.2)',
-    borderRadius: '10px',
+    backgroundColor: 'transparent',
+    color: '#111111',
+    border: '1px solid transparent',
+    borderRadius: '999px',
     cursor: 'pointer',
     fontSize: '13px',
     fontWeight: '600',
@@ -806,14 +773,32 @@ const styles = {
   },
   deleteButton: {
     padding: '8px 18px',
-    backgroundColor: 'rgba(225, 29, 72, 0.06)',
-    color: '#E11D48',
-    border: '1px solid rgba(225, 29, 72, 0.12)',
-    borderRadius: '10px',
+    backgroundColor: 'transparent',
+    color: '#f87171',
+    border: '1px solid transparent',
+    borderRadius: '999px',
     cursor: 'pointer',
     fontSize: '13px',
     fontWeight: '600',
     transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+  },
+  confirmMessage: {
+    margin: 0,
+    fontSize: "16px",
+    lineHeight: "1.7",
+    color: "#111111",
+  },
+  confirmHint: {
+    margin: "12px 0 0",
+    fontSize: "13px",
+    lineHeight: "1.7",
+    color: "#64748B",
+  },
+  confirmActions: {
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: "12px",
+    marginTop: "24px",
   },
   modalOverlay: {
     position: 'fixed',
@@ -886,7 +871,7 @@ const styles = {
     width: "100%",
     padding: '12px 16px',
     border: '1px solid #E2E8F0',
-    borderRadius: '12px',
+    borderRadius: '999px',
     fontSize: '14px',
     backgroundColor: '#FFFFFF',
     transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -897,7 +882,7 @@ const styles = {
     width: "100%",
     padding: '12px 16px',
     border: '1px solid #E2E8F0',
-    borderRadius: '12px',
+    borderRadius: '999px',
     fontSize: '14px',
     backgroundColor: '#FFFFFF',
     transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -921,7 +906,7 @@ const styles = {
     backgroundColor: '#FFFFFF',
     color: '#64748B',
     border: '1px solid #E2E8F0',
-    borderRadius: '12px',
+    borderRadius: '999px',
     cursor: 'pointer',
     fontSize: '14px',
     fontWeight: '600',
@@ -929,10 +914,10 @@ const styles = {
   },
   submitButton: {
     padding: '12px 28px',
-    background: 'linear-gradient(135deg, #4169E1 0%, #6B8DF5 50%, #4169E1 100%)',
-    color: '#0F172A',
+    background: '#111111',
+    color: '#FFFFFF',
     border: 'none',
-    borderRadius: '12px',
+    borderRadius: '999px',
     cursor: 'pointer',
     fontSize: '14px',
     fontWeight: '600',

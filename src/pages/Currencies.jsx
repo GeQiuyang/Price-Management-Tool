@@ -291,7 +291,7 @@ export default function Currencies() {
               <th style={styles.th}>符号</th>
               <th style={styles.th}>汇率 (对CNY)</th>
               <th style={styles.th}>状态</th>
-              <th style={styles.th}>操作</th>
+              <th aria-label="操作" style={styles.th}></th>
             </tr>
           </thead>
           <tbody>
@@ -338,7 +338,7 @@ export default function Currencies() {
         isOpen={showModal}
         onClose={handleCloseModal}
         title={editingCurrency ? '编辑货币' : '添加货币'}
-        width={480}
+        width={600}
         footer={null}
       >
         <div style={styles.formScroll}>
@@ -489,11 +489,9 @@ const styles = {
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  pageTitle: {
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    fontSize: '28px',
+  pageTitle: {fontSize: '42px',
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#111111',
     margin: 0,
     letterSpacing: '-0.02em',
   },
@@ -504,10 +502,10 @@ const styles = {
   },
   addButton: {
     padding: '12px 26px',
-    background: 'linear-gradient(135deg, #4169E1 0%, #6B8DF5 50%, #4169E1 100%)',
-    color: '#0F172A',
+    background: '#111111',
+    color: '#FFFFFF',
     border: 'none',
-    borderRadius: '12px',
+    borderRadius: '999px',
     cursor: 'pointer',
     fontSize: '14px',
     fontWeight: '600',
@@ -549,7 +547,7 @@ const styles = {
   convertInput: {
     padding: '12px 16px',
     border: '1px solid #E2E8F0',
-    borderRadius: '12px',
+    borderRadius: '999px',
     fontSize: '14px',
     backgroundColor: '#FFFFFF',
     transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -557,7 +555,7 @@ const styles = {
   convertSelect: {
     padding: '12px 16px',
     border: '1px solid #E2E8F0',
-    borderRadius: '12px',
+    borderRadius: '999px',
     fontSize: '14px',
     backgroundColor: '#FFFFFF',
     transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -667,10 +665,10 @@ const styles = {
   },
   setDefaultButton: {
     padding: '6px 14px',
-    backgroundColor: '#FFFBEB',
-    color: '#D97706',
-    border: 'none',
-    borderRadius: '10px',
+    backgroundColor: 'transparent',
+    color: '#111111',
+    border: '1px solid transparent',
+    borderRadius: '999px',
     cursor: 'pointer',
     fontSize: '12px',
     fontWeight: '600',
@@ -678,10 +676,10 @@ const styles = {
   },
   editButton: {
     padding: '8px 18px',
-    backgroundColor: 'rgba(65, 105, 225, 0.08)',
-    color: '#3355C0',
-    border: '1px solid rgba(65, 105, 225, 0.2)',
-    borderRadius: '10px',
+    backgroundColor: 'transparent',
+    color: '#111111',
+    border: '1px solid transparent',
+    borderRadius: '999px',
     cursor: 'pointer',
     fontSize: '13px',
     fontWeight: '600',
@@ -690,10 +688,10 @@ const styles = {
   },
   deleteButton: {
     padding: '8px 18px',
-    backgroundColor: 'rgba(225, 29, 72, 0.06)',
-    color: '#E11D48',
-    border: '1px solid rgba(225, 29, 72, 0.12)',
-    borderRadius: '10px',
+    backgroundColor: 'transparent',
+    color: '#f87171',
+    border: '1px solid transparent',
+    borderRadius: '999px',
     cursor: 'pointer',
     fontSize: '13px',
     fontWeight: '600',
@@ -768,7 +766,7 @@ const styles = {
     width: "100%",
     padding: '12px 16px',
     border: '1px solid #E2E8F0',
-    borderRadius: '12px',
+    borderRadius: '999px',
     fontSize: '14px',
     backgroundColor: '#FFFFFF',
     transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -799,7 +797,7 @@ const styles = {
     backgroundColor: '#FFFFFF',
     color: '#64748B',
     border: '1px solid #E2E8F0',
-    borderRadius: '12px',
+    borderRadius: '999px',
     cursor: 'pointer',
     fontSize: '14px',
     fontWeight: '600',
@@ -807,10 +805,10 @@ const styles = {
   },
   submitButton: {
     padding: '12px 28px',
-    background: 'linear-gradient(135deg, #4169E1 0%, #6B8DF5 50%, #4169E1 100%)',
-    color: '#0F172A',
+    background: '#111111',
+    color: '#FFFFFF',
     border: 'none',
-    borderRadius: '12px',
+    borderRadius: '999px',
     cursor: 'pointer',
     fontSize: '14px',
     fontWeight: '600',

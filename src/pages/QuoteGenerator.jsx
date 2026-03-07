@@ -122,6 +122,8 @@ export default function QuoteGenerator() {
     // 拖拽排序
     const [dragIndex, setDragIndex] = useState(null)
     const [dragOverIndex, setDragOverIndex] = useState(null)
+    const [showMoreActions, setShowMoreActions] = useState(false)
+    const moreActionsRef = useRef(null)
 
     // 初始化加载基础数据
     useEffect(() => {
@@ -139,6 +141,17 @@ export default function QuoteGenerator() {
             setImportedData([])
         }
     }, [activeQuoteListId])
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (moreActionsRef.current && !moreActionsRef.current.contains(event.target)) {
+                setShowMoreActions(false)
+            }
+        }
+
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     const fetchQuoteLists = async () => {
         try {
@@ -877,22 +890,10 @@ export default function QuoteGenerator() {
             <style>{modalAnimationStyles}</style>
 
             <div style={styles.topBar}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <h2 style={styles.pageTitle}>报价生成器</h2>
+                <div style={styles.topBarContent}>
+                    <div style={styles.topBarRow}>
+                        <h2 style={styles.pageTitle}>报价中心</h2>
                         <div style={styles.topActions}>
-                            {quoteItems.length > 0 && (
-                                <>
-                                    <button style={styles.clearButton} onClick={handleClearAll}>🗑️ 清除所有</button>
-                                    <button style={styles.exportButton} onClick={handleExportQuote}>📥 导出当前报价单</button>
-                                </>
-                            )}
-                            <button style={styles.importButton} onClick={() => fileInputRef.current?.click()}>
-                                📂 导入 Excel
-                            </button>
-                            <button style={styles.addButton} onClick={() => setShowProductModal(true)}>
-                                ＋ 添加产品
-                            </button>
                             <input
                                 ref={fileInputRef}
                                 type="file"
@@ -912,17 +913,21 @@ export default function QuoteGenerator() {
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '6px',
+                                    width: '168px',
+                                    minWidth: '168px',
                                     padding: '10px 18px',
-                                    borderRadius: '12px',
+                                    borderRadius: '999px',
                                     cursor: 'pointer',
-                                    backgroundColor: activeQuoteListId === list.id ? '#4169E1' : 'white',
+                                    backgroundColor: activeQuoteListId === list.id ? '#111111' : 'white',
                                     color: activeQuoteListId === list.id ? 'white' : '#4b5563',
-                                    border: `1px solid ${activeQuoteListId === list.id ? '#4169E1' : '#e5e7eb'}`,
-                                    boxShadow: activeQuoteListId === list.id ? '0 4px 12px rgba(65, 105, 225, 0.2)' : 'none',
+                                    border: `1px solid ${activeQuoteListId === list.id ? '#111111' : '#e5e7eb'}`,
+                                    boxShadow: 'none',
                                     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                                     whiteSpace: 'nowrap',
                                     fontSize: '14px',
                                     fontWeight: activeQuoteListId === list.id ? '500' : '400',
+                                    boxSizing: 'border-box',
+                                    flexShrink: 0,
                                 }}
                                 onClick={() => setActiveQuoteListId(list.id)}
                             >
@@ -942,9 +947,12 @@ export default function QuoteGenerator() {
                                             outline: 'none',
                                             background: 'transparent',
                                             color: 'inherit',
-                                            width: '80px',
+                                            width: '100%',
+                                            minWidth: 0,
                                             fontSize: 'inherit',
                                             fontWeight: 'inherit',
+                                            flex: 1,
+                                            textAlign: 'center',
                                         }}
                                     />
                                 ) : (
@@ -955,6 +963,14 @@ export default function QuoteGenerator() {
                                             setIsEditingListName(list.id)
                                         }}
                                         title="双击重命名"
+                                        style={{
+                                            flex: 1,
+                                            minWidth: 0,
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap',
+                                            textAlign: 'center',
+                                        }}
                                     >
                                         {list.name}
                                     </span>
@@ -970,7 +986,8 @@ export default function QuoteGenerator() {
                                             padding: '0 2px',
                                             display: 'flex',
                                             alignItems: 'center',
-                                            fontSize: '12px'
+                                            fontSize: '12px',
+                                            flexShrink: 0,
                                         }}
                                         title="删除报价单"
                                     >×</button>
@@ -984,14 +1001,18 @@ export default function QuoteGenerator() {
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    width: '32px',
-                                    height: '32px',
-                                    borderRadius: '8px',
+                                    width: '132px',
+                                    height: '40px',
+                                    padding: '10px 18px',
+                                    borderRadius: '999px',
                                     border: '1px dashed #d1d5db',
-                                    backgroundColor: '#f9fafb',
+                                    backgroundColor: '#ffffff',
                                     color: '#6b7280',
                                     cursor: 'pointer',
                                     transition: 'all 0.2s',
+                                    flexShrink: 0,
+                                    fontSize: '16px',
+                                    lineHeight: 1,
                                 }}
                                 title="添加报价单"
                                 onMouseEnter={(e) => {
@@ -1010,43 +1031,81 @@ export default function QuoteGenerator() {
                 </div>
             </div>
 
-            {/* 概览卡片 */}
-            <div style={styles.summaryCards}>
-                <div style={styles.summaryCard}>
-                    <div style={styles.summaryLabel}>报价产品数</div>
-                    <div style={styles.summaryValue}>{quoteItems.length}</div>
-                </div>
-                <div style={styles.summaryCard}>
-                    <div style={styles.summaryLabel}>总数量</div>
-                    <div style={styles.summaryValue}>{quoteItems.reduce((s, i) => s + i.quantity, 0)}</div>
-                </div>
-                <div style={styles.summaryCard}>
-                    <div style={styles.summaryLabel}>报价总额</div>
-                    <div style={{ ...styles.summaryValue, color: '#059669' }}>¥{totalAmount.toLocaleString()}</div>
-                </div>
-                <div style={styles.summaryCard}>
-                    <div style={styles.summaryLabel}>Excel 导入行</div>
-                    <div style={styles.summaryValue}>{importedData.length}</div>
+            {/* Tab 切换 */}
+            <div style={styles.tabActionRow}>
+                {(quoteItems.length > 0 || importedData.length > 0) ? (
+                    <div style={styles.tabBar}>
+                        <button
+                            style={{ ...styles.tab, ...(activeTab === 'products' ? styles.tabActive : {}) }}
+                            onClick={() => setActiveTab('products')}
+                        >
+                            📦 产品报价 ({quoteItems.length})
+                        </button>
+                        <button
+                            style={{ ...styles.tab, ...(activeTab === 'import' ? styles.tabActive : {}) }}
+                            onClick={() => setActiveTab('import')}
+                        >
+                            📊 Excel 数据 ({importedData.length})
+                        </button>
+                    </div>
+                ) : (
+                    <div />
+                )}
+                <div style={styles.inlineActions}>
+                    <button style={styles.addButton} onClick={() => setShowProductModal(true)}>
+                        ＋ 添加产品
+                    </button>
+                    <div style={styles.moreActionsWrap} ref={moreActionsRef}>
+                        <button
+                            type="button"
+                            style={styles.moreActionsButton}
+                            onClick={() => setShowMoreActions((value) => !value)}
+                        >
+                            <span style={styles.moreActionsIcon}>⋯</span>
+                            <span>更多操作</span>
+                        </button>
+
+                        {showMoreActions && (
+                            <div style={styles.moreActionsMenu}>
+                                {quoteItems.length > 0 && (
+                                    <>
+                                        <button
+                                            type="button"
+                                            style={styles.moreActionsItem}
+                                            onClick={() => {
+                                                setShowMoreActions(false)
+                                                handleClearAll()
+                                            }}
+                                        >
+                                            清除所有
+                                        </button>
+                                        <button
+                                            type="button"
+                                            style={styles.moreActionsItem}
+                                            onClick={() => {
+                                                setShowMoreActions(false)
+                                                handleExportQuote()
+                                            }}
+                                        >
+                                            导出当前报价单
+                                        </button>
+                                    </>
+                                )}
+                                <button
+                                    type="button"
+                                    style={styles.moreActionsItem}
+                                    onClick={() => {
+                                        setShowMoreActions(false)
+                                        fileInputRef.current?.click()
+                                    }}
+                                >
+                                    导入 Excel
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
-
-            {/* Tab 切换 */}
-            {(quoteItems.length > 0 || importedData.length > 0) && (
-                <div style={styles.tabBar}>
-                    <button
-                        style={{ ...styles.tab, ...(activeTab === 'products' ? styles.tabActive : {}) }}
-                        onClick={() => setActiveTab('products')}
-                    >
-                        📦 产品报价 ({quoteItems.length})
-                    </button>
-                    <button
-                        style={{ ...styles.tab, ...(activeTab === 'import' ? styles.tabActive : {}) }}
-                        onClick={() => setActiveTab('import')}
-                    >
-                        📊 Excel 数据 ({importedData.length})
-                    </button>
-                </div>
-            )}
 
             {/* 产品报价表格 */}
             {activeTab === 'products' && quoteItems.length > 0 && (
@@ -1054,12 +1113,12 @@ export default function QuoteGenerator() {
                     <table style={styles.table}>
                         <thead>
                             <tr style={styles.tableHeader}>
-                                <th style={styles.th}>产品名称</th>
-                                <th style={styles.th}>产品规格</th>
-                                <th style={{ ...styles.th, width: '120px' }}>价格</th>
-                                <th style={{ ...styles.th, width: '100px' }}>数量</th>
-                                <th style={styles.th}>合计</th>
-                                <th style={{ ...styles.th, width: '60px' }}>操作</th>
+                                <th style={{ ...styles.th, width: '31%' }}>产品名称</th>
+                                <th style={{ ...styles.th, width: '25%' }}>产品规格</th>
+                                <th style={{ ...styles.th, width: '13%' }}>价格</th>
+                                <th style={{ ...styles.th, width: '15%' }}>数量</th>
+                                <th style={{ ...styles.th, width: '10%' }}>合计</th>
+                                <th aria-label="操作" style={{ ...styles.th, width: '6%', textAlign: 'center', minWidth: '64px' }}></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1083,10 +1142,10 @@ export default function QuoteGenerator() {
                                     onDrop={(e) => handleDropItem(e, index)}
                                     onDragEnd={handleDragEnd}
                                 >
-                                    <td style={styles.td}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <span style={{ color: '#94A3B8', cursor: 'inherit' }}>⋮⋮</span>
-                                            {item.name}
+                                    <td style={styles.tdName}>
+                                        <div style={styles.nameCell}>
+                                            <span style={styles.dragHandle}>⋮⋮</span>
+                                            <span style={styles.nameText} title={item.name}>{item.name}</span>
                                         </div>
                                     </td>
                                     <td style={styles.tdDesc} className="quote-desc-cell">
@@ -1131,7 +1190,7 @@ export default function QuoteGenerator() {
                                         </div>
                                     </td>
                                     <td style={styles.tdTotal}>¥{(item.price * item.quantity).toLocaleString()}</td>
-                                    <td style={styles.td}>
+                                    <td style={styles.tdAction}>
                                         <button style={styles.removeBtn} onClick={() => handleRemoveItem(item.id)}>✕</button>
                                     </td>
                                 </tr>
@@ -1250,7 +1309,7 @@ export default function QuoteGenerator() {
                         />
                         <button
                             className="sf-btn"
-                            style={{ backgroundColor: '#F1F5F9', color: '#0F172A', border: '1px solid #E2E8F0', padding: '0 20px', fontWeight: '600' }}
+                            style={{ backgroundColor: '#111111', color: '#FFFFFF', border: '1px solid #111111', padding: '0 20px', fontWeight: '600' }}
                             onClick={() => setShowCustomProductModal(true)}
                         >
                             ＋ 自定义产品
@@ -1339,7 +1398,7 @@ export default function QuoteGenerator() {
                 isOpen={showCustomProductModal}
                 onClose={() => setShowCustomProductModal(false)}
                 title="添加自定义产品"
-                width={480}
+                width={600}
                 footer={
                     <>
                         <button className="sf-btn sf-btn-cancel" onClick={() => setShowCustomProductModal(false)}>取消</button>
@@ -1467,11 +1526,11 @@ export default function QuoteGenerator() {
                 isOpen={showClearModal}
                 onClose={handleCloseClearModal}
                 title="确认清除"
-                width={400}
+                width={600}
                 footer={
                     <>
                         <button className="sf-btn sf-btn-cancel" onClick={handleCloseClearModal}>取消</button>
-                        <button className="sf-btn sf-btn-confirm" style={{ backgroundColor: '#E11D48', borderColor: '#E11D48' }} onClick={handleConfirmClear}>
+                        <button className="sf-btn sf-btn-confirm" style={{ backgroundColor: '#111111', borderColor: '#111111' }} onClick={handleConfirmClear}>
                             确认清除
                         </button>
                     </>
@@ -1520,58 +1579,114 @@ export default function QuoteGenerator() {
 
 const styles = {
     container: { display: 'flex', flexDirection: 'column', gap: '24px', animation: 'fadeInUp 0.4s ease forwards' },
-    topBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' },
-    pageTitle: { fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: '28px', fontWeight: '700', color: '#0F172A', margin: 0, letterSpacing: '-0.02em' },
-    topActions: { display: 'flex', alignItems: 'center', gap: '14px', position: 'relative', zIndex: 100 },
-    addButton: {
-        padding: '12px 26px', background: 'linear-gradient(135deg, #4169E1 0%, #6B8DF5 50%, #4169E1 100%)', color: '#0F172A', border: 'none',
-        borderRadius: '12px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        boxShadow: '0 4px 16px rgba(65, 105, 225, 0.35)', letterSpacing: '-0.1px', zIndex: 100, position: 'relative'
+    topBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', padding: '0 24px' },
+    topBarContent: { display: 'flex', flexDirection: 'column', gap: '16px', flex: 1, minWidth: 0 },
+    topBarRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '20px', flexWrap: 'wrap' },
+    pageTitle: { fontSize: '42px', fontWeight: '700', color: '#111111', margin: 0, letterSpacing: '-0.02em', lineHeight: '1.02', whiteSpace: 'nowrap', flexShrink: 0 },
+    topActions: { display: 'flex', alignItems: 'center', gap: '14px', position: 'relative', zIndex: 100, flexWrap: 'wrap', justifyContent: 'flex-end' },
+    moreActionsRow: { display: 'flex', justifyContent: 'flex-end' },
+    moreActionsWrap: { position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' },
+    moreActionsButton: {
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '10px',
+        padding: '10px 18px',
+        backgroundColor: 'transparent',
+        color: '#64748B',
+        border: 'none',
+        cursor: 'pointer',
+        fontSize: '14px',
+        fontWeight: '600',
+        lineHeight: '1.2',
+        whiteSpace: 'nowrap'
     },
+    moreActionsIcon: { fontSize: '22px', lineHeight: 1, marginTop: '-4px' },
+    moreActionsMenu: {
+        position: 'absolute',
+        top: 'calc(100% + 10px)',
+        right: 0,
+        minWidth: '220px',
+        backgroundColor: '#FFFFFF',
+        border: '1px solid #E2E8F0',
+        borderRadius: '18px',
+        boxShadow: '0 20px 40px rgba(15, 23, 42, 0.12)',
+        padding: '10px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '6px',
+        zIndex: 120
+    },
+    moreActionsItem: {
+        padding: '12px 14px',
+        backgroundColor: '#FFFFFF',
+        color: '#111111',
+        border: '1px solid transparent',
+        borderRadius: '12px',
+        cursor: 'pointer',
+        fontSize: '14px',
+        fontWeight: '500',
+        textAlign: 'left',
+        whiteSpace: 'nowrap'
+    },
+    addButton: {
+        padding: '12px 26px', background: '#111111', color: '#FFFFFF', border: 'none',
+        borderRadius: '999px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        boxShadow: '0 4px 16px rgba(65, 105, 225, 0.35)', letterSpacing: '-0.1px', zIndex: 100, position: 'relative', whiteSpace: 'nowrap', minWidth: '136px', lineHeight: '1.2'
+    },
+    tabActionRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', padding: '0 8px' },
+    inlineActions: { display: 'flex', alignItems: 'center', gap: '14px', marginLeft: 'auto', position: 'relative', zIndex: 100, flexWrap: 'wrap', justifyContent: 'flex-end' },
     importButton: {
         padding: '12px 26px', backgroundColor: '#FFFFFF', color: '#64748B',
-        border: '1px solid #E2E8F0', borderRadius: '12px', cursor: 'pointer', fontSize: '14px', fontWeight: '600',
+        border: '1px solid #E2E8F0', borderRadius: '999px', cursor: 'pointer', fontSize: '14px', fontWeight: '600',
+        whiteSpace: 'nowrap', minWidth: '132px', lineHeight: '1.2',
         transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
     },
     exportButton: {
         padding: '12px 26px', backgroundColor: 'rgba(5, 150, 105, 0.08)', color: '#059669',
-        border: '1px solid rgba(5, 150, 105, 0.2)', borderRadius: '12px', cursor: 'pointer', fontSize: '14px', fontWeight: '600',
+        border: '1px solid rgba(5, 150, 105, 0.2)', borderRadius: '999px', cursor: 'pointer', fontSize: '14px', fontWeight: '600',
+        whiteSpace: 'nowrap', minWidth: '180px', lineHeight: '1.2',
         transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
     },
     clearButton: {
         padding: '12px 26px', backgroundColor: 'rgba(225, 29, 72, 0.06)', color: '#E11D48',
-        border: '1px solid rgba(225, 29, 72, 0.12)', borderRadius: '12px', cursor: 'pointer', fontSize: '14px', fontWeight: '600',
+        border: '1px solid rgba(225, 29, 72, 0.12)', borderRadius: '999px', cursor: 'pointer', fontSize: '14px', fontWeight: '600',
+        whiteSpace: 'nowrap', minWidth: '180px', lineHeight: '1.2',
         transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
     },
     summaryCards: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' },
     summaryCard: { backgroundColor: '#FFFFFF', padding: '24px', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 2px 8px rgba(30, 41, 59, 0.04)' },
     summaryLabel: { fontSize: '13px', color: '#64748B', marginBottom: '8px', fontWeight: '500' },
-    summaryValue: { fontSize: '26px', fontWeight: '700', color: '#1E293B' },
+    summaryValue: { fontSize: '26px', fontWeight: '700', color: '#111111' },
     tabBar: { display: 'flex', gap: '6px', backgroundColor: '#FFFFFF', padding: '6px', borderRadius: '14px', border: '1px solid #E2E8F0', boxShadow: '0 2px 8px rgba(30, 41, 59, 0.04)', width: 'fit-content' },
     tab: {
         padding: '12px 24px', backgroundColor: 'transparent', border: 'none', borderRadius: '10px', cursor: 'pointer',
         fontSize: '14px', fontWeight: '500', color: '#64748B', display: 'flex', alignItems: 'center', gap: '10px', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
     },
-    tabActive: { background: 'linear-gradient(135deg, #4169E1 0%, #3355C0 100%)', color: '#FFFFFF', boxShadow: '0 4px 12px rgba(65, 105, 225, 0.25)' },
-    tableCard: { backgroundColor: '#FFFFFF', borderRadius: '18px', border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 2px 12px rgba(30, 41, 59, 0.04), 0 0 0 1px rgba(30, 41, 59, 0.02)', transition: 'box-shadow 0.3s ease, transform 0.3s ease' },
+    tabActive: { background: '#111111', color: '#FFFFFF', boxShadow: '0 4px 12px rgba(65, 105, 225, 0.25)' },
+    tableCard: { backgroundColor: '#FFFFFF', borderRadius: '18px', border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 2px 12px rgba(30, 41, 59, 0.04), 0 0 0 1px rgba(30, 41, 59, 0.02)', transition: 'box-shadow 0.3s ease, transform 0.3s ease', margin: '0 8px' },
     tableToolbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #E2E8F0' },
     tableTitle: { fontSize: '16px', fontWeight: '600', color: '#1E293B' },
     importMoreBtn: { padding: '8px 18px', backgroundColor: 'rgba(65, 105, 225, 0.08)', color: '#3355C0', border: '1px solid rgba(65, 105, 225, 0.2)', borderRadius: '10px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' },
     tableScroll: { overflowX: 'auto' },
-    table: { width: '100%', borderCollapse: 'collapse' },
+    table: { width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' },
     tableHeader: { backgroundColor: '#F8FAFC' },
-    th: { padding: '16px 24px', textAlign: 'left', fontSize: '11px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #E2E8F0', textTransform: 'uppercase', letterSpacing: '1px', whiteSpace: 'nowrap' },
+    th: { padding: '16px 12px', textAlign: 'left', fontSize: '11px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #E2E8F0', textTransform: 'uppercase', letterSpacing: '1px', whiteSpace: 'nowrap' },
     tableRow: { borderBottom: '1px solid #F1F5F9', transition: 'background-color 0.2s ease', cursor: 'default' },
-    td: { padding: '18px 24px', fontSize: '14px', color: '#1E293B' },
-    tdSku: { padding: '18px 24px', fontSize: '13px', color: '#64748B', fontFamily: 'monospace', fontWeight: '500' },
-    tdDesc: { padding: '18px 24px', fontSize: '13px', color: '#64748B', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-    tdTotal: { padding: '18px 24px', fontSize: '16px', fontWeight: '700', color: '#4169E1' },
-    tdIndex: { padding: '18px 24px', fontSize: '12px', color: '#64748B', fontWeight: '500' },
+    td: { padding: '18px 12px', fontSize: '14px', color: '#1E293B', verticalAlign: 'middle' },
+    tdName: { padding: '18px 12px', fontSize: '14px', color: '#1E293B', fontWeight: '600', lineHeight: '1.5', verticalAlign: 'middle' },
+    nameCell: { display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 },
+    dragHandle: { color: '#94A3B8', cursor: 'inherit', flexShrink: 0 },
+    nameText: { display: 'block', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+    tdSku: { padding: '18px 12px', fontSize: '13px', color: '#64748B', fontFamily: 'monospace', fontWeight: '500', verticalAlign: 'middle' },
+    tdDesc: { padding: '18px 12px', fontSize: '13px', color: '#64748B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle' },
+    tdTotal: { padding: '18px 12px', fontSize: '16px', fontWeight: '700', color: '#111111', whiteSpace: 'nowrap', verticalAlign: 'middle' },
+    tdAction: { padding: '18px 8px 18px 10px', textAlign: 'center', verticalAlign: 'middle' },
+    tdIndex: { padding: '18px 12px', fontSize: '12px', color: '#64748B', fontWeight: '500' },
     inlineInput: {
-        width: '80px', padding: '8px 12px', border: '1px solid #E2E8F0', borderRadius: '10px',
+        width: '100%', maxWidth: '80px', padding: '8px 12px', border: '1px solid #E2E8F0', borderRadius: '10px',
         fontSize: '14px', backgroundColor: '#FFFFFF', textAlign: 'right', boxSizing: 'border-box', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
     },
-    quantityControl: { display: 'flex', alignItems: 'center', gap: '4px' },
+    quantityControl: { display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-start' },
     quantityBtn: {
         width: '28px', height: '28px', padding: '0', border: '1px solid #E2E8F0', borderRadius: '8px',
         backgroundColor: '#FFFFFF', color: '#1E293B', cursor: 'pointer', fontSize: '14px',
@@ -1583,7 +1698,7 @@ const styles = {
     },
     totalRow: { backgroundColor: '#F8FAFC' },
     totalLabel: { padding: '18px 24px', fontSize: '14px', fontWeight: '700', color: '#1E293B', textAlign: 'right' },
-    totalValue: { padding: '18px 24px', fontSize: '18px', fontWeight: '700', color: '#4169E1' },
+    totalValue: { padding: '18px 24px', fontSize: '18px', fontWeight: '700', color: '#111111' },
     dropZone: { borderRadius: '20px', border: '2px dashed #E2E8F0', padding: '60px 40px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s ease', backgroundColor: '#FAFAF9' },
     dropIcon: { fontSize: '56px', marginBottom: '16px' },
     dropTitle: { fontSize: '16px', fontWeight: '600', color: '#1E293B', marginBottom: '8px' },
@@ -1598,14 +1713,14 @@ const styles = {
     modalTitle: { fontFamily: "'Playfair Display', serif", fontSize: '20px', fontWeight: '600', margin: 0, color: '#1E293B' },
     modalSubtitle: { fontSize: '13px', color: '#64748B' },
     searchBox: { padding: '16px 24px', borderBottom: '1px solid #E2E8F0', flexShrink: 0 },
-    searchInput: { width: '100%', padding: '12px 16px', border: '1px solid #E2E8F0', borderRadius: '12px', fontSize: '14px', backgroundColor: '#FFFFFF', boxSizing: 'border-box', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', color: '#1E293B' },
+    searchInput: { width: '100%', padding: '12px 16px', border: '1px solid #E2E8F0', borderRadius: '999px', fontSize: '14px', backgroundColor: '#FFFFFF', boxSizing: 'border-box', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', color: '#1E293B' },
     productList: { flex: 1, overflowY: 'auto', padding: '8px 12px' },
     productItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', borderRadius: '14px', cursor: 'pointer', transition: 'background-color 0.2s ease', borderBottom: '1px solid #F1F5F9' },
     productInfo: { flex: 1 },
     productName: { fontSize: '15px', fontWeight: '600', color: '#1E293B', marginBottom: '4px' },
     productSku: { fontSize: '13px', color: '#64748B', fontFamily: 'monospace' },
     productRight: { display: 'flex', alignItems: 'center', gap: '12px' },
-    productPrice: { fontSize: '16px', fontWeight: '700', color: '#4169E1' },
+    productPrice: { fontSize: '16px', fontWeight: '700', color: '#111111' },
     productActions: { display: 'flex', alignItems: 'center', gap: '4px' },
     productActionBtn: {
         width: '28px', height: '28px', padding: '0', border: '1px solid #E2E8F0', borderRadius: '8px',
@@ -1624,26 +1739,26 @@ const styles = {
     rowBadge: { fontSize: '12px', color: '#059669', backgroundColor: '#ECFDF5', padding: '4px 12px', borderRadius: '10px', fontWeight: '600' },
     sheetTabs: { display: 'flex', gap: '6px', padding: '16px 24px', borderBottom: '1px solid #E2E8F0', overflowX: 'auto', flexShrink: 0 },
     sheetTab: { padding: '8px 16px', border: '1px solid #E2E8F0', borderRadius: '10px', backgroundColor: 'transparent', color: '#64748B', cursor: 'pointer', fontSize: '14px', fontWeight: '600', whiteSpace: 'nowrap', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' },
-    sheetTabActive: { background: 'linear-gradient(135deg, #4169E1 0%, #3355C0 100%)', color: '#FFFFFF', borderColor: 'transparent', boxShadow: '0 4px 12px rgba(65, 105, 225, 0.25)' },
+    sheetTabActive: { background: '#111111', color: '#FFFFFF', borderColor: 'transparent', boxShadow: '0 4px 12px rgba(65, 105, 225, 0.25)' },
     previewScroll: { flex: 1, overflowY: 'auto', overflowX: 'auto' },
     previewTable: { width: '100%', borderCollapse: 'collapse', minWidth: '500px' },
     previewTh: { padding: '14px 20px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#64748B', backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0', whiteSpace: 'nowrap', position: 'sticky', top: 0, textTransform: 'uppercase', letterSpacing: '1px' },
     previewTd: { padding: '12px 20px', fontSize: '13px', color: '#1E293B', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', borderBottom: '1px solid #F1F5F9' },
     moreRows: { padding: '16px', textAlign: 'center', fontSize: '13px', color: '#64748B', backgroundColor: '#F8FAFC' },
     modalButtons: { display: 'flex', justifyContent: 'flex-end', gap: '14px', padding: '20px 28px', backgroundColor: '#F8FAFC', borderTop: '1px solid #F1F5F9', flexShrink: 0, borderRadius: '0 0 20px 20px' },
-    cancelButton: { padding: '12px 28px', backgroundColor: '#FFFFFF', color: '#64748B', border: '1px solid #E2E8F0', borderRadius: '12px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' },
-    submitButton: { padding: '12px 28px', background: 'linear-gradient(135deg, #4169E1 0%, #6B8DF5 50%, #4169E1 100%)', color: '#0F172A', border: 'none', borderRadius: '12px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 4px 16px rgba(65, 105, 225, 0.35)' },
+    cancelButton: { padding: '12px 28px', backgroundColor: '#FFFFFF', color: '#64748B', border: '1px solid #E2E8F0', borderRadius: '999px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' },
+    submitButton: { padding: '12px 28px', background: '#111111', color: '#FFFFFF', border: 'none', borderRadius: '999px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 4px 16px rgba(65, 105, 225, 0.35)' },
     // Clear/Delete Modal
     clearModal: { backgroundColor: 'rgba(255, 255, 255, 1)', borderRadius: '24px', border: '1px solid rgba(226, 232, 240, 0.8)', width: '400px', maxWidth: '90%', padding: '32px', textAlign: 'center', boxShadow: '0 20px 40px rgba(15, 23, 42, 0.1)' },
     clearModalIcon: { marginBottom: '20px', display: 'flex', justifyContent: 'center' },
-    clearModalTitle: { fontFamily: "'Inter', -apple-system, sans-serif", fontSize: '20px', fontWeight: '700', color: '#0F172A', margin: '0 0 12px 0', letterSpacing: '-0.02em' },
+    clearModalTitle: { fontFamily: "'Inter', -apple-system, sans-serif", fontSize: '20px', fontWeight: '700', color: '#FFFFFF', margin: '0 0 12px 0', letterSpacing: '-0.02em' },
     clearModalMessage: { fontSize: '14px', color: '#475569', lineHeight: '1.6', margin: '0 0 28px 0' },
     clearModalStats: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '24px', marginBottom: '32px', padding: '24px', backgroundColor: 'rgba(248, 250, 252, 0.5)', borderRadius: '16px', border: '1px solid rgba(226, 232, 240, 0.5)' },
     statItem: { flex: 1 },
-    statValue: { fontSize: '28px', fontWeight: '700', color: '#1E293B', marginBottom: '6px' },
+    statValue: { fontSize: '28px', fontWeight: '700', color: '#111111', marginBottom: '6px' },
     statLabel: { fontSize: '12px', color: '#64748B', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '1px' },
     statDivider: { width: '1px', height: '48px', backgroundColor: 'rgba(226, 232, 240, 0.5)' },
     clearModalButtons: { display: 'flex', gap: '12px', justifyContent: 'center' },
-    clearModalCancel: { flex: 1, padding: '12px 20px', backgroundColor: 'rgba(248, 250, 252, 0.6)', color: '#475569', border: '1px solid rgba(226, 232, 240, 0.8)', borderRadius: '12px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s ease', outline: 'none' },
-    clearModalConfirm: { flex: 1, padding: '12px 20px', backgroundColor: '#4169E1', color: '#FFFFFF', border: '1px solid #4169E1', borderRadius: '12px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s ease', outline: 'none', boxShadow: '0 4px 12px rgba(65, 105, 225, 0.15)' },
+    clearModalCancel: { flex: 1, padding: '12px 20px', backgroundColor: 'rgba(248, 250, 252, 0.6)', color: '#475569', border: '1px solid rgba(226, 232, 240, 0.8)', borderRadius: '999px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s ease', outline: 'none' },
+    clearModalConfirm: { flex: 1, padding: '12px 20px', backgroundColor: '#4169E1', color: '#FFFFFF', border: '1px solid #4169E1', borderRadius: '999px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s ease', outline: 'none', boxShadow: '0 4px 12px rgba(65, 105, 225, 0.15)' },
 };

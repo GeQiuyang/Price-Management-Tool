@@ -130,7 +130,7 @@ export default function FreightSimulator() {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>海运费模拟器</h2>
+        <h2 style={styles.title}>海运费模拟</h2>
       </div>
 
       <div style={styles.content}>
@@ -386,11 +386,9 @@ const styles = {
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  title: {
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    fontSize: '28px',
+  title: {fontSize: '42px',
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#111111',
     margin: 0,
     letterSpacing: '-0.02em',
   },
@@ -527,10 +525,10 @@ const styles = {
   },
   calcBtn: {
     padding: '14px',
-    background: 'var(--gradient-primary)',
+    background: '#111111',
     color: '#fff',
     border: 'none',
-    borderRadius: 'var(--radius-md)',
+    borderRadius: '999px',
     cursor: 'pointer',
     fontSize: '16px',
     fontWeight: '600',
@@ -557,7 +555,7 @@ const styles = {
   warningBox: {
     backgroundColor: '#FEF3C7',
     border: '1px solid #F59E0B',
-    borderRadius: 'var(--radius-md)',
+    borderRadius: '999px',
     padding: '16px',
     marginTop: '16px',
   },

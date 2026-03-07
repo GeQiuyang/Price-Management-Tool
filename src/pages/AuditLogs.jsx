@@ -163,12 +163,12 @@ function AuditLogs() {
           <thead>
             <tr>
               <th>ID</th>
-              <th>操作</th>
+              <th aria-label="操作类型"></th>
               <th>实体类型</th>
               <th>用户</th>
               <th>IP地址</th>
               <th>时间</th>
-              <th>操作</th>
+              <th aria-label="操作"></th>
             </tr>
           </thead>
           <tbody>

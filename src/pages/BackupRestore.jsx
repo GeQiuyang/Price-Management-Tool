@@ -208,7 +208,7 @@ function BackupRestore() {
   return (
     <div className="backup-restore-container">
       <div className="page-header">
-        <h1>备份与恢复</h1>
+        <h1>备份恢复</h1>
         <p>管理数据库备份和快照</p>
       </div>
 
