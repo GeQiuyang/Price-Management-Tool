@@ -170,8 +170,8 @@ export default function QuoteGenerator() {
     }
 
     const handleCreateQuoteList = async () => {
-        if (quoteLists.length >= 5) {
-            alert('最多只能创建 5 个报价单')
+        if (quoteLists.length >= 3) {
+            alert('最多只能新增 2 个报价单')
             return
         }
         try {
@@ -994,7 +994,7 @@ export default function QuoteGenerator() {
                                 )}
                             </div>
                         ))}
-                        {quoteLists.length < 5 && (
+                        {quoteLists.length < 3 && (
                             <button
                                 onClick={handleCreateQuoteList}
                                 style={{
@@ -1033,27 +1033,23 @@ export default function QuoteGenerator() {
 
             {/* Tab 切换 */}
             <div style={styles.tabActionRow}>
-                {(quoteItems.length > 0 || importedData.length > 0) ? (
-                    <div style={styles.tabBar}>
-                        <button
-                            style={{ ...styles.tab, ...(activeTab === 'products' ? styles.tabActive : {}) }}
-                            onClick={() => setActiveTab('products')}
-                        >
-                            📦 产品报价 ({quoteItems.length})
-                        </button>
-                        <button
-                            style={{ ...styles.tab, ...(activeTab === 'import' ? styles.tabActive : {}) }}
-                            onClick={() => setActiveTab('import')}
-                        >
-                            📊 Excel 数据 ({importedData.length})
-                        </button>
-                    </div>
-                ) : (
-                    <div />
-                )}
+                <div style={styles.tabBar}>
+                    <button
+                        style={{ ...styles.tab, ...(activeTab === 'products' ? styles.tabActive : {}) }}
+                        onClick={() => setActiveTab('products')}
+                    >
+                        📦 产品报价 ({quoteItems.length})
+                    </button>
+                    <button
+                        style={{ ...styles.tab, ...(activeTab === 'import' ? styles.tabActive : {}) }}
+                        onClick={() => setActiveTab('import')}
+                    >
+                        📊 Excel 数据 ({importedData.length})
+                    </button>
+                </div>
                 <div style={styles.inlineActions}>
                     <button style={styles.addButton} onClick={() => setShowProductModal(true)}>
-                        ＋ 添加产品
+                        ＋
                     </button>
                     <div style={styles.moreActionsWrap} ref={moreActionsRef}>
                         <button
@@ -1062,7 +1058,6 @@ export default function QuoteGenerator() {
                             onClick={() => setShowMoreActions((value) => !value)}
                         >
                             <span style={styles.moreActionsIcon}>⋯</span>
-                            <span>更多操作</span>
                         </button>
 
                         {showMoreActions && (
@@ -1113,12 +1108,12 @@ export default function QuoteGenerator() {
                     <table style={styles.table}>
                         <thead>
                             <tr style={styles.tableHeader}>
-                                <th style={{ ...styles.th, width: '31%' }}>产品名称</th>
+                                <th style={{ ...styles.th, width: '31%', paddingLeft: '54px' }}>产品名称</th>
                                 <th style={{ ...styles.th, width: '25%' }}>产品规格</th>
                                 <th style={{ ...styles.th, width: '13%' }}>价格</th>
                                 <th style={{ ...styles.th, width: '15%' }}>数量</th>
                                 <th style={{ ...styles.th, width: '10%' }}>合计</th>
-                                <th aria-label="操作" style={{ ...styles.th, width: '6%', textAlign: 'center', minWidth: '64px' }}></th>
+                                <th aria-label="操作" style={{ ...styles.th, width: '6%', textAlign: 'right', minWidth: '64px' }}></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1578,8 +1573,8 @@ export default function QuoteGenerator() {
 }
 
 const styles = {
-    container: { display: 'flex', flexDirection: 'column', gap: '24px', animation: 'fadeInUp 0.4s ease forwards' },
-    topBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', padding: '0 24px' },
+    container: { display: 'flex', flexDirection: 'column', gap: '24px', animation: 'fadeInUp 0.4s ease forwards', padding: '24px 40px 0 40px' },
+    topBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' },
     topBarContent: { display: 'flex', flexDirection: 'column', gap: '16px', flex: 1, minWidth: 0 },
     topBarRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '20px', flexWrap: 'wrap' },
     pageTitle: { fontSize: '42px', fontWeight: '700', color: '#111111', margin: 0, letterSpacing: '-0.02em', lineHeight: '1.02', whiteSpace: 'nowrap', flexShrink: 0 },
@@ -1589,8 +1584,10 @@ const styles = {
     moreActionsButton: {
         display: 'inline-flex',
         alignItems: 'center',
-        gap: '10px',
-        padding: '10px 18px',
+        justifyContent: 'center',
+        width: '48px',
+        height: '48px',
+        padding: 0,
         backgroundColor: 'transparent',
         color: '#64748B',
         border: 'none',
@@ -1600,7 +1597,7 @@ const styles = {
         lineHeight: '1.2',
         whiteSpace: 'nowrap'
     },
-    moreActionsIcon: { fontSize: '22px', lineHeight: 1, marginTop: '-4px' },
+    moreActionsIcon: { fontSize: '28px', lineHeight: 1, marginTop: '-6px' },
     moreActionsMenu: {
         position: 'absolute',
         top: 'calc(100% + 10px)',
@@ -1609,7 +1606,6 @@ const styles = {
         backgroundColor: '#FFFFFF',
         border: '1px solid #E2E8F0',
         borderRadius: '18px',
-        boxShadow: '0 20px 40px rgba(15, 23, 42, 0.12)',
         padding: '10px',
         display: 'flex',
         flexDirection: 'column',
@@ -1629,11 +1625,11 @@ const styles = {
         whiteSpace: 'nowrap'
     },
     addButton: {
-        padding: '12px 26px', background: '#111111', color: '#FFFFFF', border: 'none',
-        borderRadius: '999px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        boxShadow: '0 4px 16px rgba(65, 105, 225, 0.35)', letterSpacing: '-0.1px', zIndex: 100, position: 'relative', whiteSpace: 'nowrap', minWidth: '136px', lineHeight: '1.2'
+        width: '48px', height: '48px', padding: 0, background: '#111111', color: '#FFFFFF', border: 'none',
+        borderRadius: '999px', cursor: 'pointer', fontSize: '28px', fontWeight: '500', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        zIndex: 100, position: 'relative', lineHeight: '1'
     },
-    tabActionRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', padding: '0 8px' },
+    tabActionRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', padding: '0 8px' },
     inlineActions: { display: 'flex', alignItems: 'center', gap: '14px', marginLeft: 'auto', position: 'relative', zIndex: 100, flexWrap: 'wrap', justifyContent: 'flex-end' },
     importButton: {
         padding: '12px 26px', backgroundColor: '#FFFFFF', color: '#64748B',
@@ -1657,30 +1653,30 @@ const styles = {
     summaryCard: { backgroundColor: '#FFFFFF', padding: '24px', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 2px 8px rgba(30, 41, 59, 0.04)' },
     summaryLabel: { fontSize: '13px', color: '#64748B', marginBottom: '8px', fontWeight: '500' },
     summaryValue: { fontSize: '26px', fontWeight: '700', color: '#111111' },
-    tabBar: { display: 'flex', gap: '6px', backgroundColor: '#FFFFFF', padding: '6px', borderRadius: '14px', border: '1px solid #E2E8F0', boxShadow: '0 2px 8px rgba(30, 41, 59, 0.04)', width: 'fit-content' },
+    tabBar: { display: 'flex', gap: '6px', backgroundColor: '#FFFFFF', padding: '6px', borderRadius: '14px', border: '1px solid #E2E8F0', width: 'fit-content' },
     tab: {
         padding: '12px 24px', backgroundColor: 'transparent', border: 'none', borderRadius: '10px', cursor: 'pointer',
         fontSize: '14px', fontWeight: '500', color: '#64748B', display: 'flex', alignItems: 'center', gap: '10px', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
     },
-    tabActive: { background: '#111111', color: '#FFFFFF', boxShadow: '0 4px 12px rgba(65, 105, 225, 0.25)' },
-    tableCard: { backgroundColor: '#FFFFFF', borderRadius: '18px', border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 2px 12px rgba(30, 41, 59, 0.04), 0 0 0 1px rgba(30, 41, 59, 0.02)', transition: 'box-shadow 0.3s ease, transform 0.3s ease', margin: '0 8px' },
+    tabActive: { background: '#111111', color: '#FFFFFF' },
+    tableCard: { backgroundColor: '#FFFFFF', borderRadius: '18px', border: '1px solid #E2E8F0', overflow: 'hidden', margin: '0 8px' },
     tableToolbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #E2E8F0' },
     tableTitle: { fontSize: '16px', fontWeight: '600', color: '#1E293B' },
-    importMoreBtn: { padding: '8px 18px', backgroundColor: 'rgba(65, 105, 225, 0.08)', color: '#3355C0', border: '1px solid rgba(65, 105, 225, 0.2)', borderRadius: '10px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' },
+    importMoreBtn: { padding: '8px 18px', backgroundColor: 'transparent', color: '#2563EB', border: '1px solid transparent', borderRadius: '10px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' },
     tableScroll: { overflowX: 'auto' },
     table: { width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' },
-    tableHeader: { backgroundColor: '#F8FAFC' },
-    th: { padding: '16px 12px', textAlign: 'left', fontSize: '11px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #E2E8F0', textTransform: 'uppercase', letterSpacing: '1px', whiteSpace: 'nowrap' },
+    tableHeader: { backgroundColor: '#FFFFFF' },
+    th: { padding: '10px 12px 18px', textAlign: 'left', fontSize: '13px', fontWeight: '700', color: '#64748B', borderBottom: 'none', letterSpacing: '1px', whiteSpace: 'nowrap', backgroundColor: '#FFFFFF' },
     tableRow: { borderBottom: '1px solid #F1F5F9', transition: 'background-color 0.2s ease', cursor: 'default' },
-    td: { padding: '18px 12px', fontSize: '14px', color: '#1E293B', verticalAlign: 'middle' },
+    td: { padding: '18px 12px', fontSize: '14px', color: '#1E293B', verticalAlign: 'middle', fontWeight: '500' },
     tdName: { padding: '18px 12px', fontSize: '14px', color: '#1E293B', fontWeight: '600', lineHeight: '1.5', verticalAlign: 'middle' },
     nameCell: { display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 },
     dragHandle: { color: '#94A3B8', cursor: 'inherit', flexShrink: 0 },
     nameText: { display: 'block', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
     tdSku: { padding: '18px 12px', fontSize: '13px', color: '#64748B', fontFamily: 'monospace', fontWeight: '500', verticalAlign: 'middle' },
     tdDesc: { padding: '18px 12px', fontSize: '13px', color: '#64748B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle' },
-    tdTotal: { padding: '18px 12px', fontSize: '16px', fontWeight: '700', color: '#111111', whiteSpace: 'nowrap', verticalAlign: 'middle' },
-    tdAction: { padding: '18px 8px 18px 10px', textAlign: 'center', verticalAlign: 'middle' },
+    tdTotal: { padding: '18px 12px', fontSize: '16px', fontWeight: '700', color: '#111111', whiteSpace: 'nowrap', verticalAlign: 'middle', textAlign: 'left' },
+    tdAction: { padding: '18px 24px 18px 10px', textAlign: 'right', verticalAlign: 'middle' },
     tdIndex: { padding: '18px 12px', fontSize: '12px', color: '#64748B', fontWeight: '500' },
     inlineInput: {
         width: '100%', maxWidth: '80px', padding: '8px 12px', border: '1px solid #E2E8F0', borderRadius: '10px',
@@ -1693,13 +1689,13 @@ const styles = {
         fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
     },
     removeBtn: {
-        width: '28px', height: '28px', border: 'none', borderRadius: '8px', backgroundColor: 'rgba(225, 29, 72, 0.06)',
-        color: '#E11D48', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        width: '28px', height: '28px', border: 'none', borderRadius: '8px', backgroundColor: 'transparent',
+        color: '#FCA5A5', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center',
     },
-    totalRow: { backgroundColor: '#F8FAFC' },
+    totalRow: { backgroundColor: '#FFFFFF' },
     totalLabel: { padding: '18px 24px', fontSize: '14px', fontWeight: '700', color: '#1E293B', textAlign: 'right' },
     totalValue: { padding: '18px 24px', fontSize: '18px', fontWeight: '700', color: '#111111' },
-    dropZone: { borderRadius: '20px', border: '2px dashed #E2E8F0', padding: '60px 40px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s ease', backgroundColor: '#FAFAF9' },
+    dropZone: { borderRadius: '20px', border: '2px dashed #E2E8F0', padding: '60px 40px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s ease', backgroundColor: '#FAFAF9', width: 'calc(100% - 16px)', margin: '0 auto', boxSizing: 'border-box' },
     dropIcon: { fontSize: '56px', marginBottom: '16px' },
     dropTitle: { fontSize: '16px', fontWeight: '600', color: '#1E293B', marginBottom: '8px' },
     dropDesc: { fontSize: '14px', color: '#64748B' },
@@ -1739,7 +1735,7 @@ const styles = {
     rowBadge: { fontSize: '12px', color: '#059669', backgroundColor: '#ECFDF5', padding: '4px 12px', borderRadius: '10px', fontWeight: '600' },
     sheetTabs: { display: 'flex', gap: '6px', padding: '16px 24px', borderBottom: '1px solid #E2E8F0', overflowX: 'auto', flexShrink: 0 },
     sheetTab: { padding: '8px 16px', border: '1px solid #E2E8F0', borderRadius: '10px', backgroundColor: 'transparent', color: '#64748B', cursor: 'pointer', fontSize: '14px', fontWeight: '600', whiteSpace: 'nowrap', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' },
-    sheetTabActive: { background: '#111111', color: '#FFFFFF', borderColor: 'transparent', boxShadow: '0 4px 12px rgba(65, 105, 225, 0.25)' },
+    sheetTabActive: { background: '#111111', color: '#FFFFFF', borderColor: 'transparent' },
     previewScroll: { flex: 1, overflowY: 'auto', overflowX: 'auto' },
     previewTable: { width: '100%', borderCollapse: 'collapse', minWidth: '500px' },
     previewTh: { padding: '14px 20px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#64748B', backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0', whiteSpace: 'nowrap', position: 'sticky', top: 0, textTransform: 'uppercase', letterSpacing: '1px' },
@@ -1747,7 +1743,7 @@ const styles = {
     moreRows: { padding: '16px', textAlign: 'center', fontSize: '13px', color: '#64748B', backgroundColor: '#F8FAFC' },
     modalButtons: { display: 'flex', justifyContent: 'flex-end', gap: '14px', padding: '20px 28px', backgroundColor: '#F8FAFC', borderTop: '1px solid #F1F5F9', flexShrink: 0, borderRadius: '0 0 20px 20px' },
     cancelButton: { padding: '12px 28px', backgroundColor: '#FFFFFF', color: '#64748B', border: '1px solid #E2E8F0', borderRadius: '999px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' },
-    submitButton: { padding: '12px 28px', background: '#111111', color: '#FFFFFF', border: 'none', borderRadius: '999px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 4px 16px rgba(65, 105, 225, 0.35)' },
+    submitButton: { padding: '12px 28px', background: '#111111', color: '#FFFFFF', border: 'none', borderRadius: '999px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' },
     // Clear/Delete Modal
     clearModal: { backgroundColor: 'rgba(255, 255, 255, 1)', borderRadius: '24px', border: '1px solid rgba(226, 232, 240, 0.8)', width: '400px', maxWidth: '90%', padding: '32px', textAlign: 'center', boxShadow: '0 20px 40px rgba(15, 23, 42, 0.1)' },
     clearModalIcon: { marginBottom: '20px', display: 'flex', justifyContent: 'center' },
@@ -1760,5 +1756,5 @@ const styles = {
     statDivider: { width: '1px', height: '48px', backgroundColor: 'rgba(226, 232, 240, 0.5)' },
     clearModalButtons: { display: 'flex', gap: '12px', justifyContent: 'center' },
     clearModalCancel: { flex: 1, padding: '12px 20px', backgroundColor: 'rgba(248, 250, 252, 0.6)', color: '#475569', border: '1px solid rgba(226, 232, 240, 0.8)', borderRadius: '999px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s ease', outline: 'none' },
-    clearModalConfirm: { flex: 1, padding: '12px 20px', backgroundColor: '#4169E1', color: '#FFFFFF', border: '1px solid #4169E1', borderRadius: '999px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s ease', outline: 'none', boxShadow: '0 4px 12px rgba(65, 105, 225, 0.15)' },
+    clearModalConfirm: { flex: 1, padding: '12px 20px', backgroundColor: '#111111', color: '#FFFFFF', border: '1px solid #111111', borderRadius: '999px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s ease', outline: 'none' },
 };

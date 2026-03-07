@@ -1,6 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
-import Dashboard from './pages/Dashboard'
 import Products from './pages/Products'
 import Customers from './pages/Customers'
 import QuoteGenerator from './pages/QuoteGenerator'
@@ -44,7 +43,7 @@ function App() {
           <ProtectedRoute>
             <Layout>
               <Routes>
-                <Route path="/" element={<Dashboard />} />
+                <Route path="/" element={<Navigate to="/products" replace />} />
                 <Route path="/products" element={<Products />} />
 
                 <Route path="/customers" element={<Customers />} />

@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
-const navItems = [
-  { path: '/', label: '首页总览' },
+const primaryNavItems = [
   { path: '/products', label: '产品管理' },
   { path: '/customers', label: '客户管理' },
   { path: '/quote-generator', label: '报价中心' },
+]
+
+const secondaryNavItems = [
   { path: '/audit-logs', label: '审计日志' },
   { path: '/backup-restore', label: '备份恢复' },
   { path: '/system-settings', label: '系统设置' },
@@ -32,27 +34,55 @@ export default function AppShell({ children, user }) {
           <aside
             className={asideClassName}
           >
-            <div className="mb-4 flex min-h-[180px] items-center justify-center rounded-[28px] bg-[linear-gradient(180deg,#ffffff_0%,#eef2f7_100%)] p-5 text-center">
-              <h2 className="text-3xl font-semibold tracking-[-0.04em] text-ink">Vector Deck</h2>
+            <div className="mb-6 flex h-12 w-full items-center justify-start rounded-[16px] bg-[linear-gradient(180deg,#ffffff_0%,#eef2f7_100%)] px-4 text-left">
+              <h2 className="text-xl font-semibold tracking-[0.06em] text-ink">Vector Deck</h2>
             </div>
 
-            <nav className="space-y-1">
-              {navItems.map((item) => {
-                const active = location.pathname === item.path
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onClick={() => setMobileOpen(false)}
-                    className={`flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm tracking-[0.08em] transition ${
-                      active ? 'bg-black text-white shadow-float' : 'text-slate hover:bg-black/[0.04] hover:text-ink'
-                    }`}
-                  >
-                    <span className="block w-full text-center">{item.label}</span>
-                  </Link>
-                )
-              })}
-            </nav>
+            <div className="rounded-[24px] bg-[linear-gradient(180deg,#ffffff_0%,#f6f7fa_100%)] p-4">
+              <div className="px-2 pb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#8b8b90]">
+                业务功能
+              </div>
+              <nav className="space-y-2">
+                {primaryNavItems.map((item) => {
+                  const active = location.pathname === item.path
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onClick={() => setMobileOpen(false)}
+                      className={`flex w-full items-center justify-start rounded-2xl px-4 py-3 text-sm tracking-[0.08em] transition ${
+                        active ? 'bg-black text-white shadow-float' : 'text-[#666666] hover:bg-black/[0.04] hover:text-ink'
+                      }`}
+                    >
+                      <span className="block w-full text-left">{item.label}</span>
+                    </Link>
+                  )
+                })}
+              </nav>
+            </div>
+
+            <div className="mt-6 rounded-[24px] bg-[linear-gradient(180deg,#ffffff_0%,#f6f7fa_100%)] p-4">
+              <div className="px-2 pb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#8b8b90]">
+                系统配置
+              </div>
+              <nav className="space-y-2">
+                {secondaryNavItems.map((item) => {
+                  const active = location.pathname === item.path
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onClick={() => setMobileOpen(false)}
+                      className={`flex w-full items-center justify-start rounded-2xl px-4 py-3 text-sm tracking-[0.08em] transition ${
+                        active ? 'bg-black text-white shadow-float' : 'text-[#666666] hover:bg-black/[0.04] hover:text-ink'
+                      }`}
+                    >
+                      <span className="block w-full text-left">{item.label}</span>
+                    </Link>
+                  )
+                })}
+              </nav>
+            </div>
           </aside>
 
           <main className={mainClassName}>{children}</main>

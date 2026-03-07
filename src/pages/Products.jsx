@@ -52,10 +52,13 @@ const modalAnimationStyles = `
 `
 
 export default function Products() {
+  const ITEMS_PER_PAGE = 10
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeCategory, setActiveCategory] = useState('钻具类')
   const [searchQuery, setSearchQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [hoveredProductId, setHoveredProductId] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [isClosing, setIsClosing] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
@@ -124,6 +127,10 @@ export default function Products() {
   useEffect(() => {
     fetchProducts()
   }, [])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [activeCategory, searchQuery])
 
   const fetchProducts = async () => {
     try {
@@ -528,78 +535,96 @@ export default function Products() {
     return <div style={styles.loading}>加载中...</div>
   }
 
+  const displayProducts = getDisplayProducts()
+  const totalPages = Math.max(1, Math.ceil(displayProducts.length / ITEMS_PER_PAGE))
+  const paginatedProducts = displayProducts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+
   return (
     <div style={styles.container}>
       <style>{modalAnimationStyles}</style>
 
-      <div style={styles.topBar}>
-        <h2 style={styles.pageTitle}>产品管理</h2>
-        <div style={styles.topActions}>
-          <input
-            type="text"
-            style={styles.searchInput}
-            placeholder="搜索产品名称、规格型号..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          {!isReadOnly && (
-            <button
-              type="button"
-              style={styles.addButton}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleAdd();
-              }}
-            >
-              添加产品
-            </button>
-          )}
+      <div style={styles.stickyHeader}>
+        <div style={styles.topBar}>
+          <h2 style={styles.pageTitle}>产品管理</h2>
+          <div style={styles.topActions}>
+            <input
+              type="text"
+              style={styles.searchInput}
+              placeholder="搜索产品名称、规格型号..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {!isReadOnly && (
+              <button
+                type="button"
+                style={styles.addButton}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleAdd();
+                }}
+              >
+                添加产品
+              </button>
+            )}
+          </div>
         </div>
-      </div>
 
-      <div style={styles.tabsContainer}>
-        {categories.map((cat) => (
-          <button
-            key={cat.id}
-            style={{
-              ...styles.tab,
-              ...(activeCategory === cat.id ? styles.tabActive : {}),
-            }}
-            onClick={() => setActiveCategory(cat.id)}
-          >
-            {cat.name}
-            <span style={styles.tabCount}>
-              {getProductsByCategory(cat.id).length}
-            </span>
-          </button>
-        ))}
+        <div style={styles.tabsContainer}>
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              style={{
+                ...styles.tab,
+                ...(activeCategory === cat.id ? styles.tabActive : {}),
+              }}
+              onClick={() => setActiveCategory(cat.id)}
+            >
+              {cat.name}
+              <span style={styles.tabCount}>
+                {getProductsByCategory(cat.id).length}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
       <div style={styles.tableCard}>
         <table style={styles.table}>
           <thead>
             <tr style={styles.tableHeader}>
-              <th style={styles.th}>产品名称</th>
-              <th style={styles.th}>产品规格</th>
-              <th style={styles.th}>{hasDualPrice(activeCategory) ? '终端价' : '价格'}</th>
-              {hasDualPrice(activeCategory) && <th style={styles.th}>经销商价</th>}
-              {!isReadOnly && <th aria-label="操作" style={styles.th}></th>}
+              <th style={{ ...styles.th, width: hasDualPrice(activeCategory) ? '18%' : '24%' }}>产品名称</th>
+              <th style={{ ...styles.th, width: hasDualPrice(activeCategory) ? '38%' : '40%' }}>产品规格</th>
+              <th style={{ ...styles.th, width: hasDualPrice(activeCategory) ? '12%' : '16%', textAlign: 'right' }}>{hasDualPrice(activeCategory) ? '终端价' : '价格'}</th>
+              {hasDualPrice(activeCategory) && <th style={{ ...styles.th, width: '12%', textAlign: 'right' }}>经销商价</th>}
+              {!isReadOnly && <th style={{ ...styles.th, width: hasDualPrice(activeCategory) ? '18%' : '18%', textAlign: 'center' }}>操作</th>}
             </tr>
           </thead>
           <tbody>
-            {getDisplayProducts().map((product) => (
-              <tr key={product.id} style={styles.tableRow}>
+            {paginatedProducts.map((product) => (
+              <tr
+                key={product.id}
+                style={{
+                  ...styles.tableRow,
+                  ...(hoveredProductId === product.id ? styles.tableRowHover : {}),
+                }}
+                onMouseEnter={() => setHoveredProductId(product.id)}
+                onMouseLeave={() => setHoveredProductId(null)}
+              >
                 <td style={styles.td}>
                   <span style={styles.productName}>{product.name}</span>
                 </td>
                 <td style={styles.tdSecondary}>
-                  {getCleanDescription(product) || product.description || '-'}
+                  {getCleanDescription(product) || product.description ? (
+                    getCleanDescription(product) || product.description
+                  ) : (
+                    <span style={styles.emptyValue}>-</span>
+                  )}
                 </td>
-                <td style={styles.tdPrice}>¥{Number(product.price).toLocaleString()}</td>
+                <td style={styles.tdPrice}><span style={styles.currencySymbol}>¥</span>{Number(product.price).toLocaleString()}</td>
                 {hasDualPrice(activeCategory) && (
                   <td style={styles.tdPrice}>
-                    {product.dealer_price ? `¥${Number(product.dealer_price).toLocaleString()}` : '-'}
+                    {product.dealer_price ? <><span style={styles.currencySymbol}>¥</span>{Number(product.dealer_price).toLocaleString()}</> : '-'}
                   </td>
                 )}
                 {!isReadOnly && (
@@ -617,6 +642,30 @@ export default function Products() {
           </tbody>
         </table>
       </div>
+
+      {displayProducts.length > ITEMS_PER_PAGE && (
+        <div style={styles.paginationWrap}>
+          <button
+            type="button"
+            style={{ ...styles.pageButton, ...(currentPage === 1 ? styles.pageButtonDisabled : {}) }}
+            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+            disabled={currentPage === 1}
+          >
+            上一页
+          </button>
+          <div style={styles.pageInfo}>
+            第 {currentPage} / {totalPages} 页
+          </div>
+          <button
+            type="button"
+            style={{ ...styles.pageButton, ...(currentPage === totalPages ? styles.pageButtonDisabled : {}) }}
+            onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+            disabled={currentPage === totalPages}
+          >
+            下一页
+          </button>
+        </div>
+      )}
 
       <Modal
         isOpen={showModal}
@@ -752,6 +801,12 @@ const styles = {
     flexDirection: 'column',
     gap: '24px',
   },
+  stickyHeader: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '24px',
+    paddingBottom: '4px',
+  },
   topBar: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -851,7 +906,6 @@ const styles = {
     outline: 'none',
     backgroundColor: '#FFFFFF',
     transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-    boxShadow: '0 1px 3px rgba(30, 41, 59, 0.04)',
     color: '#1E293B',
   },
   addButton: {
@@ -864,7 +918,6 @@ const styles = {
     fontSize: '14px',
     fontWeight: '600',
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    boxShadow: '0 4px 16px rgba(65, 105, 225, 0.35)',
     letterSpacing: '-0.1px',
     zIndex: 100,
     position: 'relative',
@@ -876,7 +929,6 @@ const styles = {
     padding: '6px',
     borderRadius: '14px',
     border: '1px solid #E2E8F0',
-    boxShadow: '0 2px 8px rgba(30, 41, 59, 0.04)',
   },
   tab: {
     padding: '12px 24px',
@@ -895,7 +947,6 @@ const styles = {
   tabActive: {
     background: '#111111',
     color: '#FFFFFF',
-    boxShadow: '0 4px 12px rgba(65, 105, 225, 0.25)',
   },
   tabCount: {
     fontSize: '11px',
@@ -908,45 +959,86 @@ const styles = {
     borderRadius: '18px',
     border: '1px solid #E2E8F0',
     overflow: 'hidden',
-    boxShadow: '0 2px 12px rgba(30, 41, 59, 0.04), 0 0 0 1px rgba(30, 41, 59, 0.02)',
     transition: 'box-shadow 0.3s ease, transform 0.3s ease',
+  },
+  paginationWrap: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  pageInfo: {
+    padding: '10px 14px',
+    borderRadius: '999px',
+    backgroundColor: '#f5f5f7',
+    color: '#64748B',
+    fontSize: '13px',
+    fontWeight: '600',
+  },
+  pageButton: {
+    padding: '10px 16px',
+    border: '1px solid #E2E8F0',
+    borderRadius: '999px',
+    backgroundColor: '#FFFFFF',
+    color: '#111111',
+    cursor: 'pointer',
+    fontSize: '13px',
+    fontWeight: '600',
+    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+  },
+  pageButtonDisabled: {
+    opacity: 0.45,
+    cursor: 'not-allowed',
   },
   table: {
     width: '100%',
     borderCollapse: 'collapse',
+    tableLayout: 'fixed',
   },
   tableHeader: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
   },
   th: {
-    padding: '16px 24px',
+    position: 'sticky',
+    top: '20px',
+    zIndex: 90,
+    padding: '10px 24px 18px',
     textAlign: 'left',
-    fontSize: '11px',
-    fontWeight: '600',
+    fontSize: '13px',
+    fontWeight: '700',
     color: '#64748B',
     borderBottom: '1px solid #E2E8F0',
-    textTransform: 'uppercase',
     letterSpacing: '1px',
+    backgroundColor: '#FFFFFF',
   },
   tableRow: {
     borderBottom: '1px solid #F1F5F9',
-    transition: 'background-color 0.2s ease',
+    transition: 'background-color 0.2s ease, box-shadow 0.2s ease',
     cursor: 'default',
+  },
+  tableRowHover: {
+    backgroundColor: '#f8fafc',
   },
   td: {
     padding: '18px 24px',
     fontSize: '14px',
     color: '#1E293B',
+    verticalAlign: 'middle',
   },
   tdSecondary: {
     padding: '18px 24px',
     fontSize: '14px',
     color: '#64748B',
+    verticalAlign: 'middle',
+    wordBreak: 'break-word',
+    textAlign: 'left',
   },
   productName: {
     fontSize: '15px',
     fontWeight: '600',
     color: '#1E293B',
+    lineHeight: '1.5',
+    wordBreak: 'keep-all',
   },
   productDesc: {
     fontSize: '13px',
@@ -959,20 +1051,35 @@ const styles = {
     fontSize: '16px',
     fontWeight: '700',
     color: '#111111',
+    whiteSpace: 'nowrap',
+    verticalAlign: 'middle',
+    textAlign: 'right',
+    fontVariantNumeric: 'tabular-nums',
+    fontFamily: '"SFMono-Regular", "SF Mono", "Roboto Mono", "Menlo", monospace',
+  },
+  currencySymbol: {
+    fontSize: '0.82em',
+    color: '#94A3B8',
+    marginRight: '2px',
+    fontWeight: '600',
+  },
+  emptyValue: {
+    color: '#c0c7d4',
   },
   tdActions: {
-    padding: '18px 24px',
+    padding: '18px 32px 18px 24px',
     fontSize: '14px',
     color: '#1E293B',
     display: 'flex',
     alignItems: 'center',
     gap: '10px',
     whiteSpace: 'nowrap',
+    verticalAlign: 'middle',
   },
   editButton: {
     padding: '8px 18px',
     backgroundColor: 'transparent',
-    color: '#111111',
+    color: '#2563eb',
     border: '1px solid transparent',
     borderRadius: '999px',
     cursor: 'pointer',
@@ -983,7 +1090,7 @@ const styles = {
   deleteButton: {
     padding: '8px 18px',
     backgroundColor: 'transparent',
-    color: '#f87171',
+    color: '#fca5a5',
     border: '1px solid transparent',
     borderRadius: '999px',
     cursor: 'pointer',

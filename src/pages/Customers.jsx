@@ -227,6 +227,7 @@ const CITIES_BY_COUNTRY = {
 
 export default function Customers() {
   const [customers, setCustomers] = useState([]);
+  const [hoveredCustomerId, setHoveredCustomerId] = useState(null);
 
   useEffect(() => {
     fetchCustomers();
@@ -350,17 +351,6 @@ export default function Customers() {
 
   const availableCities = CITIES_BY_COUNTRY[formData.country] || [];
 
-  const terminalCount = customers.filter(
-    (c) => c.customer_type === "终端",
-  ).length;
-  const distributorCount = customers.filter(
-    (c) => c.customer_type === "经销商",
-  ).length;
-  const totalDeals = customers.reduce(
-    (sum, c) => sum + (Number(c.deal_count) || 0),
-    0,
-  );
-
   return (
     <div style={styles.container}>
       <style>{modalAnimationStyles}</style>
@@ -374,25 +364,6 @@ export default function Customers() {
         </div>
       </div>
 
-      <div style={styles.summaryCards}>
-        <div style={styles.summaryCard}>
-          <div style={styles.summaryLabel}>客户总数</div>
-          <div style={styles.summaryValue}>{customers.length}</div>
-        </div>
-        <div style={styles.summaryCard}>
-          <div style={styles.summaryLabel}>终端客户</div>
-          <div style={styles.summaryValue}>{terminalCount}</div>
-        </div>
-        <div style={styles.summaryCard}>
-          <div style={styles.summaryLabel}>经销商</div>
-          <div style={styles.summaryValue}>{distributorCount}</div>
-        </div>
-        <div style={styles.summaryCard}>
-          <div style={styles.summaryLabel}>总成交次数</div>
-          <div style={styles.summaryValue}>{totalDeals}</div>
-        </div>
-      </div>
-
       <div style={styles.tableCard}>
         <table style={styles.table}>
           <thead>
@@ -401,13 +372,21 @@ export default function Customers() {
               <th style={styles.th}>国家</th>
               <th style={styles.th}>城市</th>
               <th style={styles.th}>联系方式</th>
-              <th style={styles.th}>成交次数</th>
-              <th aria-label="操作" style={styles.th}></th>
+              <th style={styles.thRight}>成交次数</th>
+              <th style={styles.thAction}>操作</th>
             </tr>
           </thead>
           <tbody>
             {customers.map((customer) => (
-              <tr key={customer.id} style={styles.tableRow}>
+              <tr
+                key={customer.id}
+                style={{
+                  ...styles.tableRow,
+                  ...(hoveredCustomerId === customer.id ? styles.tableRowHover : {}),
+                }}
+                onMouseEnter={() => setHoveredCustomerId(customer.id)}
+                onMouseLeave={() => setHoveredCustomerId(null)}
+              >
                 <td style={styles.td}>
                   <span
                     style={{
@@ -428,10 +407,10 @@ export default function Customers() {
                 <td style={styles.td}>{customer.country}</td>
                 <td style={styles.td}>{customer.city}</td>
                 <td style={styles.tdSecondary}>{customer.contact}</td>
-                <td style={styles.td}>
+                <td style={styles.tdRight}>
                   <span style={styles.dealBadge}>{customer.deal_count}</span>
                 </td>
-                <td style={styles.td}>
+                <td style={styles.tdAction}>
                   <button
                     style={styles.editButton}
                     onClick={() => handleEdit(customer)}
@@ -664,8 +643,6 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: "14px",
-    position: 'relative',
-    zIndex: 100,
   },
   addButton: {
     padding: '12px 26px',
@@ -677,73 +654,92 @@ const styles = {
     fontSize: '14px',
     fontWeight: '600',
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    boxShadow: '0 4px 16px rgba(65, 105, 225, 0.35)',
     letterSpacing: '-0.1px',
-    zIndex: 100,
-    position: 'relative',
-  },
-  summaryCards: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-    gap: "16px",
-  },
-  summaryCard: {
-    backgroundColor: '#FFFFFF',
-    padding: '24px',
-    borderRadius: '20px',
-    border: '1px solid #E2E8F0',
-    boxShadow: '0 2px 8px rgba(30, 41, 59, 0.04)',
-  },
-  summaryLabel: {
-    fontSize: "13px",
-    color: "#64748B",
-    marginBottom: "8px",
-    fontWeight: "500",
-  },
-  summaryValue: {
-    fontSize: "26px",
-    fontWeight: "700",
-    color: "#1E293B",
   },
   tableCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: '18px',
     border: '1px solid #E2E8F0',
     overflow: 'hidden',
-    boxShadow: '0 2px 12px rgba(30, 41, 59, 0.04), 0 0 0 1px rgba(30, 41, 59, 0.02)',
-    transition: 'box-shadow 0.3s ease, transform 0.3s ease',
+    width: '100%',
   },
   table: {
     width: "100%",
     borderCollapse: "collapse",
+    tableLayout: "fixed",
   },
   tableHeader: {
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "#FFFFFF",
   },
   th: {
-    padding: '16px 24px',
+    padding: '10px 24px 18px',
     textAlign: 'left',
-    fontSize: '11px',
-    fontWeight: '600',
+    fontSize: '13px',
+    fontWeight: '700',
     color: '#64748B',
     borderBottom: '1px solid #E2E8F0',
-    textTransform: 'uppercase',
     letterSpacing: '1px',
+    backgroundColor: '#FFFFFF',
+    position: 'sticky',
+    top: '20px',
+    zIndex: 2,
+  },
+  thRight: {
+    padding: '10px 24px 18px',
+    textAlign: 'right',
+    fontSize: '13px',
+    fontWeight: '700',
+    color: '#64748B',
+    borderBottom: '1px solid #E2E8F0',
+    letterSpacing: '1px',
+    backgroundColor: '#FFFFFF',
+    position: 'sticky',
+    top: '20px',
+    zIndex: 2,
+  },
+  thAction: {
+    padding: '10px 32px 18px 24px',
+    textAlign: 'right',
+    fontSize: '13px',
+    fontWeight: '700',
+    color: '#64748B',
+    borderBottom: '1px solid #E2E8F0',
+    letterSpacing: '1px',
+    backgroundColor: '#FFFFFF',
+    position: 'sticky',
+    top: '20px',
+    zIndex: 2,
   },
   tableRow: {
     borderBottom: "1px solid #F1F5F9",
     transition: "background-color 0.2s ease",
     cursor: "default",
   },
+  tableRowHover: {
+    backgroundColor: "#F8FAFC",
+  },
   td: {
     padding: '18px 24px',
     fontSize: '14px',
     color: '#1E293B',
+    fontWeight: '500',
   },
   tdSecondary: {
     padding: '18px 24px',
     fontSize: '14px',
     color: '#64748B',
+    fontWeight: '500',
+  },
+  tdRight: {
+    padding: '18px 24px',
+    fontSize: '14px',
+    color: '#1E293B',
+    textAlign: 'right',
+  },
+  tdAction: {
+    padding: '18px 32px 18px 24px',
+    textAlign: 'right',
+    whiteSpace: 'nowrap',
   },
   typeBadge: {
     padding: "4px 12px",
@@ -754,27 +750,27 @@ const styles = {
   dealBadge: {
     padding: "4px 12px",
     borderRadius: "10px",
-    backgroundColor: "#ECFDF5",
-    color: "#059669",
+    backgroundColor: "#F1F5F9",
+    color: "#475569",
     fontSize: "13px",
     fontWeight: "600",
   },
   editButton: {
-    padding: '8px 18px',
+    padding: '8px 14px',
     backgroundColor: 'transparent',
-    color: '#111111',
+    color: '#2563EB',
     border: '1px solid transparent',
     borderRadius: '999px',
     cursor: 'pointer',
     fontSize: '13px',
     fontWeight: '600',
-    marginRight: '10px',
+    marginRight: '8px',
     transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
   },
   deleteButton: {
-    padding: '8px 18px',
+    padding: '8px 14px',
     backgroundColor: 'transparent',
-    color: '#f87171',
+    color: '#FCA5A5',
     border: '1px solid transparent',
     borderRadius: '999px',
     cursor: 'pointer',
