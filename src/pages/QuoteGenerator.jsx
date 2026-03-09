@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import * as XLSX from 'xlsx'
 import Modal from '../components/Modal'
-
-const API_URL = 'http://localhost:3001/api'
+import { API_URL } from '../lib/api'
 
 const modalAnimationStyles = `
   @keyframes modalOverlayIn {
@@ -35,7 +34,7 @@ const modalAnimationStyles = `
     border-color: #1E293B !important;
     box-shadow: 0 0 0 3px rgba(30, 41, 59, 0.1) !important;
   }
-  .product-quantity-input:focus {
+  .product-quantity-input:focus, .quote-quantity-input:focus {
     border-color: #1E293B !important;
     box-shadow: 0 0 0 3px rgba(30, 41, 59, 0.1) !important;
   }
@@ -361,42 +360,6 @@ export default function QuoteGenerator() {
         }
     }
 
-    const handleIncreaseFromModal = (product, e) => {
-        e.stopPropagation()
-        const existing = quoteItems.find(item => item.productId === product.id)
-        if (existing) {
-            const newQty = existing.quantity + 1
-            setQuoteItems(quoteItems.map(item =>
-                item.productId === product.id ? { ...item, quantity: newQty } : item
-            ))
-            fetch(`${API_URL}/quote-items/${existing.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ price: existing.price, quantity: newQty }),
-            })
-        }
-    }
-
-    const handleDecreaseFromModal = (product, e) => {
-        e.stopPropagation()
-        const existing = quoteItems.find(item => item.productId === product.id)
-        if (existing) {
-            const newQty = existing.quantity - 1
-            if (newQty <= 0) {
-                handleRemoveItem(existing.id)
-            } else {
-                setQuoteItems(quoteItems.map(item =>
-                    item.productId === product.id ? { ...item, quantity: newQty } : item
-                ))
-                fetch(`${API_URL}/quote-items/${existing.id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ price: existing.price, quantity: newQty }),
-                })
-            }
-        }
-    }
-
     const handleQuantityInputChange = (product, value, e) => {
         e.stopPropagation()
         setQuoteItems(quoteItems.map(item =>
@@ -444,40 +407,6 @@ export default function QuoteGenerator() {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ price: item.price, quantity: num }),
-                })
-            }
-        }
-    }
-
-    const handleIncreaseQuantity = (id) => {
-        const item = quoteItems.find(i => i.id === id)
-        if (item) {
-            const newQty = item.quantity + 1
-            setQuoteItems(quoteItems.map(i =>
-                i.id === id ? { ...i, quantity: newQty } : i
-            ))
-            fetch(`${API_URL}/quote-items/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ price: item.price, quantity: newQty }),
-            })
-        }
-    }
-
-    const handleDecreaseQuantity = (id) => {
-        const item = quoteItems.find(i => i.id === id)
-        if (item) {
-            const newQty = item.quantity - 1
-            if (newQty <= 0) {
-                handleRemoveItem(id)
-            } else {
-                setQuoteItems(quoteItems.map(i =>
-                    i.id === id ? { ...i, quantity: newQty } : i
-                ))
-                fetch(`${API_URL}/quote-items/${id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ price: item.price, quantity: newQty }),
                 })
             }
         }
@@ -1108,11 +1037,11 @@ export default function QuoteGenerator() {
                     <table style={styles.table}>
                         <thead>
                             <tr style={styles.tableHeader}>
-                                <th style={{ ...styles.th, width: '31%', paddingLeft: '54px' }}>产品名称</th>
-                                <th style={{ ...styles.th, width: '25%' }}>产品规格</th>
+                                <th style={{ ...styles.th, width: '29%', paddingLeft: '54px' }}>产品名称</th>
+                                <th style={{ ...styles.th, width: '23%' }}>产品规格</th>
                                 <th style={{ ...styles.th, width: '13%' }}>价格</th>
-                                <th style={{ ...styles.th, width: '15%' }}>数量</th>
-                                <th style={{ ...styles.th, width: '10%' }}>合计</th>
+                                <th style={{ ...styles.th, width: '17%', minWidth: '160px' }}>数量</th>
+                                <th style={{ ...styles.th, width: '12%', minWidth: '140px', textAlign: 'right' }}>合计</th>
                                 <th aria-label="操作" style={{ ...styles.th, width: '6%', textAlign: 'right', minWidth: '64px' }}></th>
                             </tr>
                         </thead>
@@ -1162,26 +1091,15 @@ export default function QuoteGenerator() {
                                     </td>
                                     <td style={styles.td}>
                                         <div style={styles.quantityControl}>
-                                            <button
-                                                style={styles.quantityBtn}
-                                                onClick={() => handleDecreaseQuantity(item.id)}
-                                            >
-                                                −
-                                            </button>
                                             <input
                                                 type="number"
                                                 min="1"
-                                                style={styles.inlineInput}
+                                                className="quote-quantity-input"
+                                                style={{ ...styles.quantityInput, width: '80px', minWidth: '80px', maxWidth: '80px', textAlign: 'center' }}
                                                 value={item.qtyInput !== undefined ? item.qtyInput : item.quantity}
                                                 onChange={(e) => handleQuantityChange(item.id, e.target.value)}
                                                 onBlur={(e) => handleQuantityBlur(item.id, e.target.value)}
                                             />
-                                            <button
-                                                style={styles.quantityBtn}
-                                                onClick={() => handleIncreaseQuantity(item.id)}
-                                            >
-                                                ＋
-                                            </button>
                                         </div>
                                     </td>
                                     <td style={styles.tdTotal}>¥{(item.price * item.quantity).toLocaleString()}</td>
@@ -1355,27 +1273,15 @@ export default function QuoteGenerator() {
                                         </div>
                                         {inQuote ? (
                                             <div style={styles.productActions} onClick={(e) => e.stopPropagation()}>
-                                                <button
-                                                    style={styles.productActionBtn}
-                                                    onClick={(e) => handleDecreaseFromModal(product, e)}
-                                                >
-                                                    −
-                                                </button>
                                                 <input
                                                     type="number"
                                                     min="0"
                                                     className="product-quantity-input"
-                                                    style={styles.productQuantityInput}
+                                                    style={{ ...styles.productQuantityInput, width: '70px', padding: '0 8px' }}
                                                     value={inQuote.qtyInput !== undefined ? inQuote.qtyInput : inQuote.quantity}
                                                     onChange={(e) => handleQuantityInputChange(product, e.target.value, e)}
                                                     onBlur={(e) => handleQuantityInputBlur(product, e.target.value, e)}
                                                 />
-                                                <button
-                                                    style={styles.productActionBtn}
-                                                    onClick={(e) => handleIncreaseFromModal(product, e)}
-                                                >
-                                                    ＋
-                                                </button>
                                             </div>
                                         ) : (
                                             <span style={styles.addBadge}>添加</span>
@@ -1675,18 +1581,18 @@ const styles = {
     nameText: { display: 'block', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
     tdSku: { padding: '18px 12px', fontSize: '13px', color: '#64748B', fontFamily: 'monospace', fontWeight: '500', verticalAlign: 'middle' },
     tdDesc: { padding: '18px 12px', fontSize: '13px', color: '#64748B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle' },
-    tdTotal: { padding: '18px 12px', fontSize: '16px', fontWeight: '700', color: '#111111', whiteSpace: 'nowrap', verticalAlign: 'middle', textAlign: 'left' },
+    tdTotal: { padding: '18px 20px 18px 12px', fontSize: '16px', fontWeight: '700', color: '#111111', whiteSpace: 'nowrap', verticalAlign: 'middle', textAlign: 'right' },
     tdAction: { padding: '18px 24px 18px 10px', textAlign: 'right', verticalAlign: 'middle' },
     tdIndex: { padding: '18px 12px', fontSize: '12px', color: '#64748B', fontWeight: '500' },
     inlineInput: {
         width: '100%', maxWidth: '80px', padding: '8px 12px', border: '1px solid #E2E8F0', borderRadius: '10px',
         fontSize: '14px', backgroundColor: '#FFFFFF', textAlign: 'right', boxSizing: 'border-box', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
     },
-    quantityControl: { display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-start' },
-    quantityBtn: {
-        width: '28px', height: '28px', padding: '0', border: '1px solid #E2E8F0', borderRadius: '8px',
-        backgroundColor: '#FFFFFF', color: '#1E293B', cursor: 'pointer', fontSize: '14px',
-        fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
+    quantityControl: { display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-start', minWidth: 0 },
+    quantityInput: {
+        width: '72px', minWidth: '72px', maxWidth: '72px', padding: '8px 10px', border: '1px solid #E2E8F0', borderRadius: '10px',
+        fontSize: '14px', backgroundColor: '#FFFFFF', textAlign: 'center', boxSizing: 'border-box', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+        color: '#1E293B', flexShrink: 0
     },
     removeBtn: {
         width: '28px', height: '28px', border: 'none', borderRadius: '8px', backgroundColor: 'transparent',
@@ -1718,11 +1624,6 @@ const styles = {
     productRight: { display: 'flex', alignItems: 'center', gap: '12px' },
     productPrice: { fontSize: '16px', fontWeight: '700', color: '#111111' },
     productActions: { display: 'flex', alignItems: 'center', gap: '4px' },
-    productActionBtn: {
-        width: '28px', height: '28px', padding: '0', border: '1px solid #E2E8F0', borderRadius: '8px',
-        backgroundColor: '#FFFFFF', color: '#1E293B', cursor: 'pointer', fontSize: '14px',
-        fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
-    },
     productQuantityInput: {
         width: '60px', height: '28px', padding: '0 4px', border: '1px solid #E2E8F0', borderRadius: '8px',
         backgroundColor: '#FFFFFF', color: '#1E293B', fontSize: '14px', fontWeight: '600',
