@@ -7,10 +7,7 @@ const getAuthHeaders = () => {
   return token ? { 'Authorization': `Bearer ${token}` } : {}
 }
 
-const WAREHOUSE_INFOS = {
-  '广州': '广州仓库工作时间:8:30AM-11.30AM，1:00PM-6:00PM((特殊情况提前沟通)需要开顶的车,仓库负责人:陈金峰17352688572',
-  '武汉': '武汉仓库工作时间:8:00AM-6:00PM(特殊情况提前沟通)，周日正常发货，仓库负责人杨:17786446669'
-}
+
 
 const modalAnimationStyles = `
   @keyframes modalFadeIn {
@@ -74,6 +71,9 @@ export default function Warehouses() {
     description: '',
     status: 'active',
   })
+  const [warehouseInfos, setWarehouseInfos] = useState({})
+  const [isEditingInfo, setIsEditingInfo] = useState(false)
+  const [editingInfoValue, setEditingInfoValue] = useState('')
 
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const isReadOnly = user.role === 'foreign_trade'
@@ -90,7 +90,22 @@ export default function Warehouses() {
 
   useEffect(() => {
     fetchProducts()
+    fetchWarehouseSettings()
   }, [])
+
+  const fetchWarehouseSettings = async () => {
+    try {
+      const response = await fetch(`${API_URL}/system-settings`, {
+        headers: getAuthHeaders()
+      })
+      if (response.ok) {
+        const settings = await response.json()
+        setWarehouseInfos(settings)
+      }
+    } catch (error) {
+      console.error('获取系统设置失败:', error)
+    }
+  }
 
   useEffect(() => {
     setCurrentPage(1)
@@ -219,6 +234,34 @@ export default function Warehouses() {
     } catch (error) {
       console.error('保存产品失败:', error)
       alert('保存产品失败，请稍后重试')
+    }
+  }
+
+  const handleInfoEdit = () => {
+    if (isReadOnly) return
+    setIsEditingInfo(true)
+    const currentInfo = warehouseInfos[`warehouse_info_${activeWarehouse}`] || ''
+    setEditingInfoValue(currentInfo)
+  }
+
+  const handleInfoSave = async () => {
+    try {
+      const key = `warehouse_info_${activeWarehouse}`
+      const response = await fetch(`${API_URL}/system-settings`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify({ [key]: editingInfoValue })
+      })
+      if (response.ok) {
+        setWarehouseInfos(prev => ({ ...prev, [key]: editingInfoValue }))
+        setIsEditingInfo(false)
+      }
+    } catch (error) {
+      console.error('保存仓库信息失败:', error)
+      alert('保存失败')
     }
   }
 
@@ -536,8 +579,69 @@ export default function Warehouses() {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', gap: '20px' }}>
-        <div style={{ flex: 1, fontSize: '13px', color: '#64748B', lineHeight: '1.6', backgroundColor: '#F8FAFC', padding: '12px 16px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-          {WAREHOUSE_INFOS[activeWarehouse] || '暂无详细信息'}
+        <div
+          onClick={() => !isEditingInfo && handleInfoEdit()}
+          style={{
+            flex: 1,
+            fontSize: '13px',
+            color: '#64748B',
+            lineHeight: '1.6',
+            backgroundColor: '#F8FAFC',
+            padding: '12px 16px',
+            borderRadius: '12px',
+            border: '1px solid #E2E8F0',
+            cursor: isReadOnly || isEditingInfo ? 'default' : 'pointer',
+            minHeight: '44px',
+            display: 'flex',
+            alignItems: 'center',
+            position: 'relative'
+          }}
+        >
+          {isEditingInfo ? (
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <textarea
+                autoFocus
+                style={{
+                  width: '100%',
+                  border: 'none',
+                  background: 'transparent',
+                  outline: 'none',
+                  resize: 'vertical',
+                  minHeight: '60px',
+                  fontFamily: 'inherit',
+                  fontSize: 'inherit',
+                  color: '#1E293B'
+                }}
+                value={editingInfoValue}
+                onChange={(e) => setEditingInfoValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    handleInfoSave()
+                  }
+                }}
+                onClick={(e) => e.stopPropagation()}
+              />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setIsEditingInfo(false); }}
+                  style={{ padding: '4px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '12px', cursor: 'pointer' }}
+                >取消</button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); handleInfoSave(); }}
+                  style={{ padding: '4px 12px', borderRadius: '6px', border: 'none', background: '#111', color: '#FFF', fontSize: '12px', cursor: 'pointer' }}
+                >保存</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {warehouseInfos[`warehouse_info_${activeWarehouse}`] || '暂无详细信息 (点击编辑)'}
+              {!isReadOnly && (
+                <span style={{ marginLeft: 'auto', fontSize: '11px', color: '#94A3B8', opacity: 0.6, whiteSpace: 'nowrap' }}>点击编辑</span>
+              )}
+            </>
+          )}
         </div>
 
         {displayProducts.length > ITEMS_PER_PAGE && (
