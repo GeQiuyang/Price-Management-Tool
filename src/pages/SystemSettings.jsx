@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Modal from '../components/Modal'
-const API_URL = 'http://localhost:3001/api'
+import { API_URL } from '../lib/api'
 
 
 
@@ -67,7 +67,7 @@ export default function SystemSettings() {
     const handleLogout = async () => {
         try {
             const token = localStorage.getItem('token')
-            await fetch('http://localhost:3001/api/auth/logout', {
+            await fetch(`${API_URL}/auth/logout`, {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${token}`,

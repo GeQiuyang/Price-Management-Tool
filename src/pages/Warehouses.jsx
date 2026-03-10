@@ -7,6 +7,11 @@ const getAuthHeaders = () => {
   return token ? { 'Authorization': `Bearer ${token}` } : {}
 }
 
+const WAREHOUSE_INFOS = {
+  '广州': '广州仓库工作时间:8:30AM-11.30AM，1:00PM-6:00PM((特殊情况提前沟通)需要开顶的车,仓库负责人:陈金峰17352688572',
+  '武汉': '武汉仓库工作时间:8:00AM-6:00PM(特殊情况提前沟通)，周日正常发货，仓库负责人杨:17786446669'
+}
+
 const modalAnimationStyles = `
   @keyframes modalFadeIn {
     from {
@@ -50,11 +55,11 @@ const modalAnimationStyles = `
   
 `
 
-export default function Products() {
+export default function Warehouses() {
   const ITEMS_PER_PAGE = 10
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
-  const [activeCategory, setActiveCategory] = useState('钻具类')
+  const [activeWarehouse, setActiveWarehouse] = useState('广州')
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [hoveredProductId, setHoveredProductId] = useState(null)
@@ -64,64 +69,24 @@ export default function Products() {
   const [pendingDeleteProduct, setPendingDeleteProduct] = useState(null)
   const [formData, setFormData] = useState({
     name: '',
-    category: '钻具类',
+    warehouse: '广州',
     price: '',
-    dealer_price: '',
     description: '',
     status: 'active',
   })
-  const [hoveredTemplate, setHoveredTemplate] = useState(null)
 
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const isReadOnly = user.role === 'foreign_trade'
 
-  // 支持双价格（终端价+经销商价）的分类
-  const dualPriceCategories = ['导管类', '水泵类']
-  const hasDualPrice = (cat) => dualPriceCategories.includes(cat)
-
-  const categories = [
-    { id: '钻具类', name: '钻具类' },
-    { id: '导管类', name: '导管类' },
-    { id: '水泵类', name: '水泵类' },
-    { id: '配件类', name: '配件类' },
+  const warehouses = [
+    { id: '广州', name: '广州' },
+    { id: '武汉', name: '武汉' },
+    { id: '长沙&邵阳', name: '长沙&邵阳' },
+    { id: '大连', name: '大连' },
+    { id: '成都', name: '成都' },
+    { id: '浙江', name: '浙江' },
+    { id: '洛阳', name: '洛阳' },
   ]
-
-
-
-  const productTemplates = {
-    '导管类': [
-      { name: '300尖丝导管', description: '壁厚{thickness}mm，尖丝', price: 351 },
-      { name: '300方丝导管', description: '壁厚{thickness}mm，方丝', price: 356 },
-      { name: '260尖丝导管', description: '壁厚{thickness}mm，尖丝', price: 291 },
-      { name: '260方丝导管', description: '壁厚{thickness}mm，方丝', price: 296 },
-      { name: '273母扣接头', description: '母扣接头', price: 80 },
-    ],
-    '水泵类': [
-      { name: '潜水泵', description: '功率{power}kW，流量{flow}m³/h', price: 5000 },
-      { name: '离心泵', description: '功率{power}kW，扬程{head}m', price: 3500 },
-      { name: '泥浆泵', description: '{power}千瓦', price: 6500 },
-    ],
-    '钻具类': [
-      { name: '捞沙斗', description: '{size}mm，壁厚{thickness}mm', price: 6500 },
-      { name: '筒钻', description: '{size}mm，壁厚{thickness}mm', price: 13000 },
-      { name: '螺旋钻头', description: '{size}mm，壁厚{thickness}mm高效螺旋钻头', price: 800 },
-    ],
-    '配件类': [
-      { name: '泥浆管', description: '口径4英寸，长度18m', price: 330 },
-      { name: '泥浆泵', description: '{power}千瓦', price: 6500 },
-      { name: '钻杆', description: '钻杆，长度{m}，直径{diameter}mm', price: 400 },
-      { name: '加重钻杆', description: '加重钻杆，长度{m}，直径{diameter}mm', price: 600 },
-    ],
-  }
-
-  const applyTemplate = (template) => {
-    setFormData({
-      ...formData,
-      name: template.name,
-      description: template.description,
-      price: template.price,
-    })
-  }
 
   useEffect(() => {
     fetchProducts()
@@ -129,11 +94,11 @@ export default function Products() {
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [activeCategory, searchQuery])
+  }, [activeWarehouse, searchQuery])
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch(`${API_URL}/products`)
+      const response = await fetch(`${API_URL}/warehouse-products`)
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
           localStorage.removeItem('token')
@@ -153,7 +118,7 @@ export default function Products() {
 
   const handleAdd = () => {
     setEditingProduct(null)
-    setFormData({ name: '', category: activeCategory, price: '', dealer_price: '', description: '', status: 'active' })
+    setFormData({ name: '', warehouse: activeWarehouse, price: '', description: '', status: 'active' })
     setIsClosing(false)
     setShowModal(true)
   }
@@ -174,33 +139,15 @@ export default function Products() {
     setPendingDeleteProduct(product)
   }
 
-  const addToRecycleBin = async (item, type) => {
-    try {
-      await fetch(`${API_URL}/recycle-bin`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          itemType: type,
-          itemId: item.id,
-          itemData: item,
-        }),
-      })
-      window.dispatchEvent(new CustomEvent('recycleBin-updated'))
-    } catch (error) {
-      console.error('添加到回收站失败:', error)
-    }
-  }
-
   const confirmDelete = async () => {
     if (!pendingDeleteProduct) return
     try {
-      await fetch(`${API_URL}/products/${pendingDeleteProduct.id}`, {
+      await fetch(`${API_URL}/warehouse-products/${pendingDeleteProduct.id}`, {
         method: 'DELETE',
         headers: {
           ...getAuthHeaders(),
         },
       })
-      await addToRecycleBin(pendingDeleteProduct, 'products')
       setProducts(prev => prev.filter((p) => p.id !== pendingDeleteProduct.id))
     } catch (error) {
       console.error('删除产品失败:', error)
@@ -226,7 +173,7 @@ export default function Products() {
       let response
 
       if (editingProduct) {
-        response = await fetch(`${API_URL}/products/${editingProduct.id}`, {
+        response = await fetch(`${API_URL}/warehouse-products/${editingProduct.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -235,13 +182,13 @@ export default function Products() {
           body: JSON.stringify(formData),
         })
       } else {
-        response = await fetch(`${API_URL}/products`, {
+        response = await fetch(`${API_URL}/warehouse-products`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             ...getAuthHeaders(),
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify({ ...formData, warehouse: activeWarehouse }), // Ensure new creations match active tab
         })
       }
 
@@ -275,18 +222,22 @@ export default function Products() {
     }
   }
 
-  const getProductsByCategory = (category) => {
-    return products.filter((p) => p.category === category)
+  const getProductsByWarehouse = (warehouseId) => {
+    if (warehouseId === '长沙&邵阳') {
+      return products.filter((p) => p.warehouse === '长沙' || p.warehouse === '邵阳' || p.warehouse === '长沙&邵阳')
+    }
+    return products.filter((p) => p.warehouse === warehouseId)
   }
-
 
   const getDisplayProducts = () => {
     const trimmedQuery = searchQuery.trim()
+    const currentWarehouseProducts = getProductsByWarehouse(activeWarehouse)
+
     if (trimmedQuery) {
       // 全局排除 "SMSCC" 品牌干扰项：在处理关键词和匹配目标时均忽略它
       const keyword = trimmedQuery.replace(/SMSCC/gi, '').trim().replace(/-/g, '')
 
-      // 如果剔除品牌名后关键词为空，且原始输入包含品牌名，则认为无有效搜索内容（不显示全列表）
+      // 如果剔除品牌名后关键词为空，且原始输入包含品牌名，则认为无有效搜索内容
       if (!keyword && trimmedQuery.toLowerCase().includes('smscc')) {
         return []
       }
@@ -341,9 +292,7 @@ export default function Products() {
           if (!queryThickness && remainingNums.length > 0) queryThickness = remainingNums[0]
         }
 
-        return products.filter(p => {
-          if (p.category !== '导管类') return false
-
+        return currentWarehouseProducts.filter(p => {
           const excludeWords = ['钻宝', 'SMS6系', '钻金']
           for (const word of excludeWords) {
             if (p.name.includes(word) && !keyword.includes(word)) return false
@@ -420,114 +369,57 @@ export default function Products() {
         })
       })()
 
-      // 钻具类专有搜索规则：提取【产品名称】和【型号】，组合后作为搜索关键词
-      const levelDrill = products.filter(p => {
-        if (p.category !== '钻具类') return false
-        // 钻具类搜索：合并名称和完整描述进行搜索
-        // 匹配目标也排除 "SMSCC" 以保持一致
+      // 钻具类等没有特定category，尝试按 drill matching logic 或者通用匹配
+      const levelDrill = currentWarehouseProducts.filter(p => {
+        // 简单复写一下，因为仓库里的产品没有category字段，所以默认所有非导管判断走钻具逻辑或fallback
         const searchTarget = `${p.name} ${p.description || ''}`.replace(/SMSCC/gi, '').replace(/[\s\-]+/g, '').toLowerCase()
         const drillSegments = keyword.match(/[\u4e00-\u9fff]+|[a-zA-Z0-9]+/g) || [keyword]
 
         return drillSegments.every(seg => searchTarget.includes(seg.toLowerCase()))
       })
 
-      // Level 0: 名称+型号组合精准匹配（支持正反序）
+      // Level 0: 名称+全数字型号组合匹配
       const level0 = (chinesePart && numberPart)
-        ? products.filter((p) => {
-          if (p.category === '钻具类') return false
+        ? currentWarehouseProducts.filter((p) => {
           const nameMatch = p.name.toLowerCase().includes(chinesePart)
           const specMatch = p.description && p.description.match(/(?:规格)?型号(\d+)/)
           return nameMatch && specMatch && specMatch[1] === numberPart
         })
         : []
 
-      // Level 1: 纯数字搜索 → 只匹配规格型号；否则精确匹配产品规格全文
+      // Level 1: 纯数字搜索
       const level1 = isNumericOnly
-        ? products.filter((p) => {
-          if (p.category === '钻具类') return false
+        ? currentWarehouseProducts.filter((p) => {
           const specMatch = p.description && p.description.match(/(?:规格)?型号(\d+)/)
           return specMatch && specMatch[1] === keyword
         })
-        : products.filter((p) => {
-          if (p.category === '钻具类') return false
-          return p.description && p.description === keyword
-        })
-
-      // Level 2: 名称+型号宽松匹配（数字匹配规格型号）
-      const level2 = (chinesePart && numberPart)
-        ? products.filter((p) => {
-          if (p.category === '钻具类') return false
-          const nameMatch = p.name.toLowerCase().includes(chinesePart)
-          const specMatch = p.description && p.description.match(/(?:规格)?型号(\d+)/)
-          return nameMatch && specMatch && specMatch[1] === numberPart
-        })
         : []
 
-      // Level 3: 名称前缀匹配
-      const level3 = products.filter((p) => {
-        if (p.category === '钻具类') return false
-        return p.name.toLowerCase().startsWith(lowerKeyword)
+      // Fallback
+      const genericMatch = currentWarehouseProducts.filter((p) => {
+        return p.name.toLowerCase().includes(lowerKeyword) ||
+          (p.description && p.description.toLowerCase().includes(lowerKeyword))
       })
 
-      // Level 4: 全字段模糊匹配（纯数字时仍只匹配型号）
-      const level4 = isNumericOnly
-        ? []
-        : products.filter((p) => {
-          if (p.category === '钻具类') return false
-          return p.name.toLowerCase().includes(lowerKeyword) ||
-            (p.description && p.description.toLowerCase().includes(lowerKeyword))
-        })
-
-      // Level 5: 拆词匹配 — 将查询拆为多个片段，所有片段都在name+description中出现即命中
-      const segments = keyword.match(/[\u4e00-\u9fff]+|\d+[\-\.]\d+[\-\.\d]*|\d+/g) || []
-      const level5 = (segments.length > 1)
-        ? products.filter((p) => {
-          if (p.category === '钻具类') return false
-          const haystack = `${p.name} ${p.description || ''}`.toLowerCase()
-          return segments.every(seg => haystack.includes(seg.toLowerCase()))
-        })
-        : []
-
-      // 按优先级合并去重
-      const seen = new Set()
-      const result = []
-      for (const list of [levelPipe, levelDrill, level0, level1, level2, level3, level4, level5]) {
-        for (const p of list) {
-          if (!seen.has(p.id)) {
-            seen.add(p.id)
-            result.push(p)
-          }
-        }
+      // 去重合并
+      let result = []
+      if (levelPipe.length > 0) {
+        result = [...levelPipe]
+      } else if (level0.length > 0) {
+        result = [...level0]
+      } else if (level1.length > 0) {
+        result = [...level1]
+      } else if (levelDrill.length > 0) {
+        result = [...levelDrill]
+      } else {
+        result = [...genericMatch]
       }
 
-      // 额外逻辑：如果用户输入包含 SMSCC 但过滤后没有任何有效片段，则返回空结果（防止显示全列表）
-      const hasSmscc = searchQuery.toLowerCase().includes('smscc')
-      if (hasSmscc && result.length > 0) {
-        // 验证结果中是否真的匹配了除 SMSCC 以外的内容
-        // 这里我们信任各 level 内部的过滤，但如果最终结果是因为 SMSCC 导致的匹配（虽然逻辑上不应该），
-        // 可以在这里做二次检查。不过目前各 level 已有 category 隔离或其他检查。
-      }
-
-      return result
+      // 如果有smscc且没有效搜索则略过（上方已处理）
+      return Array.from(new Set(result))
     }
-    return getProductsByCategory(activeCategory)
-  }
 
-  const getCleanDescription = (product) => {
-    if (!product.description) return ''
-    let desc = product.description
-    if (product.name) {
-      const lengthMatch = product.name.match(/(\d+(?:\.\d+)?)m/)
-      if (lengthMatch) {
-        desc = desc.replace(/长度\d+(?:\.\d+)?m/, '')
-      }
-      if (product.name.includes('尖丝')) {
-        desc = desc.replace(/，?尖丝$/, '').replace(/尖丝，?/, '')
-      } else if (product.name.includes('方丝')) {
-        desc = desc.replace(/，?方丝$/, '').replace(/方丝，?/, '')
-      }
-    }
-    return desc.replace(/，+$/, '').replace(/^，/, '')
+    return currentWarehouseProducts
   }
 
   if (loading) {
@@ -544,7 +436,7 @@ export default function Products() {
 
       <div style={styles.stickyHeader}>
         <div style={styles.topBar}>
-          <h2 style={styles.pageTitle}>产品管理</h2>
+          <h2 style={styles.pageTitle}>仓库管理</h2>
           <div style={styles.topActions}>
             <input
               type="text"
@@ -570,18 +462,18 @@ export default function Products() {
         </div>
 
         <div style={styles.tabsContainer}>
-          {categories.map((cat) => (
+          {warehouses.map((warehouse) => (
             <button
-              key={cat.id}
+              key={warehouse.id}
               style={{
                 ...styles.tab,
-                ...(activeCategory === cat.id ? styles.tabActive : {}),
+                ...(activeWarehouse === warehouse.id ? styles.tabActive : {}),
               }}
-              onClick={() => setActiveCategory(cat.id)}
+              onClick={() => setActiveWarehouse(warehouse.id)}
             >
-              {cat.name}
+              {warehouse.name}
               <span style={styles.tabCount}>
-                {getProductsByCategory(cat.id).length}
+                {getProductsByWarehouse(warehouse.id).length}
               </span>
             </button>
           ))}
@@ -592,11 +484,10 @@ export default function Products() {
         <table style={styles.table}>
           <thead>
             <tr style={styles.tableHeader}>
-              <th style={{ ...styles.th, width: hasDualPrice(activeCategory) ? '18%' : '24%' }}>产品名称</th>
-              <th style={{ ...styles.th, width: hasDualPrice(activeCategory) ? '38%' : '40%' }}>产品规格</th>
-              <th style={{ ...styles.th, width: hasDualPrice(activeCategory) ? '12%' : '16%', textAlign: 'right' }}>{hasDualPrice(activeCategory) ? '终端价' : '价格'}</th>
-              {hasDualPrice(activeCategory) && <th style={{ ...styles.th, width: '12%', textAlign: 'right' }}>经销商价</th>}
-              {!isReadOnly && <th style={{ ...styles.th, width: hasDualPrice(activeCategory) ? '18%' : '18%', textAlign: 'center' }}>操作</th>}
+              <th style={{ ...styles.th, width: '25%' }}>产品名称</th>
+              <th style={{ ...styles.th, width: '45%' }}>产品规格</th>
+              <th style={{ ...styles.th, width: '15%', textAlign: 'right' }}>价格</th>
+              {!isReadOnly && <th style={{ ...styles.th, width: '15%', textAlign: 'center' }}>操作</th>}
             </tr>
           </thead>
           <tbody>
@@ -614,18 +505,13 @@ export default function Products() {
                   <span style={styles.productName}>{product.name}</span>
                 </td>
                 <td style={styles.tdSecondary}>
-                  {getCleanDescription(product) || product.description ? (
-                    getCleanDescription(product) || product.description
+                  {product.description ? (
+                    product.description
                   ) : (
                     <span style={styles.emptyValue}>-</span>
                   )}
                 </td>
                 <td style={styles.tdPrice}><span style={styles.currencySymbol}>¥</span>{Number(product.price).toLocaleString()}</td>
-                {hasDualPrice(activeCategory) && (
-                  <td style={styles.tdPrice}>
-                    {product.dealer_price ? <><span style={styles.currencySymbol}>¥</span>{Number(product.dealer_price).toLocaleString()}</> : '-'}
-                  </td>
-                )}
                 {!isReadOnly && (
                   <td style={styles.tdActions}>
                     <button style={styles.editButton} onClick={() => handleEdit(product)}>
@@ -638,33 +524,46 @@ export default function Products() {
                 )}
               </tr>
             ))}
+            {paginatedProducts.length === 0 && (
+              <tr>
+                <td colSpan={isReadOnly ? 3 : 4} style={{ textAlign: 'center', padding: '40px', color: '#94A3B8' }}>
+                  当前仓库还没有产品
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
 
-      {displayProducts.length > ITEMS_PER_PAGE && (
-        <div style={styles.paginationWrap}>
-          <button
-            type="button"
-            style={{ ...styles.pageButton, ...(currentPage === 1 ? styles.pageButtonDisabled : {}) }}
-            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-            disabled={currentPage === 1}
-          >
-            上一页
-          </button>
-          <div style={styles.pageInfo}>
-            第 {currentPage} / {totalPages} 页
-          </div>
-          <button
-            type="button"
-            style={{ ...styles.pageButton, ...(currentPage === totalPages ? styles.pageButtonDisabled : {}) }}
-            onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-            disabled={currentPage === totalPages}
-          >
-            下一页
-          </button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', gap: '20px' }}>
+        <div style={{ flex: 1, fontSize: '13px', color: '#64748B', lineHeight: '1.6', backgroundColor: '#F8FAFC', padding: '12px 16px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+          {WAREHOUSE_INFOS[activeWarehouse] || '暂无详细信息'}
         </div>
-      )}
+
+        {displayProducts.length > ITEMS_PER_PAGE && (
+          <div style={{ ...styles.paginationWrap, marginTop: 0 }}>
+            <button
+              type="button"
+              style={{ ...styles.pageButton, ...(currentPage === 1 ? styles.pageButtonDisabled : {}) }}
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              disabled={currentPage === 1}
+            >
+              上一页
+            </button>
+            <div style={styles.pageInfo}>
+              第 {currentPage} / {totalPages} 页
+            </div>
+            <button
+              type="button"
+              style={{ ...styles.pageButton, ...(currentPage === totalPages ? styles.pageButtonDisabled : {}) }}
+              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+              disabled={currentPage === totalPages}
+            >
+              下一页
+            </button>
+          </div>
+        )}
+      </div>
 
       <Modal
         isOpen={showModal}
@@ -673,37 +572,33 @@ export default function Products() {
         width={600}
         footer={null}
       >
-        <div style={{ padding: '0 4px', paddingBottom: '24px' }}>
-          {!editingProduct && productTemplates[formData.category] && (
-            <div style={{ marginBottom: '24px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
-              <div style={{ fontSize: '12px', fontWeight: '600', color: '#6b7280', marginBottom: '12px', textTransform: 'uppercase' }}>
-                快速添加模板
-              </div>
-              <div className="sf-capsule-group">
-                {productTemplates[formData.category].map((template, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    className={`sf-capsule ${hoveredTemplate === index ? 'active' : ''}`}
-                    onClick={() => applyTemplate(template)}
-                    onMouseEnter={() => setHoveredTemplate(index)}
-                    onMouseLeave={() => setHoveredTemplate(null)}
-                  >
-                    {template.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
+        <div style={{ padding: '0 24px', paddingBottom: '24px' }}>
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                所属仓库
+              </label>
+              <select
+                className="sf-input"
+                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #E2E8F0', outline: 'none' }}
+                value={formData.warehouse}
+                onChange={(e) => setFormData({ ...formData, warehouse: e.target.value })}
+                disabled={!editingProduct} // Disable changing warehouse on add mode to stick to current tab
+              >
+                {warehouses.map(w => (
+                  <option key={w.id} value={w.id}>{w.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
                 产品名称
               </label>
               <input
                 type="text"
                 className="sf-input"
+                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #E2E8F0', outline: 'none' }}
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 required
@@ -711,45 +606,33 @@ export default function Products() {
             </div>
 
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
                 规格描述
               </label>
-              <input
-                type="text"
+              <textarea
                 className="sf-input"
+                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #E2E8F0', outline: 'none', resize: 'vertical', minHeight: '80px' }}
                 value={formData.description}
                 onChange={(e) => handleDescriptionChange(e.target.value)}
               />
             </div>
 
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-                {hasDualPrice(formData.category) ? '终端价' : '价格'}
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                价格 (¥)
               </label>
               <input
                 type="number"
+                step="0.01"
                 className="sf-input"
+                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #E2E8F0', outline: 'none' }}
                 value={formData.price}
                 onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                 required
               />
             </div>
 
-            {hasDualPrice(formData.category) && (
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-                  经销商价
-                </label>
-                <input
-                  type="number"
-                  className="sf-input"
-                  value={formData.dealer_price}
-                  onChange={(e) => setFormData({ ...formData, dealer_price: e.target.value })}
-                />
-              </div>
-            )}
-
-            <div style={{ paddingTop: '20px', borderTop: '1px solid #EBEDF0', display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
+            <div style={{ paddingTop: '20px', borderTop: '1px solid #EBEDF0', display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
               <button
                 type="button"
                 className="sf-btn sf-btn-cancel"
@@ -761,7 +644,7 @@ export default function Products() {
                 type="submit"
                 className="sf-btn sf-btn-confirm"
               >
-                {editingProduct ? '保存修改' : '添加'}
+                {editingProduct ? '保存修改' : '添加产品'}
               </button>
             </div>
           </form>
@@ -772,14 +655,14 @@ export default function Products() {
         isOpen={Boolean(pendingDeleteProduct)}
         onClose={() => setPendingDeleteProduct(null)}
         title="确认删除"
-        width={600}
+        width={500}
         footer={null}
       >
-        <div style={{ padding: '8px 4px 4px' }}>
+        <div style={{ padding: '8px 24px 24px' }}>
           <p style={styles.confirmMessage}>
             确定要删除产品 <strong>{pendingDeleteProduct?.name}</strong> 吗？
           </p>
-          <p style={styles.confirmHint}>删除后数据将进入回收站，可在回收站中恢复或永久删除。</p>
+          <p style={styles.confirmHint}>此操作不可撤销。</p>
           <div style={styles.confirmActions}>
             <button type="button" className="sf-btn sf-btn-cancel" onClick={() => setPendingDeleteProduct(null)}>
               取消
@@ -815,60 +698,6 @@ const styles = {
     position: 'relative',
     zIndex: 100,
   },
-  undoToast: {
-    position: 'fixed',
-    top: '28px',
-    right: '28px',
-    backgroundColor: '#FFFFFF',
-    borderRadius: '14px',
-    padding: '18px 24px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '18px',
-    border: '1px solid rgba(65, 105, 225, 0.15)',
-    boxShadow: '0 8px 30px rgba(30, 41, 59, 0.12), 0 0 0 1px rgba(65, 105, 225, 0.05)',
-    zIndex: 1001,
-    animation: 'toastSlideIn 0.4s cubic-bezier(0.22, 1, 0.36, 1)',
-  },
-  undoToastContent: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '14px',
-  },
-  undoToastIcon: {
-    width: '36px',
-    height: '36px',
-    borderRadius: '10px',
-    backgroundColor: 'rgba(5, 150, 105, 0.1)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  undoToastText: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '3px',
-  },
-  undoToastTitle: {
-    fontSize: '15px',
-    fontWeight: '600',
-    color: '#1E293B',
-  },
-  undoToastDesc: {
-    fontSize: '12px',
-    color: '#94A3B8',
-  },
-  undoButton: {
-    backgroundColor: 'transparent',
-    color: '#3355C0',
-    border: 'none',
-    padding: '8px 18px',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '600',
-    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-  },
   loading: {
     display: 'flex',
     justifyContent: 'center',
@@ -876,12 +705,6 @@ const styles = {
     height: '240px',
     fontSize: '15px',
     color: 'var(--text-secondary)',
-  },
-  header: {
-    display: 'flex',
-    marginBottom: '8px',
-    justifyContent: 'space-between',
-    alignItems: 'center',
   },
   pageTitle: {
     fontSize: '42px',
@@ -929,6 +752,7 @@ const styles = {
     padding: '6px',
     borderRadius: '14px',
     border: '1px solid #E2E8F0',
+    overflowX: 'auto', // For small screens
   },
   tab: {
     padding: '12px 24px',
@@ -943,6 +767,7 @@ const styles = {
     alignItems: 'center',
     gap: '10px',
     transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+    whiteSpace: 'nowrap',
   },
   tabActive: {
     background: '#111111',
@@ -1040,12 +865,6 @@ const styles = {
     lineHeight: '1.5',
     wordBreak: 'keep-all',
   },
-  productDesc: {
-    fontSize: '13px',
-    fontWeight: '400',
-    color: '#94A3B8',
-    marginTop: '4px',
-  },
   tdPrice: {
     padding: '18px 24px',
     fontSize: '16px',
@@ -1075,6 +894,7 @@ const styles = {
     gap: '10px',
     whiteSpace: 'nowrap',
     verticalAlign: 'middle',
+    justifyContent: 'center',
   },
   editButton: {
     padding: '8px 18px',
@@ -1115,146 +935,5 @@ const styles = {
     justifyContent: 'flex-end',
     gap: '12px',
     marginTop: '24px',
-  },
-  modalOverlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(15, 23, 42, 0.4)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 9999,
-  },
-  modal: {
-    backgroundColor: '#FFFFFF',
-    padding: '0',
-    borderRadius: '20px',
-    border: '1px solid rgba(30, 41, 59, 0.08)',
-    width: '500px',
-    maxWidth: '92%',
-    maxHeight: '90vh',
-    display: 'flex',
-    flexDirection: 'column',
-    boxShadow: '0 24px 48px rgba(30, 41, 59, 0.2), 0 0 0 1px rgba(65, 105, 225, 0.05)',
-  },
-  modalTitle: {
-    fontFamily: "'Playfair Display', serif",
-    fontSize: '20px',
-    fontWeight: '600',
-    padding: '24px 28px',
-    margin: 0,
-    color: '#1E293B',
-    borderBottom: '1px solid #F1F5F9',
-    backgroundColor: '#FDFCFB',
-    flexShrink: 0,
-    borderRadius: '20px 20px 0 0',
-  },
-  formScroll: {
-    flex: 1,
-    overflowY: 'auto',
-  },
-  templateSection: {
-    padding: '18px 28px',
-    backgroundColor: '#F8FAFC',
-    borderBottom: '1px solid #F1F5F9',
-  },
-  templateTitle: {
-    fontSize: '11px',
-    fontWeight: '600',
-    color: '#64748B',
-    marginBottom: '12px',
-    textTransform: 'uppercase',
-    letterSpacing: '1px',
-  },
-  templateList: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '10px',
-  },
-  templateButton: {
-    padding: '8px 14px',
-    backgroundColor: '#FFFFFF',
-    border: '1px solid #E2E8F0',
-    borderRadius: '10px',
-    cursor: 'pointer',
-    fontSize: '12px',
-    color: '#64748B',
-    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-  },
-  templateButtonHover: {
-    backgroundColor: 'rgba(65, 105, 225, 0.08)',
-    borderColor: 'rgba(65, 105, 225, 0.3)',
-    color: '#3355C0',
-  },
-  formSection: {
-    padding: '24px 28px',
-  },
-  sectionTitle: {
-    fontSize: '12px',
-    fontWeight: '600',
-    color: '#64748B',
-    marginBottom: '18px',
-    textTransform: 'uppercase',
-    letterSpacing: '1px',
-  },
-  formGroup: {
-    marginBottom: '20px',
-  },
-  formRow: {
-    display: 'flex',
-    gap: '18px',
-  },
-  label: {
-    display: 'block',
-    marginBottom: '10px',
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#334155',
-  },
-  input: {
-    width: '100%',
-    padding: '12px 16px',
-    border: '1px solid #E2E8F0',
-    borderRadius: '999px',
-    fontSize: '14px',
-    backgroundColor: '#FFFFFF',
-    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-    color: '#1E293B',
-  },
-  modalButtons: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: '14px',
-    padding: '20px 28px',
-    backgroundColor: '#F8FAFC',
-    borderTop: '1px solid #F1F5F9',
-    flexShrink: 0,
-    borderRadius: '0 0 20px 20px',
-  },
-  cancelButton: {
-    padding: '12px 28px',
-    backgroundColor: '#FFFFFF',
-    color: '#64748B',
-    border: '1px solid #E2E8F0',
-    borderRadius: '999px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '600',
-    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-  },
-  submitButton: {
-    padding: '12px 28px',
-    background: '#111111',
-    color: '#FFFFFF',
-    border: 'none',
-    borderRadius: '999px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '600',
-    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    boxShadow: '0 4px 16px rgba(65, 105, 225, 0.35)',
   },
 }

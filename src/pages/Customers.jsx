@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import Modal from "../components/Modal";
-
-const API_URL = "http://localhost:3001/api";
+import { API_URL } from "../lib/api";
 
 const modalAnimationStyles = `
   @keyframes modalOverlayIn {

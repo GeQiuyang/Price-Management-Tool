@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import Products from './pages/Products'
+import Warehouses from './pages/Warehouses'
 import Customers from './pages/Customers'
 import QuoteGenerator from './pages/QuoteGenerator'
 import SystemSettings from './pages/SystemSettings'
@@ -45,7 +46,7 @@ function App() {
               <Routes>
                 <Route path="/" element={<Navigate to="/products" replace />} />
                 <Route path="/products" element={<Products />} />
-
+                <Route path="/warehouses" element={<Warehouses />} />
                 <Route path="/customers" element={<Customers />} />
                 <Route path="/quote-generator" element={<QuoteGenerator />} />
                 <Route path="/system-settings" element={<SystemSettings />} />

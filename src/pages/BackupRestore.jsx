@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import Modal from '../components/Modal'
 import './BackupRestore.css'
+import { API_URL } from '../lib/api'
 
 function BackupRestore() {
   const [activeTab, setActiveTab] = useState('backups')
@@ -21,7 +22,7 @@ function BackupRestore() {
 
   const fetchBackups = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/backups', {
+      const response = await fetch(`${API_URL}/backups`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -38,7 +39,7 @@ function BackupRestore() {
 
   const fetchSnapshots = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/snapshots', {
+      const response = await fetch(`${API_URL}/snapshots`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -56,7 +57,7 @@ function BackupRestore() {
   const handleCreateBackup = async () => {
     setLoading(true)
     try {
-      const response = await fetch('http://localhost:3001/api/backup/create', {
+      const response = await fetch(`${API_URL}/backup/create`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -81,7 +82,7 @@ function BackupRestore() {
   const handleRestoreBackup = async () => {
     setLoading(true)
     try {
-      const response = await fetch('http://localhost:3001/api/backup/restore', {
+      const response = await fetch(`${API_URL}/backup/restore`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -115,7 +116,7 @@ function BackupRestore() {
 
     setLoading(true)
     try {
-      const response = await fetch('http://localhost:3001/api/snapshots/create', {
+      const response = await fetch(`${API_URL}/snapshots/create`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -147,7 +148,7 @@ function BackupRestore() {
 
     setLoading(true)
     try {
-      const response = await fetch(`http://localhost:3001/api/snapshots/${snapshotId}/restore`, {
+      const response = await fetch(`${API_URL}/snapshots/${snapshotId}/restore`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -175,7 +176,7 @@ function BackupRestore() {
 
     setLoading(true)
     try {
-      const response = await fetch(`http://localhost:3001/api/snapshots/${snapshotId}`, {
+      const response = await fetch(`${API_URL}/snapshots/${snapshotId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

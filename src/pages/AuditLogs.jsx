@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import Modal from '../components/Modal'
 import './AuditLogs.css'
+import { API_URL } from '../lib/api'
 
 function AuditLogs() {
   const [logs, setLogs] = useState([])
@@ -25,7 +26,7 @@ function AuditLogs() {
         ...filters
       })
 
-      const response = await fetch(`http://localhost:3001/api/audit-logs?${queryParams}`, {
+      const response = await fetch(`${API_URL}/audit-logs?${queryParams}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -54,7 +55,7 @@ function AuditLogs() {
 
   const handleViewDetail = async (logId) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/audit-logs/${logId}`, {
+      const response = await fetch(`${API_URL}/audit-logs/${logId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

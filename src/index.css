@@ -159,3 +159,14 @@
   background: rgba(17, 17, 17, 0.26);
   background-clip: padding-box;
 }
+
+/* Hide spin buttons */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}

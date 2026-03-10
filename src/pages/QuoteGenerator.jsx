@@ -92,6 +92,7 @@ export default function QuoteGenerator() {
     const [quoteItems, setQuoteItems] = useState([])
     // 产品数据源
     const [products, setProducts] = useState([])
+    const [warehouseProducts, setWarehouseProducts] = useState([])
     // 添加产品弹窗
     const [showProductModal, setShowProductModal] = useState(false)
     const [isClosing, setIsClosing] = useState(false)
@@ -127,6 +128,7 @@ export default function QuoteGenerator() {
     // 初始化加载基础数据
     useEffect(() => {
         fetchProducts()
+        fetchWarehouseProducts()
         fetchQuoteLists()
     }, [])
 
@@ -250,6 +252,17 @@ export default function QuoteGenerator() {
             setProducts(data)
         } catch (err) {
             console.error('获取产品失败:', err)
+        }
+    }
+
+    const fetchWarehouseProducts = async () => {
+        try {
+            const res = await fetch(`${API_URL}/warehouse-products`)
+            const data = await res.json()
+            // 为仓库产品加上特殊前缀的ID，以免和常规产品ID冲突
+            setWarehouseProducts(data.map(p => ({ ...p, id: `wh_${p.id}` })))
+        } catch (err) {
+            console.error('获取仓库产品失败:', err)
         }
     }
 
@@ -418,6 +431,41 @@ export default function QuoteGenerator() {
         ))
     }
 
+    const handleQuantityAdjust = (id, delta) => {
+        setQuoteItems(prev => prev.map(item => {
+            if (item.id === id) {
+                const newQty = Math.max(1, item.quantity + delta);
+                fetch(`${API_URL}/quote-items/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ price: item.price, quantity: newQty }),
+                });
+                return { ...item, quantity: newQty, qtyInput: undefined };
+            }
+            return item;
+        }));
+    }
+
+    const handleProductQuantityAdjust = (product, delta, e) => {
+        e.stopPropagation();
+        const existing = quoteItems.find(item => item.productId === product.id);
+        if (existing) {
+            const newQty = Math.max(0, (existing.quantity || 0) + delta);
+            if (newQty <= 0) {
+                handleRemoveItem(existing.id);
+            } else {
+                setQuoteItems(prev => prev.map(item =>
+                    item.productId === product.id ? { ...item, quantity: newQty, qtyInput: undefined } : item
+                ));
+                fetch(`${API_URL}/quote-items/${existing.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ price: existing.price, quantity: newQty }),
+                });
+            }
+        }
+    }
+
     const handlePriceBlur = (id, value) => {
         const num = Math.max(0, parseFloat(value) || 0)
         setQuoteItems(quoteItems.map(item =>
@@ -472,11 +520,31 @@ export default function QuoteGenerator() {
         const trimmedQuery = searchTerm.trim()
         if (!trimmedQuery) return products
 
+        let targetProducts = products;
+        let queryForSearch = trimmedQuery;
+        let isWarehouseSearch = false;
+
+        // 解析前缀（例如：广州: 或 广州：）
+        const warehouseMatch = trimmedQuery.match(/^([^:：]+)[:：]\s*(.*)$/);
+        if (warehouseMatch) {
+            const warehouseName = warehouseMatch[1].trim();
+            const actualKeyword = warehouseMatch[2].trim();
+            targetProducts = warehouseProducts.filter(p => {
+                if (warehouseName === '长沙&邵阳') {
+                    return p.warehouse === '长沙' || p.warehouse === '邵阳' || p.warehouse === '长沙&邵阳';
+                }
+                return p.warehouse === warehouseName;
+            });
+            isWarehouseSearch = true;
+            if (!actualKeyword) return targetProducts;
+            queryForSearch = actualKeyword;
+        }
+
         // 全局排除 "SMSCC" 品牌干扰项
-        const keyword = trimmedQuery.replace(/SMSCC/gi, '').trim().replace(/-/g, '')
+        const keyword = queryForSearch.replace(/SMSCC/gi, '').trim().replace(/-/g, '')
 
         // 如果剔除品牌名后关键词为空，且原始输入包含品牌名，则认为无有效搜索内容
-        if (!keyword && trimmedQuery.toLowerCase().includes('smscc')) {
+        if (!keyword && queryForSearch.toLowerCase().includes('smscc')) {
             return []
         }
 
@@ -494,10 +562,12 @@ export default function QuoteGenerator() {
         const levelPipe = (() => {
             let remaining = keyword.replace(/[\s+]+/g, '')
             let queryDiameter = null
-            const dm = remaining.match(/^(\d{3})/)
-            if (dm) { queryDiameter = dm[1]; remaining = remaining.slice(3) }
+            // 匹配 300, 300/288, 260 等管径
+            const dm = remaining.match(/^(\d{3}(?:\/\d{3})?)/)
+            if (dm) { queryDiameter = dm[1]; remaining = remaining.slice(dm[1].length) }
             let queryThread = null
-            const tm = remaining.match(/(尖丝|方丝)/)
+            // 匹配 尖丝, 方丝, 小方丝, 大方丝
+            const tm = remaining.match(/(小方丝|大方丝|尖丝|方丝)/)
             if (tm) { queryThread = tm[1]; remaining = remaining.replace(tm[1], '') }
             let queryType = null
             const tym = remaining.match(/(导管|接头|衬套|公扣|母扣|料斗)/)
@@ -522,8 +592,8 @@ export default function QuoteGenerator() {
                 if (!queryThickness && remainingNums.length > 0) queryThickness = remainingNums[0]
             }
 
-            return products.filter(p => {
-                if (p.category !== '导管类') return false
+            return targetProducts.filter(p => {
+                if (!isWarehouseSearch && p.category !== '导管类') return false
 
                 const excludeWords = ['钻宝', 'SMS6系', '钻金']
                 for (const word of excludeWords) {
@@ -557,10 +627,11 @@ export default function QuoteGenerator() {
                 if (isPipe) {
                     if (queryType && queryType !== '导管') return false
                     if (queryDiameter) {
-                        const nameDiameter = name.match(/^(\d+)/)
-                        if (!nameDiameter || nameDiameter[1] !== queryDiameter) return false
+                        // 匹配实际产品名称的管径位，以处理 300/288 等名称
+                        const matchDiameter = `${name} ${desc}`.match(/(\d{3}(?:\/\d{3})?)/)
+                        if (!matchDiameter || matchDiameter[1] !== queryDiameter) return false
                     }
-                    if (queryThread && !name.includes(queryThread)) return false
+                    if (queryThread && !`${name} ${desc}`.includes(queryThread)) return false
                     if (queryLength) {
                         const descLength = desc.match(/长度[：:]?\s*(\d+\.?\d*)m/)
                         if (!descLength || descLength[1] !== queryLength) return false
@@ -575,10 +646,10 @@ export default function QuoteGenerator() {
                 if (isJoint) {
                     if (queryType && !name.includes(queryType)) return false
                     if (queryDiameter) {
-                        const nameDiameter = name.match(/^(\d+)/)
-                        if (!nameDiameter || nameDiameter[1] !== queryDiameter) return false
+                        const matchDiameter = `${name} ${desc}`.match(/(\d{3}(?:\/\d{3})?)/)
+                        if (!matchDiameter || matchDiameter[1] !== queryDiameter) return false
                     }
-                    if (queryThread && !name.includes(queryThread)) return false
+                    if (queryThread && !`${name} ${desc}`.includes(queryThread)) return false
                     if (queryLength || queryThickness) return false
                     return textMatch
                 }
@@ -588,8 +659,8 @@ export default function QuoteGenerator() {
         })()
 
         // 钻具类专有搜索规则：提取【产品名称】和【型号】，组合后作为搜索关键词
-        const levelDrill = products.filter(p => {
-            if (p.category !== '钻具类') return false
+        const levelDrill = targetProducts.filter(p => {
+            if (!isWarehouseSearch && p.category !== '钻具类') return false
 
             // 钻具类搜索：合并名称和完整描述进行搜索
             // 匹配目标也排除 "SMSCC" 以保持一致
@@ -601,8 +672,8 @@ export default function QuoteGenerator() {
 
         // Level 0: 名称+型号组合精准匹配
         const level0 = (chinesePart && numberPart)
-            ? products.filter(p => {
-                if (p.category === '钻具类') return false
+            ? targetProducts.filter(p => {
+                if (!isWarehouseSearch && p.category === '钻具类') return false
                 const nameMatch = p.name.toLowerCase().includes(chinesePart)
                 const specMatch = p.description && p.description.match(/(?:规格)?型号(\d+)/)
                 return nameMatch && specMatch && specMatch[1] === numberPart
@@ -611,20 +682,20 @@ export default function QuoteGenerator() {
 
         // Level 1: 纯数字 → 只匹配规格型号；否则精确匹配规格全文
         const level1 = isNumericOnly
-            ? products.filter(p => {
-                if (p.category === '钻具类') return false
+            ? targetProducts.filter(p => {
+                if (!isWarehouseSearch && p.category === '钻具类') return false
                 const specMatch = p.description && p.description.match(/(?:规格)?型号(\d+)/)
                 return specMatch && specMatch[1] === keyword
             })
-            : products.filter(p => {
-                if (p.category === '钻具类') return false
+            : targetProducts.filter(p => {
+                if (!isWarehouseSearch && p.category === '钻具类') return false
                 return p.description && p.description === keyword
             })
 
         // Level 2: 名称+型号宽松匹配（数字匹配规格型号）
         const level2 = (chinesePart && numberPart)
-            ? products.filter(p => {
-                if (p.category === '钻具类') return false
+            ? targetProducts.filter(p => {
+                if (!isWarehouseSearch && p.category === '钻具类') return false
                 const nameMatch = p.name.toLowerCase().includes(chinesePart)
                 const specMatch = p.description && p.description.match(/(?:规格)?型号(\d+)/)
                 return nameMatch && specMatch && specMatch[1] === numberPart
@@ -632,16 +703,16 @@ export default function QuoteGenerator() {
             : []
 
         // Level 3: 名称前缀匹配
-        const level3 = products.filter(p => {
-            if (p.category === '钻具类') return false
+        const level3 = targetProducts.filter(p => {
+            if (!isWarehouseSearch && p.category === '钻具类') return false
             return p.name.toLowerCase().startsWith(lowerKeyword)
         })
 
         // Level 4: 全字段模糊匹配（纯数字时禁用）
         const level4 = isNumericOnly
             ? []
-            : products.filter(p => {
-                if (p.category === '钻具类') return false
+            : targetProducts.filter(p => {
+                if (!isWarehouseSearch && p.category === '钻具类') return false
                 return p.name.toLowerCase().includes(lowerKeyword) ||
                     (p.description && p.description.toLowerCase().includes(lowerKeyword))
             })
@@ -1073,7 +1144,9 @@ export default function QuoteGenerator() {
                                         </div>
                                     </td>
                                     <td style={styles.tdDesc} className="quote-desc-cell">
-                                        {item.description || '-'}
+                                        <div style={styles.descInner}>
+                                            {item.description || '-'}
+                                        </div>
                                         {item.description && (
                                             <div className="quote-desc-tooltip">{item.description}</div>
                                         )}
@@ -1095,11 +1168,15 @@ export default function QuoteGenerator() {
                                                 type="number"
                                                 min="1"
                                                 className="quote-quantity-input"
-                                                style={{ ...styles.quantityInput, width: '80px', minWidth: '80px', maxWidth: '80px', textAlign: 'center' }}
+                                                style={{ ...styles.quantityInput, width: '70px', minWidth: '70px', maxWidth: '70px', textAlign: 'center' }}
                                                 value={item.qtyInput !== undefined ? item.qtyInput : item.quantity}
                                                 onChange={(e) => handleQuantityChange(item.id, e.target.value)}
                                                 onBlur={(e) => handleQuantityBlur(item.id, e.target.value)}
                                             />
+                                            <div style={styles.stepperWrap}>
+                                                <button style={styles.stepperBtn} onClick={() => handleQuantityAdjust(item.id, 1)}>+</button>
+                                                <button style={styles.stepperBtn} onClick={() => handleQuantityAdjust(item.id, -1)}>-</button>
+                                            </div>
                                         </div>
                                     </td>
                                     <td style={styles.tdTotal}>¥{(item.price * item.quantity).toLocaleString()}</td>
@@ -1282,6 +1359,16 @@ export default function QuoteGenerator() {
                                                     onChange={(e) => handleQuantityInputChange(product, e.target.value, e)}
                                                     onBlur={(e) => handleQuantityInputBlur(product, e.target.value, e)}
                                                 />
+                                                <div style={styles.stepperWrapModal} onClick={(e) => e.stopPropagation()}>
+                                                    <button style={styles.stepperBtnSmall} onClick={(e) => handleProductQuantityAdjust(product, 1, e)}>+</button>
+                                                    <button style={styles.stepperBtnSmall} onClick={(e) => handleProductQuantityAdjust(product, -1, e)}>-</button>
+                                                </div>
+                                                <button
+                                                    style={styles.deselectBtn}
+                                                    onClick={() => handleRemoveItem(inQuote.id)}
+                                                >
+                                                    取消
+                                                </button>
                                             </div>
                                         ) : (
                                             <span style={styles.addBadge}>添加</span>
@@ -1580,19 +1667,32 @@ const styles = {
     dragHandle: { color: '#94A3B8', cursor: 'inherit', flexShrink: 0 },
     nameText: { display: 'block', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
     tdSku: { padding: '18px 12px', fontSize: '13px', color: '#64748B', fontFamily: 'monospace', fontWeight: '500', verticalAlign: 'middle' },
-    tdDesc: { padding: '18px 12px', fontSize: '13px', color: '#64748B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle' },
+    tdDesc: { padding: '18px 12px', fontSize: '13px', color: '#64748B', verticalAlign: 'middle', position: 'relative' },
+    descInner: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' },
     tdTotal: { padding: '18px 20px 18px 12px', fontSize: '16px', fontWeight: '700', color: '#111111', whiteSpace: 'nowrap', verticalAlign: 'middle', textAlign: 'right' },
     tdAction: { padding: '18px 24px 18px 10px', textAlign: 'right', verticalAlign: 'middle' },
     tdIndex: { padding: '18px 12px', fontSize: '12px', color: '#64748B', fontWeight: '500' },
     inlineInput: {
         width: '100%', maxWidth: '80px', padding: '8px 12px', border: '1px solid #E2E8F0', borderRadius: '10px',
-        fontSize: '14px', backgroundColor: '#FFFFFF', textAlign: 'right', boxSizing: 'border-box', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+        fontSize: '14px', backgroundColor: '#FFFFFF', textAlign: 'center', boxSizing: 'border-box', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
     },
     quantityControl: { display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-start', minWidth: 0 },
     quantityInput: {
-        width: '72px', minWidth: '72px', maxWidth: '72px', padding: '8px 10px', border: '1px solid #E2E8F0', borderRadius: '10px',
+        width: '80px', height: '34px', padding: '0 20px 0 10px', border: '1px solid #E2E8F0', borderRadius: '10px',
         fontSize: '14px', backgroundColor: '#FFFFFF', textAlign: 'center', boxSizing: 'border-box', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-        color: '#1E293B', flexShrink: 0
+        fontWeight: '600', color: '#111111', outline: 'none'
+    },
+    stepperWrap: { display: 'flex', flexDirection: 'column', gap: '2px' },
+    stepperWrapModal: { display: 'flex', flexDirection: 'column', gap: '2px', marginLeft: '-2px' },
+    stepperBtn: {
+        width: '24px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        backgroundColor: '#F1F5F9', border: '1px solid #E2E8F0', borderRadius: '4px',
+        fontSize: '14px', color: '#64748B', cursor: 'pointer', lineHeight: 1, padding: 0
+    },
+    stepperBtnSmall: {
+        width: '20px', height: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        backgroundColor: '#F1F5F9', border: '1px solid #E2E8F0', borderRadius: '4px',
+        fontSize: '12px', color: '#64748B', cursor: 'pointer', lineHeight: 1, padding: 0
     },
     removeBtn: {
         width: '28px', height: '28px', border: 'none', borderRadius: '8px', backgroundColor: 'transparent',
@@ -1616,18 +1716,22 @@ const styles = {
     modalSubtitle: { fontSize: '13px', color: '#64748B' },
     searchBox: { padding: '16px 24px', borderBottom: '1px solid #E2E8F0', flexShrink: 0 },
     searchInput: { width: '100%', padding: '12px 16px', border: '1px solid #E2E8F0', borderRadius: '999px', fontSize: '14px', backgroundColor: '#FFFFFF', boxSizing: 'border-box', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', color: '#1E293B' },
-    productList: { flex: 1, overflowY: 'auto', padding: '8px 12px' },
+    productList: { height: '500px', overflowY: 'auto', padding: '8px 12px' },
     productItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', borderRadius: '14px', cursor: 'pointer', transition: 'background-color 0.2s ease', borderBottom: '1px solid #F1F5F9' },
-    productInfo: { flex: 1 },
-    productName: { fontSize: '15px', fontWeight: '600', color: '#1E293B', marginBottom: '4px' },
-    productSku: { fontSize: '13px', color: '#64748B', fontFamily: 'monospace' },
+    productInfo: { flex: 1, paddingRight: '16px', minWidth: 0 },
+    productName: { fontSize: '15px', fontWeight: '600', color: '#1E293B', marginBottom: '4px', wordBreak: 'break-word' },
+    productSku: { fontSize: '13px', color: '#64748B', lineHeight: '1.5', wordBreak: 'break-word' },
     productRight: { display: 'flex', alignItems: 'center', gap: '12px' },
     productPrice: { fontSize: '16px', fontWeight: '700', color: '#111111' },
     productActions: { display: 'flex', alignItems: 'center', gap: '4px' },
     productQuantityInput: {
-        width: '60px', height: '28px', padding: '0 4px', border: '1px solid #E2E8F0', borderRadius: '8px',
+        width: '80px', height: '28px', padding: '0 20px 0 8px', border: '1px solid #E2E8F0', borderRadius: '8px',
         backgroundColor: '#FFFFFF', color: '#1E293B', fontSize: '14px', fontWeight: '600',
         textAlign: 'center', outline: 'none', transition: 'all 0.15s', boxSizing: 'border-box',
+    },
+    deselectBtn: {
+        padding: '4px 10px', backgroundColor: '#FEF2F2', color: '#EF4444', border: '1px solid #FEE2E2',
+        borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', transition: 'all 0.2s',
     },
     addBadge: { fontSize: '12px', color: '#1E293B', backgroundColor: 'rgba(30, 41, 59, 0.08)', padding: '4px 12px', borderRadius: '10px', fontWeight: '600' },
     noResult: { padding: '40px', textAlign: 'center', color: '#64748B', fontSize: '14px' },

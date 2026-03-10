@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 
 const primaryNavItems = [
   { path: '/products', label: '产品管理' },
+  { path: '/warehouses', label: '仓库管理' },
   { path: '/customers', label: '客户管理' },
   { path: '/quote-generator', label: '报价中心' },
 ]
@@ -51,9 +52,8 @@ export default function AppShell({ children, user }) {
                         key={item.path}
                         to={item.path}
                         onClick={() => setMobileOpen(false)}
-                        className={`flex w-full items-center justify-start rounded-2xl px-5 py-3.5 text-base tracking-[0.1em] transition ${
-                          active ? 'bg-black text-white shadow-float' : 'text-[#666666] hover:bg-black/[0.04] hover:text-ink'
-                        }`}
+                        className={`flex w-full items-center justify-start rounded-2xl px-5 py-3.5 text-base tracking-[0.1em] transition ${active ? 'bg-black text-white shadow-float' : 'text-[#666666] hover:bg-black/[0.04] hover:text-ink'
+                          }`}
                       >
                         <span className="block w-full text-left">{item.label}</span>
                       </Link>
@@ -74,9 +74,8 @@ export default function AppShell({ children, user }) {
                         key={item.path}
                         to={item.path}
                         onClick={() => setMobileOpen(false)}
-                        className={`flex w-full items-center justify-start rounded-2xl px-5 py-3.5 text-base tracking-[0.1em] transition ${
-                          active ? 'bg-black text-white shadow-float' : 'text-[#666666] hover:bg-black/[0.04] hover:text-ink'
-                        }`}
+                        className={`flex w-full items-center justify-start rounded-2xl px-5 py-3.5 text-base tracking-[0.1em] transition ${active ? 'bg-black text-white shadow-float' : 'text-[#666666] hover:bg-black/[0.04] hover:text-ink'
+                          }`}
                       >
                         <span className="block w-full text-left">{item.label}</span>
                       </Link>

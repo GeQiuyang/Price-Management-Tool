@@ -9,9 +9,11 @@ import bcrypt from 'bcryptjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
+const projectRoot = join(__dirname, '..')
+const distPath = join(projectRoot, 'dist')
 
 const app = express()
-const PORT = 3001
+const PORT = process.env.PORT || 3001
 
 app.use(cors())
 app.use(express.json())
@@ -257,6 +259,19 @@ async function initDB() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       key TEXT UNIQUE NOT NULL,
       value TEXT NOT NULL,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS warehouse_products (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT,
+      price REAL NOT NULL,
+      warehouse TEXT NOT NULL,
+      status TEXT DEFAULT 'active',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `)
@@ -1062,6 +1077,103 @@ app.delete('/api/products/:id', authenticateToken, (req, res) => {
   res.json({ message: '删除成功' })
 })
 
+app.get('/api/warehouse-products', (req, res) => {
+  const { warehouse } = req.query
+  let sql = 'SELECT * FROM warehouse_products'
+  const params = []
+  if (warehouse) {
+    sql += ' WHERE warehouse = ?'
+    params.push(warehouse)
+  }
+  sql += ' ORDER BY id DESC'
+  const products = queryAll(sql, params)
+  res.json(products)
+})
+
+app.post('/api/warehouse-products', authenticateToken, (req, res) => {
+  const { name, description, price, warehouse, status } = req.body
+
+  try {
+    const result = runSQL(
+      'INSERT INTO warehouse_products (name, description, price, warehouse, status) VALUES (?, ?, ?, ?, ?)',
+      [name, description || null, price, warehouse, status || 'active']
+    )
+
+    const newProduct = queryOne('SELECT * FROM warehouse_products WHERE id = ?', [result.lastInsertRowid])
+
+    createAuditLog(
+      req.user.id,
+      'create',
+      'warehouse_products',
+      newProduct.id,
+      null,
+      newProduct,
+      req
+    )
+
+    res.status(201).json(newProduct)
+  } catch (error) {
+    console.error('创建仓库产品错误:', error)
+    res.status(500).json({ error: '创建仓库产品失败' })
+  }
+})
+
+app.put('/api/warehouse-products/:id', authenticateToken, (req, res) => {
+  const { name, description, price, warehouse, status } = req.body
+
+  try {
+    const oldProduct = queryOne('SELECT * FROM warehouse_products WHERE id = ?', [req.params.id])
+
+    db.run(
+      'UPDATE warehouse_products SET name = ?, description = ?, price = ?, warehouse = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [name, description || null, price, warehouse, status, req.params.id]
+    )
+    saveDB()
+
+    const updatedProduct = queryOne('SELECT * FROM warehouse_products WHERE id = ?', [req.params.id])
+    if (!updatedProduct) {
+      return res.status(404).json({ error: '产品不存在' })
+    }
+
+    createAuditLog(
+      req.user.id,
+      'update',
+      'warehouse_products',
+      updatedProduct.id,
+      oldProduct,
+      updatedProduct,
+      req
+    )
+
+    res.json(updatedProduct)
+  } catch (error) {
+    res.status(500).json({ error: '更新仓库产品失败' })
+  }
+})
+
+app.delete('/api/warehouse-products/:id', authenticateToken, (req, res) => {
+  const product = queryOne('SELECT * FROM warehouse_products WHERE id = ?', [req.params.id])
+
+  if (!product) {
+    return res.status(404).json({ error: '产品不存在' })
+  }
+
+  db.run('DELETE FROM warehouse_products WHERE id = ?', [req.params.id])
+  saveDB()
+
+  createAuditLog(
+    req.user.id,
+    'delete',
+    'warehouse_products',
+    product.id,
+    product,
+    null,
+    req
+  )
+
+  res.json({ message: '删除成功' })
+})
+
 app.get('/api/customers', (req, res) => {
   const customers = queryAll('SELECT * FROM customers ORDER BY id DESC')
   res.json(customers)
@@ -1726,7 +1838,10 @@ app.get('/api/quote-items', (req, res) => {
   sql += ' ORDER BY order_index ASC, id ASC'
   const items = queryAll(sql, params)
   // Map sku field to productId for frontend
-  res.json(items.map(item => ({ ...item, productId: Number(item.sku) || null })))
+  res.json(items.map(item => ({
+    ...item,
+    productId: isNaN(item.sku) || item.sku === '' ? (item.sku || null) : Number(item.sku)
+  })))
 })
 
 app.post('/api/quote-items', (req, res) => {
@@ -1742,7 +1857,10 @@ app.post('/api/quote-items', (req, res) => {
     )
     const item = queryOne('SELECT * FROM quote_items WHERE id = ?', [result.lastInsertRowid])
     // Map sku field to productId for frontend
-    res.status(201).json({ ...item, productId: Number(item.sku) || null })
+    res.status(201).json({
+      ...item,
+      productId: isNaN(item.sku) || item.sku === '' ? (item.sku || null) : Number(item.sku)
+    })
   } catch (error) {
     res.status(500).json({ error: '添加报价项失败' })
   }
@@ -1871,6 +1989,13 @@ app.put('/api/system-settings', (req, res) => {
     res.status(500).json({ error: '保存设置失败' })
   }
 })
+
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath))
+  app.get(/^(?!\/api).*/, (req, res) => {
+    res.sendFile(join(distPath, 'index.html'))
+  })
+}
 
 initDB().then(() => {
   app.listen(PORT, () => {

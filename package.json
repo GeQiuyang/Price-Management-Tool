@@ -7,7 +7,9 @@
     "dev": "vite --port 5174",
     "server": "node server/server.js",
     "start": "concurrently \"npm run server\" \"npm run dev\"",
+    "start:local": "node server/server.js",
     "build": "vite build",
+    "package:local": "npm run build",
     "lint": "eslint .",
     "preview": "vite preview"
   },

@@ -219,13 +219,8 @@
 }
 
 .sf-list-item:hover {
-    background-color: #F5F5F7;
-    padding-left: 8px;
-    padding-right: 8px;
-    margin: 0 -8px;
-    border-radius: 12px;
+    background-color: #F8FAFC;
     border-bottom-color: transparent;
-    transform: translateY(-1px);
 }
 
 /* 4. 底部操作区 */
