@@ -70,7 +70,6 @@ export default function Products() {
     description: '',
     status: 'active',
   })
-  const [hoveredTemplate, setHoveredTemplate] = useState(null)
 
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const isReadOnly = user.role === 'foreign_trade'
@@ -85,43 +84,6 @@ export default function Products() {
     { id: '水泵类', name: '水泵类' },
     { id: '配件类', name: '配件类' },
   ]
-
-
-
-  const productTemplates = {
-    '导管类': [
-      { name: '300尖丝导管', description: '壁厚{thickness}mm，尖丝', price: 351 },
-      { name: '300方丝导管', description: '壁厚{thickness}mm，方丝', price: 356 },
-      { name: '260尖丝导管', description: '壁厚{thickness}mm，尖丝', price: 291 },
-      { name: '260方丝导管', description: '壁厚{thickness}mm，方丝', price: 296 },
-      { name: '273母扣接头', description: '母扣接头', price: 80 },
-    ],
-    '水泵类': [
-      { name: '潜水泵', description: '功率{power}kW，流量{flow}m³/h', price: 5000 },
-      { name: '离心泵', description: '功率{power}kW，扬程{head}m', price: 3500 },
-      { name: '泥浆泵', description: '{power}千瓦', price: 6500 },
-    ],
-    '钻具类': [
-      { name: '捞沙斗', description: '{size}mm，壁厚{thickness}mm', price: 6500 },
-      { name: '筒钻', description: '{size}mm，壁厚{thickness}mm', price: 13000 },
-      { name: '螺旋钻头', description: '{size}mm，壁厚{thickness}mm高效螺旋钻头', price: 800 },
-    ],
-    '配件类': [
-      { name: '泥浆管', description: '口径4英寸，长度18m', price: 330 },
-      { name: '泥浆泵', description: '{power}千瓦', price: 6500 },
-      { name: '钻杆', description: '钻杆，长度{m}，直径{diameter}mm', price: 400 },
-      { name: '加重钻杆', description: '加重钻杆，长度{m}，直径{diameter}mm', price: 600 },
-    ],
-  }
-
-  const applyTemplate = (template) => {
-    setFormData({
-      ...formData,
-      name: template.name,
-      description: template.description,
-      price: template.price,
-    })
-  }
 
   useEffect(() => {
     fetchProducts()
@@ -677,29 +639,15 @@ export default function Products() {
         footer={null}
       >
         <div style={{ padding: '0 4px', paddingBottom: '24px' }}>
-          {!editingProduct && productTemplates[formData.category] && (
-            <div style={{ marginBottom: '24px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
-              <div style={{ fontSize: '12px', fontWeight: '600', color: '#6b7280', marginBottom: '12px', textTransform: 'uppercase' }}>
-                快速添加模板
-              </div>
-              <div className="sf-capsule-group">
-                {productTemplates[formData.category].map((template, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    className={`sf-capsule ${hoveredTemplate === index ? 'active' : ''}`}
-                    onClick={() => applyTemplate(template)}
-                    onMouseEnter={() => setHoveredTemplate(index)}
-                    onMouseLeave={() => setHoveredTemplate(null)}
-                  >
-                    {template.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit}>
+          <form
+            onSubmit={handleSubmit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+                e.preventDefault()
+                handleSubmit(e)
+              }
+            }}
+          >
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
                 产品名称

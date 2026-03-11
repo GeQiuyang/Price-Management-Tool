@@ -725,7 +725,15 @@ export default function Warehouses() {
         footer={null}
       >
         <div style={{ padding: '0 24px', paddingBottom: '24px' }}>
-          <form onSubmit={handleSubmit}>
+          <form
+            onSubmit={handleSubmit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+                e.preventDefault()
+                handleSubmit(e)
+              }
+            }}
+          >
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
                 所属仓库
