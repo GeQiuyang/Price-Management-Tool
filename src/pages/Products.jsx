@@ -538,6 +538,9 @@ export default function Products() {
   const totalPages = Math.max(1, Math.ceil(displayProducts.length / ITEMS_PER_PAGE))
   const paginatedProducts = displayProducts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
 
+  // 动态决定是否显示双价格列：如果当前显示的列表中有任何一个产品属于双价格分类，就显示
+  const shouldShowDualPrice = displayProducts.some(p => hasDualPrice(p.category))
+
   return (
     <div style={styles.container}>
       <style>{modalAnimationStyles}</style>
@@ -592,11 +595,11 @@ export default function Products() {
         <table style={styles.table}>
           <thead>
             <tr style={styles.tableHeader}>
-              <th style={{ ...styles.th, width: hasDualPrice(activeCategory) ? '18%' : '26%' }}>产品名称</th>
-              <th style={{ ...styles.th, width: hasDualPrice(activeCategory) ? '24%' : '30%' }}>产品规格</th>
-              <th style={{ ...styles.th, width: hasDualPrice(activeCategory) ? '20%' : '26%', textAlign: 'left' }}>{hasDualPrice(activeCategory) ? '终端价' : '价格'}</th>
-              {hasDualPrice(activeCategory) && <th style={{ ...styles.th, width: '20%', textAlign: 'left' }}>经销商价</th>}
-              {!isReadOnly && <th style={{ ...styles.th, width: hasDualPrice(activeCategory) ? '18%' : '18%', textAlign: 'center' }}>操作</th>}
+              <th style={{ ...styles.th, width: shouldShowDualPrice ? '18%' : '26%' }}>产品名称</th>
+              <th style={{ ...styles.th, width: shouldShowDualPrice ? '24%' : '30%' }}>产品规格</th>
+              <th style={{ ...styles.th, width: shouldShowDualPrice ? '20%' : '26%', textAlign: 'left' }}>{shouldShowDualPrice ? '终端价' : '价格'}</th>
+              {shouldShowDualPrice && <th style={{ ...styles.th, width: '20%', textAlign: 'left' }}>经销商价</th>}
+              {!isReadOnly && <th style={{ ...styles.th, width: shouldShowDualPrice ? '18%' : '18%', textAlign: 'center' }}>操作</th>}
             </tr>
           </thead>
           <tbody>
@@ -621,9 +624,9 @@ export default function Products() {
                   )}
                 </td>
                 <td style={styles.tdPrice}><span style={styles.currencySymbol}>¥</span>{Number(product.price).toLocaleString()}</td>
-                {hasDualPrice(activeCategory) && (
+                {shouldShowDualPrice && (
                   <td style={styles.tdPrice}>
-                    {product.dealer_price ? <><span style={styles.currencySymbol}>¥</span>{Number(product.dealer_price).toLocaleString()}</> : '-'}
+                    {hasDualPrice(product.category) && product.dealer_price ? <><span style={styles.currencySymbol}>¥</span>{Number(product.dealer_price).toLocaleString()}</> : '-'}
                   </td>
                 )}
                 {!isReadOnly && (
