@@ -592,10 +592,10 @@ export default function Products() {
         <table style={styles.table}>
           <thead>
             <tr style={styles.tableHeader}>
-              <th style={{ ...styles.th, width: hasDualPrice(activeCategory) ? '18%' : '24%' }}>产品名称</th>
-              <th style={{ ...styles.th, width: hasDualPrice(activeCategory) ? '38%' : '40%' }}>产品规格</th>
-              <th style={{ ...styles.th, width: hasDualPrice(activeCategory) ? '12%' : '16%', textAlign: 'right' }}>{hasDualPrice(activeCategory) ? '终端价' : '价格'}</th>
-              {hasDualPrice(activeCategory) && <th style={{ ...styles.th, width: '12%', textAlign: 'right' }}>经销商价</th>}
+              <th style={{ ...styles.th, width: hasDualPrice(activeCategory) ? '18%' : '26%' }}>产品名称</th>
+              <th style={{ ...styles.th, width: hasDualPrice(activeCategory) ? '24%' : '30%' }}>产品规格</th>
+              <th style={{ ...styles.th, width: hasDualPrice(activeCategory) ? '20%' : '26%', textAlign: 'left' }}>{hasDualPrice(activeCategory) ? '终端价' : '价格'}</th>
+              {hasDualPrice(activeCategory) && <th style={{ ...styles.th, width: '20%', textAlign: 'left' }}>经销商价</th>}
               {!isReadOnly && <th style={{ ...styles.th, width: hasDualPrice(activeCategory) ? '18%' : '18%', textAlign: 'center' }}>操作</th>}
             </tr>
           </thead>
@@ -1053,7 +1053,7 @@ const styles = {
     color: '#111111',
     whiteSpace: 'nowrap',
     verticalAlign: 'middle',
-    textAlign: 'right',
+    textAlign: 'left',
     fontVariantNumeric: 'tabular-nums',
     fontFamily: '"SFMono-Regular", "SF Mono", "Roboto Mono", "Menlo", monospace',
   },

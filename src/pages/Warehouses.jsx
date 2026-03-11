@@ -72,7 +72,7 @@ export default function Warehouses() {
     status: 'active',
   })
   const [warehouseInfos, setWarehouseInfos] = useState({})
-  const [isEditingInfo, setIsEditingInfo] = useState(false)
+  const [showInfoModal, setShowInfoModal] = useState(false)
   const [editingInfoValue, setEditingInfoValue] = useState('')
 
   const user = JSON.parse(localStorage.getItem('user') || '{}')
@@ -239,9 +239,9 @@ export default function Warehouses() {
 
   const handleInfoEdit = () => {
     if (isReadOnly) return
-    setIsEditingInfo(true)
     const currentInfo = warehouseInfos[`warehouse_info_${activeWarehouse}`] || ''
     setEditingInfoValue(currentInfo)
+    setShowInfoModal(true)
   }
 
   const handleInfoSave = async () => {
@@ -257,7 +257,7 @@ export default function Warehouses() {
       })
       if (response.ok) {
         setWarehouseInfos(prev => ({ ...prev, [key]: editingInfoValue }))
-        setIsEditingInfo(false)
+        setShowInfoModal(false)
       }
     } catch (error) {
       console.error('保存仓库信息失败:', error)
@@ -266,9 +266,6 @@ export default function Warehouses() {
   }
 
   const getProductsByWarehouse = (warehouseId) => {
-    if (warehouseId === '长沙&邵阳') {
-      return products.filter((p) => p.warehouse === '长沙' || p.warehouse === '邵阳' || p.warehouse === '长沙&邵阳')
-    }
     return products.filter((p) => p.warehouse === warehouseId)
   }
 
@@ -527,10 +524,10 @@ export default function Warehouses() {
         <table style={styles.table}>
           <thead>
             <tr style={styles.tableHeader}>
-              <th style={{ ...styles.th, width: '25%' }}>产品名称</th>
-              <th style={{ ...styles.th, width: '45%' }}>产品规格</th>
-              <th style={{ ...styles.th, width: '15%', textAlign: 'right' }}>价格</th>
-              {!isReadOnly && <th style={{ ...styles.th, width: '15%', textAlign: 'center' }}>操作</th>}
+              <th style={{ ...styles.th, width: '30%' }}>产品名称</th>
+              <th style={{ ...styles.th, width: '30%' }}>产品规格</th>
+              <th style={{ ...styles.th, width: '20%', textAlign: 'left' }}>价格</th>
+              {!isReadOnly && <th style={{ ...styles.th, width: '20%', textAlign: 'center' }}>操作</th>}
             </tr>
           </thead>
           <tbody>
@@ -578,96 +575,147 @@ export default function Warehouses() {
         </table>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', gap: '20px' }}>
+      <div style={{ marginTop: '32px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {/* 仓库详细信息区域 - 恢复到上方 */}
         <div
-          onClick={() => !isEditingInfo && handleInfoEdit()}
           style={{
-            flex: 1,
+            width: '100%',
             fontSize: '13px',
             color: '#64748B',
             lineHeight: '1.6',
             backgroundColor: '#F8FAFC',
-            padding: '12px 16px',
-            borderRadius: '12px',
+            padding: '16px 20px',
+            borderRadius: '16px',
             border: '1px solid #E2E8F0',
-            cursor: isReadOnly || isEditingInfo ? 'default' : 'pointer',
-            minHeight: '44px',
+            cursor: 'default',
+            minHeight: '56px',
             display: 'flex',
             alignItems: 'center',
-            position: 'relative'
+            position: 'relative',
+            transition: 'all 0.3s ease',
+            boxSizing: 'border-box'
           }}
         >
-          {isEditingInfo ? (
-            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <textarea
-                autoFocus
-                style={{
-                  width: '100%',
-                  border: 'none',
-                  background: 'transparent',
-                  outline: 'none',
-                  resize: 'vertical',
-                  minHeight: '60px',
-                  fontFamily: 'inherit',
-                  fontSize: 'inherit',
-                  color: '#1E293B'
-                }}
-                value={editingInfoValue}
-                onChange={(e) => setEditingInfoValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                    handleInfoSave()
-                  }
-                }}
-                onClick={(e) => e.stopPropagation()}
-              />
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); setIsEditingInfo(false); }}
-                  style={{ padding: '4px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '12px', cursor: 'pointer' }}
-                >取消</button>
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); handleInfoSave(); }}
-                  style={{ padding: '4px 12px', borderRadius: '6px', border: 'none', background: '#111', color: '#FFF', fontSize: '12px', cursor: 'pointer' }}
-                >保存</button>
-              </div>
+          <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ whiteSpace: 'pre-wrap' }}>
+              {warehouseInfos[`warehouse_info_${activeWarehouse}`] || '暂无详细信息'}
             </div>
-          ) : (
-            <>
-              {warehouseInfos[`warehouse_info_${activeWarehouse}`] || '暂无详细信息 (点击编辑)'}
-              {!isReadOnly && (
-                <span style={{ marginLeft: 'auto', fontSize: '11px', color: '#94A3B8', opacity: 0.6, whiteSpace: 'nowrap' }}>点击编辑</span>
-              )}
-            </>
-          )}
+            {!isReadOnly && (
+              <div
+                onClick={(e) => { e.stopPropagation(); handleInfoEdit(); }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '11px',
+                  color: '#94A3B8',
+                  backgroundColor: '#FFF',
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #E2E8F0',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  marginLeft: '20px',
+                  userSelect: 'none'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#94A3B8';
+                  e.currentTarget.style.color = '#64748B';
+                  e.currentTarget.style.backgroundColor = '#F8FAFC';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = '#E2E8F0';
+                  e.currentTarget.style.color = '#94A3B8';
+                  e.currentTarget.style.backgroundColor = '#FFF';
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+                编辑信息
+              </div>
+            )}
+          </div>
         </div>
 
+        {/* 分页控制区域 - 居中显示 */}
         {displayProducts.length > ITEMS_PER_PAGE && (
-          <div style={{ ...styles.paginationWrap, marginTop: 0 }}>
-            <button
-              type="button"
-              style={{ ...styles.pageButton, ...(currentPage === 1 ? styles.pageButtonDisabled : {}) }}
-              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-              disabled={currentPage === 1}
-            >
-              上一页
-            </button>
-            <div style={styles.pageInfo}>
-              第 {currentPage} / {totalPages} 页
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '8px' }}>
+            <div style={styles.paginationWrap}>
+              <button
+                type="button"
+                style={{ ...styles.pageButton, ...(currentPage === 1 ? styles.pageButtonDisabled : {}) }}
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                disabled={currentPage === 1}
+              >
+                上一页
+              </button>
+              <div style={styles.pageInfo}>
+                第 {currentPage} / {totalPages} 页
+              </div>
+              <button
+                type="button"
+                style={{ ...styles.pageButton, ...(currentPage === totalPages ? styles.pageButtonDisabled : {}) }}
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                disabled={currentPage === totalPages}
+              >
+                下一页
+              </button>
             </div>
-            <button
-              type="button"
-              style={{ ...styles.pageButton, ...(currentPage === totalPages ? styles.pageButtonDisabled : {}) }}
-              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-              disabled={currentPage === totalPages}
-            >
-              下一页
-            </button>
           </div>
         )}
       </div>
+
+      <Modal
+        isOpen={showInfoModal}
+        onClose={() => setShowInfoModal(false)}
+        title={`${activeWarehouse} 详细内容编辑`}
+        width={600}
+        footer={null}
+      >
+        <div style={{ padding: '0 24px 24px' }}>
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+              详细信息的内容
+            </label>
+            <textarea
+              className="sf-input"
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                borderRadius: '8px',
+                border: '1px solid #E2E8F0',
+                outline: 'none',
+                resize: 'vertical',
+                minHeight: '120px',
+                fontSize: '14px',
+                lineHeight: '1.6'
+              }}
+              value={editingInfoValue}
+              onChange={(e) => setEditingInfoValue(e.target.value)}
+              placeholder="请输入仓库工作时间、负责人联络等详细信息..."
+            />
+          </div>
+          <div style={{ paddingTop: '20px', borderTop: '1px solid #EBEDF0', display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
+            <button
+              type="button"
+              className="sf-btn sf-btn-cancel"
+              onClick={() => setShowInfoModal(false)}
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              className="sf-btn sf-btn-confirm"
+              onClick={handleInfoSave}
+            >
+              保存修改
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={showModal}
@@ -976,7 +1024,7 @@ const styles = {
     color: '#111111',
     whiteSpace: 'nowrap',
     verticalAlign: 'middle',
-    textAlign: 'right',
+    textAlign: 'left',
     fontVariantNumeric: 'tabular-nums',
     fontFamily: '"SFMono-Regular", "SF Mono", "Roboto Mono", "Menlo", monospace',
   },
