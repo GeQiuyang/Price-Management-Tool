@@ -35,10 +35,7 @@ export default function AppShell({ children, user }) {
           <aside
             className={asideClassName}
           >
-            <div className="mb-6 flex h-16 w-full items-center justify-center gap-3 rounded-[24px] bg-white/80 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] backdrop-blur-xl transition hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)] px-5">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink text-sm font-bold text-white shadow-sm">
-                V
-              </div>
+            <div className="mb-6 flex h-16 w-full items-center justify-start gap-3 rounded-[24px] bg-white/80 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] backdrop-blur-xl transition hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)] px-5">
               <div className="flex flex-col text-left justify-center">
                 <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate/80 leading-none mb-1">Vector</span>
                 <span className="text-sm font-bold tracking-[-0.01em] text-ink leading-none whitespace-nowrap">报价管理平台</span>

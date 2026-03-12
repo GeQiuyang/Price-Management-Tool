@@ -98,34 +98,26 @@ export default function QuoteGenerator() {
     const [isClosing, setIsClosing] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
     const [useDealerPrice, setUseDealerPrice] = useState(false)
+    const fileInputRef = useRef(null)
 
     // 自定义产品弹窗
     const [showCustomProductModal, setShowCustomProductModal] = useState(false)
     const [customProduct, setCustomProduct] = useState({ name: '', description: '', price: '', quantity: 1 })
 
-    // Excel 导入相关
-    const [importedData, setImportedData] = useState([])
-    const [importedSheets, setImportedSheets] = useState([])
-    const [activeSheet, setActiveSheet] = useState(0)
     const [isDragging, setIsDragging] = useState(false)
-    const [importing, setImporting] = useState(false)
-    const [fileName, setFileName] = useState('')
-    const [showPreview, setShowPreview] = useState(false)
-    const [isPreviewClosing, setIsPreviewClosing] = useState(false)
-    // Tab 切换
-    const [activeTab, setActiveTab] = useState('products') // 'products' | 'import'
-    const fileInputRef = useRef(null)
     // 清除确认对话框
     const [showClearModal, setShowClearModal] = useState(false)
     const [isClearClosing, setIsClearClosing] = useState(false)
-    const [showClearImportModal, setShowClearImportModal] = useState(false)
-    const [isClearImportClosing, setIsClearImportClosing] = useState(false)
 
     // 拖拽排序
     const [dragIndex, setDragIndex] = useState(null)
     const [dragOverIndex, setDragOverIndex] = useState(null)
     const [showMoreActions, setShowMoreActions] = useState(false)
     const moreActionsRef = useRef(null)
+
+    // 导入结果弹窗
+    const [showResultModal, setShowResultModal] = useState(false)
+    const [resultData, setResultData] = useState({ title: '', message: '', type: 'success' })
 
     // 初始化加载基础数据
     useEffect(() => {
@@ -138,10 +130,8 @@ export default function QuoteGenerator() {
     useEffect(() => {
         if (activeQuoteListId) {
             fetchQuoteItems(activeQuoteListId)
-            fetchImportedData(activeQuoteListId)
         } else {
             setQuoteItems([])
-            setImportedData([])
         }
     }, [activeQuoteListId])
 
@@ -237,15 +227,6 @@ export default function QuoteGenerator() {
         }
     }
 
-    const fetchImportedData = async (listId) => {
-        try {
-            const res = await fetch(`${API_URL}/quote-imported-data?list_id=${listId}`)
-            const data = await res.json()
-            setImportedData(data)
-        } catch (err) {
-            console.error('获取导入数据失败:', err)
-        }
-    }
 
     const fetchProducts = async () => {
         try {
@@ -308,43 +289,6 @@ export default function QuoteGenerator() {
     const handleAddProduct = async (product) => {
         const selectedPrice = getProductPrice(product)
         
-        if (activeTab === 'import') {
-            const existing = importedData.find(item => item.productId === product.id)
-            if (existing) {
-                const newQty = (existing.quantity || 0) + 1
-                setImportedData(importedData.map(item =>
-                    item._dbId === existing._dbId ? { ...item, quantity: newQty } : item
-                ))
-                fetch(`${API_URL}/quote-imported-data/${existing._dbId}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ price: existing.price, quantity: newQty }),
-                })
-            } else {
-                try {
-                    const res = await fetch(`${API_URL}/quote-imported-data`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            items: [{
-                                productId: product.id,
-                                name: product.name,
-                                description: product.description || '',
-                                price: selectedPrice,
-                                quantity: 1,
-                                sheetName: 'Added manually'
-                            }],
-                            list_id: activeQuoteListId,
-                        }),
-                    })
-                    const saved = await res.json()
-                    setImportedData(prev => [...prev, ...saved])
-                } catch (err) {
-                    console.error('添加导入报价项失败:', err)
-                }
-            }
-            return
-        }
 
         const existing = quoteItems.find(item => item.productId === product.id)
         if (existing) {
@@ -384,33 +328,6 @@ export default function QuoteGenerator() {
         if (!customProduct.price || isNaN(customProduct.price)) return alert('请输入有效的单价')
         if (!customProduct.quantity || customProduct.quantity < 1) return alert('请输入有效的数量')
 
-        if (activeTab === 'import') {
-            try {
-                const res = await fetch(`${API_URL}/quote-imported-data`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        items: [{
-                            productId: '',
-                            name: customProduct.name.trim(),
-                            description: customProduct.description.trim(),
-                            price: parseFloat(customProduct.price),
-                            quantity: parseInt(customProduct.quantity, 10),
-                            sheetName: 'Added manually'
-                        }],
-                        list_id: activeQuoteListId,
-                    }),
-                })
-                const saved = await res.json()
-                setImportedData(prev => [...prev, ...saved])
-                setShowCustomProductModal(false)
-                setCustomProduct({ name: '', description: '', price: '', quantity: 1 })
-                setShowProductModal(false)
-            } catch (err) {
-                console.error('添加自定义导入产品失败:', err)
-            }
-            return
-        }
 
         try {
             // 获取当前列表的最大 order_index
@@ -444,12 +361,6 @@ export default function QuoteGenerator() {
 
     const handleQuantityInputChange = (product, value, e) => {
         e.stopPropagation()
-        if (activeTab === 'import') {
-            setImportedData(prev => prev.map(item =>
-                item.productId === product.id ? { ...item, qtyInput: value } : item
-            ))
-            return
-        }
         setQuoteItems(quoteItems.map(item =>
             item.productId === product.id ? { ...item, qtyInput: value } : item
         ))
@@ -457,25 +368,6 @@ export default function QuoteGenerator() {
 
     const handleQuantityInputBlur = (product, value, e) => {
         e.stopPropagation()
-        if (activeTab === 'import') {
-            const existing = importedData.find(item => item.productId === product.id)
-            if (existing) {
-                const num = Math.max(0, parseInt(value) || 0)
-                if (num <= 0) {
-                    handleImportRemove(existing._dbId)
-                } else {
-                    setImportedData(prev => prev.map(item =>
-                        item.productId === product.id ? { ...item, quantity: num, qtyInput: undefined } : item
-                    ))
-                    fetch(`${API_URL}/quote-imported-data/${existing._dbId}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ price: existing.price, quantity: num }),
-                    })
-                }
-            }
-            return
-        }
         const existing = quoteItems.find(item => item.productId === product.id)
         if (existing) {
             const num = Math.max(0, parseInt(value) || 0)
@@ -541,26 +433,7 @@ export default function QuoteGenerator() {
     }
 
     const handleProductQuantityAdjust = (product, delta, e) => {
-        e.stopPropagation();
-        if (activeTab === 'import') {
-            const existing = importedData.find(item => item.productId === product.id);
-            if (existing) {
-                const newQty = Math.max(0, (existing.quantity || 0) + delta);
-                if (newQty <= 0) {
-                    handleImportRemove(existing._dbId);
-                } else {
-                    setImportedData(prev => prev.map(item =>
-                        item.productId === product.id ? { ...item, quantity: newQty, qtyInput: undefined } : item
-                    ));
-                    fetch(`${API_URL}/quote-imported-data/${existing._dbId}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ price: existing.price, quantity: newQty }),
-                    });
-                }
-            }
-            return;
-        }
+        if (e) e.stopPropagation();
         const existing = quoteItems.find(item => item.productId === product.id);
         if (existing) {
             const newQty = Math.max(0, (existing.quantity || 0) + delta);
@@ -577,6 +450,87 @@ export default function QuoteGenerator() {
                 });
             }
         }
+    }
+
+    const handleImportExcel = () => {
+        fileInputRef.current?.click()
+    }
+
+    const handleFileSelect = (e) => {
+        const file = e.target.files[0]
+        if (!file) return
+        processExcelFile(file)
+        e.target.value = '' // Clear input
+    }
+
+    const processExcelFile = async (file) => {
+        const reader = new FileReader()
+        reader.onload = async (e) => {
+            const data = e.target.result
+            const workbook = XLSX.read(data, { type: 'array' })
+            const sheetName = workbook.SheetNames[0]
+            const worksheet = workbook.Sheets[sheetName]
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
+
+            // Handle Excel data: skip first few rows as they might be header/title
+            // This is a simple logic, we might need to adjust based on user's Excel format
+            const itemsToAdd = []
+            for (let i = 1; i < jsonData.length; i++) {
+                const row = jsonData[i]
+                if (row[0] && row[2]) { // name and price are basic requirements
+                    const rowName = String(row[0]).trim()
+                    // 过滤表头行（如“产品名称”、“名称”、“产品规格”等）
+                    if (rowName === '产品名称' || rowName === '名称' || rowName.includes('产品规格')) {
+                        continue
+                    }
+
+                    itemsToAdd.push({
+                        name: rowName,
+                        description: String(row[1] || ''),
+                        price: parseFloat(row[2]) || 0,
+                        quantity: parseInt(row[3]) || 1,
+                        list_id: activeQuoteListId
+                    })
+                }
+            }
+
+            if (itemsToAdd.length > 0) {
+                try {
+                    for (const item of itemsToAdd) {
+                        const res = await fetch(`${API_URL}/quote-items`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(item),
+                        })
+                        if (!res.ok) throw new Error('Network response was not ok')
+                        const newItem = await res.json()
+                        setQuoteItems(prev => [...prev, newItem])
+                    }
+                    setResultData({
+                        title: '导入成功',
+                        message: `成功导入 ${itemsToAdd.length} 项产品到当前报价单。`,
+                        type: 'success'
+                    })
+                    setShowResultModal(true)
+                } catch (err) {
+                    console.error('导入 Excel 失败:', err)
+                    setResultData({
+                        title: '导入失败',
+                        message: '请检查文件格式是否正确。Excel 需包含：产品名称（第一列）、单价（第三列）。',
+                        type: 'error'
+                    })
+                    setShowResultModal(true)
+                }
+            } else {
+                setResultData({
+                    title: '未找到产品',
+                    message: '未在 Excel 中找到有效产品信息。请确保第一列是名称，第三列是价格。',
+                    type: 'warning'
+                })
+                setShowResultModal(true)
+            }
+        }
+        reader.readAsArrayBuffer(file)
     }
 
     const handlePriceBlur = (id, value) => {
@@ -618,91 +572,6 @@ export default function QuoteGenerator() {
         }, 200)
     }
 
-    const handleClearImport = () => {
-        setShowClearImportModal(true)
-    }
-
-    const handleConfirmClearImport = () => {
-        setImportedData([])
-        fetch(`${API_URL}/quote-imported-data${activeQuoteListId ? `?list_id=${activeQuoteListId}` : ''}`, { method: 'DELETE' })
-        handleCloseClearImportModal()
-    }
-
-    const handleCloseClearImportModal = () => {
-        setIsClearImportClosing(true)
-        setTimeout(() => {
-            setShowClearImportModal(false)
-            setIsClearImportClosing(false)
-        }, 200)
-    }
-
-    // ─── 导入数据行内编辑 ───
-    const handleImportPriceChange = (id, value) => {
-        setImportedData(importedData.map(item =>
-            item._dbId === id ? { ...item, priceInput: value } : item
-        ))
-    }
-
-    const handleImportPriceBlur = (id, value) => {
-        const num = Math.max(0, parseFloat(value) || 0)
-        setImportedData(importedData.map(item =>
-            item._dbId === id ? { ...item, price: num, priceInput: undefined } : item
-        ))
-        const item = importedData.find(i => i._dbId === id)
-        if (item) {
-            fetch(`${API_URL}/quote-imported-data/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ price: num, quantity: item.quantity }),
-            })
-        }
-    }
-
-    const handleImportQuantityChange = (id, value) => {
-        setImportedData(importedData.map(item =>
-            item._dbId === id ? { ...item, qtyInput: value } : item
-        ))
-    }
-
-    const handleImportQuantityBlur = (id, value) => {
-        const num = Math.max(0, parseInt(value) || 0)
-        if (num <= 0) {
-            setImportedData(importedData.filter(i => i._dbId !== id))
-            fetch(`${API_URL}/quote-imported-data/${id}`, { method: 'DELETE' })
-        } else {
-            setImportedData(importedData.map(item =>
-                item._dbId === id ? { ...item, quantity: num, qtyInput: undefined } : item
-            ))
-            const item = importedData.find(i => i._dbId === id)
-            if (item) {
-                fetch(`${API_URL}/quote-imported-data/${id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ price: item.price, quantity: num }),
-                })
-            }
-        }
-    }
-
-    const handleImportQuantityAdjust = (id, delta) => {
-        setImportedData(prev => prev.map(item => {
-            if (item._dbId === id) {
-                const newQty = Math.max(1, (item.quantity || 1) + delta);
-                fetch(`${API_URL}/quote-imported-data/${id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ price: item.price, quantity: newQty }),
-                });
-                return { ...item, quantity: newQty, qtyInput: undefined };
-            }
-            return item;
-        }));
-    }
-
-    const handleImportRemove = (id) => {
-        setImportedData(importedData.filter(i => i._dbId !== id))
-        fetch(`${API_URL}/quote-imported-data/${id}`, { method: 'DELETE' })
-    }
 
     const totalAmount = quoteItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
 
@@ -929,161 +798,6 @@ export default function QuoteGenerator() {
         return result
     })()
 
-    // ─── Excel 导入相关 ───
-    const processExcelFile = (file) => {
-        if (!file) return
-        setImporting(true)
-        setFileName(file.name)
-
-        const reader = new FileReader()
-        reader.onload = (e) => {
-            try {
-                const data = new Uint8Array(e.target.result)
-                const workbook = XLSX.read(data, { type: 'array' })
-                const sheets = workbook.SheetNames.map((name) => {
-                    const sheet = workbook.Sheets[name]
-                    const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' })
-                    
-                    // Automatically detect the real header row (to skip title/date rows from exported quotes)
-                    let headerIndex = 0
-                    for (let i = 0; i < Math.min(10, jsonData.length); i++) {
-                        const rowStr = jsonData[i].join('').toLowerCase()
-                        if (rowStr.includes('名称') || rowStr.includes('品名') || rowStr.includes('产品') || rowStr.includes('规格') || rowStr.includes('单价')) {
-                            headerIndex = i
-                            break
-                        }
-                    }
-
-                    const headers = jsonData[headerIndex] || []
-                    const rows = jsonData.slice(headerIndex + 1).filter(row => row.some(cell => cell !== ''))
-                    
-                    const rawData = XLSX.utils.sheet_to_json(sheet, { range: headerIndex }).map(row => {
-                        // Attempt to map standard columns for the interactive table
-                        const mappedRow = { ...row }
-                        
-                        // Try to find Name column
-                        const nameKey = Object.keys(row).find(k => k.includes('名称') || k.includes('品名') || k === '产品' || k === '商品')
-                        if (nameKey) mappedRow.name = row[nameKey]
-                        else mappedRow.name = row[Object.keys(row)[0]] || ''
-
-                        // Try to find Description column
-                        const descKey = Object.keys(row).find(k => k.includes('规格') || k.includes('型号') || k.includes('描述'))
-                        if (descKey) mappedRow.description = row[descKey]
-
-                        // Try to find Price column
-                        const priceKey = Object.keys(row).find(k => k.includes('单价') || k.includes('价格') || k === '单价(元)')
-                        if (priceKey) {
-                            const valStr = String(row[priceKey]).replace(/[^\d.-]/g, '')
-                            const p = parseFloat(valStr)
-                            mappedRow.price = isNaN(p) ? 0 : p
-                        } else {
-                            mappedRow.price = 0
-                        }
-
-                        // Try to find Quantity column
-                        const qtyKey = Object.keys(row).find(k => k.includes('数量') || k === '件数')
-                        if (qtyKey) {
-                            const valStr = String(row[qtyKey]).replace(/[^\d.-]/g, '')
-                            const q = parseInt(valStr, 10)
-                            mappedRow.quantity = isNaN(q) ? 1 : q
-                        } else {
-                            mappedRow.quantity = 1
-                        }
-
-                        // Ensure name is a string
-                        mappedRow.name = String(mappedRow.name || '').trim()
-
-                        return mappedRow
-                    }).filter(item => {
-                        const n = String(item.name || '').trim();
-                        // 1. 过滤极其简单的无效行 (空行、仅符号行)
-                        if (!n || n === '-' || n === '/' || n === '.' || n === '——' || n === '---') return false;
-                        
-                        // 2. 过滤标题行 (大字标题)
-                        if (n.includes('江南管业') || n.includes('报价单')) return false;
-                        
-                        // 3. 过滤日期行 (各种格式的日期)
-                        if (n.includes('年') && n.includes('月') && n.includes('日')) return false;
-                        if (/^\d{4}[-/年]\d{1,2}[-/月]\d{1,2}日?$/.test(n)) return false;
-                        
-                        // 4. 过滤表头本身 (如果探测失败导致表头进入了数据列表)
-                        const headerKeywords = ['产品名称', '产品规格', '单价', '数量', '合计', '品名', '型号', '金额', '商品名称', '规格/型号'];
-                        if (headerKeywords.includes(n)) return false;
-                        
-                        // 5. 过滤汇总行和说明行
-                        if (n === '总计' || n === '合计' || n === '总计金额' || n === '备注' || n === '说明') return false;
-                        
-                        // 6. 额外校验：如果名字全是特殊符号或者是纯数字（可能是索引列被误判为名称），也过滤掉
-                        if (/^[0-9\W_]+$/.test(n) && n.length < 3) return false;
-                        
-                        return true;
-                    })
-
-                    return {
-                        name,
-                        headers,
-                        rows,
-                        rawData,
-                    }
-                })
-                setImportedSheets(sheets)
-                setActiveSheet(0)
-                setShowPreview(true)
-                setImporting(false)
-            } catch {
-                alert('Excel 文件解析失败，请检查文件格式')
-                setImporting(false)
-            }
-        }
-        reader.readAsArrayBuffer(file)
-    }
-
-    const handleFileSelect = (e) => {
-        processExcelFile(e.target.files[0])
-        e.target.value = ''
-    }
-
-    const handleDrop = (e) => {
-        e.preventDefault()
-        setIsDragging(false)
-        const file = e.dataTransfer.files[0]
-        if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.csv'))) {
-            processExcelFile(file)
-        } else {
-            alert('请上传 .xlsx / .xls / .csv 格式的文件')
-        }
-    }
-
-    const handleConfirmImport = async () => {
-        const newData = importedSheets.flatMap((sheet) =>
-            sheet.rawData.map((row, i) => ({ sheetName: sheet.name, ...row }))
-        )
-        try {
-            const res = await fetch(`${API_URL}/quote-imported-data`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: newData, list_id: activeQuoteListId }),
-            })
-            const saved = await res.json()
-            setImportedData(prev => [...prev, ...saved])
-        } catch (err) {
-            console.error('保存导入数据失败:', err)
-            // fallback: still update UI
-            const fallback = newData.map((row, i) => ({ id: Date.now() + i, ...row, listId: activeQuoteListId }))
-            setImportedData(prev => [...prev, ...fallback])
-        }
-        handleClosePreview()
-    }
-
-    const handleClosePreview = () => {
-        setIsPreviewClosing(true)
-        setTimeout(() => {
-            setShowPreview(false)
-            setIsPreviewClosing(false)
-            setImportedSheets([])
-            setFileName('')
-        }, 200)
-    }
 
     // ─── 导出 ───
     const handleExportQuote = () => {
@@ -1232,10 +946,6 @@ export default function QuoteGenerator() {
         setDragOverIndex(null)
     }
 
-    const currentSheet = importedSheets[activeSheet]
-    const importColumns = importedData.length > 0
-        ? [...new Set(importedData.flatMap(q => Object.keys(q).filter(k => k !== '_dbId' && k !== 'sheetName')))]
-        : []
 
     return (
         <div style={styles.container}>
@@ -1246,13 +956,57 @@ export default function QuoteGenerator() {
                     <div style={styles.topBarRow}>
                         <h2 style={styles.pageTitle}>报价中心</h2>
                         <div style={styles.topActions}>
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept=".xlsx,.xls,.csv"
-                                onChange={handleFileSelect}
-                                style={{ display: 'none' }}
-                            />
+                            <button style={styles.addButton} onClick={() => setShowProductModal(true)}>
+                                ＋
+                            </button>
+                            <div style={styles.moreActionsWrap} ref={moreActionsRef}>
+                                <button
+                                    type="button"
+                                    style={styles.moreActionsButton}
+                                    onClick={() => setShowMoreActions((value) => !value)}
+                                >
+                                    <span style={styles.moreActionsIcon}>⋯</span>
+                                </button>
+
+                                {showMoreActions && (
+                                    <div style={styles.moreActionsMenu}>
+                                        <button
+                                            type="button"
+                                            style={styles.moreActionsItem}
+                                            onClick={() => {
+                                                setShowMoreActions(false)
+                                                handleImportExcel()
+                                            }}
+                                        >
+                                            导入 Excel 表格
+                                        </button>
+
+                                        {quoteItems.length > 0 && (
+                                            <button
+                                                type="button"
+                                                style={styles.moreActionsItem}
+                                                onClick={() => {
+                                                    setShowMoreActions(false)
+                                                    handleExportQuote()
+                                                }}
+                                            >
+                                                导出当前报价单
+                                            </button>
+                                        )}
+
+                                        <button
+                                            type="button"
+                                            style={styles.moreActionsItem}
+                                            onClick={() => {
+                                                setShowMoreActions(false)
+                                                handleClearAll()
+                                            }}
+                                        >
+                                            清除所有
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -1383,79 +1137,8 @@ export default function QuoteGenerator() {
                 </div>
             </div>
 
-            {/* Tab 切换 */}
-            <div style={styles.tabActionRow}>
-                <div style={styles.tabBar}>
-                    <button
-                        style={{ ...styles.tab, ...(activeTab === 'products' ? styles.tabActive : {}) }}
-                        onClick={() => setActiveTab('products')}
-                    >
-                        📦 产品报价 ({quoteItems.length})
-                    </button>
-                    <button
-                        style={{ ...styles.tab, ...(activeTab === 'import' ? styles.tabActive : {}) }}
-                        onClick={() => setActiveTab('import')}
-                    >
-                        📊 Excel 数据 ({importedData.length})
-                    </button>
-                </div>
-                <div style={styles.inlineActions}>
-                    <button style={styles.addButton} onClick={() => setShowProductModal(true)}>
-                        ＋
-                    </button>
-                    <div style={styles.moreActionsWrap} ref={moreActionsRef}>
-                        <button
-                            type="button"
-                            style={styles.moreActionsButton}
-                            onClick={() => setShowMoreActions((value) => !value)}
-                        >
-                            <span style={styles.moreActionsIcon}>⋯</span>
-                        </button>
-
-                        {showMoreActions && (
-                            <div style={styles.moreActionsMenu}>
-                                {quoteItems.length > 0 && (
-                                    <>
-                                        <button
-                                            type="button"
-                                            style={styles.moreActionsItem}
-                                            onClick={() => {
-                                                setShowMoreActions(false)
-                                                handleClearAll()
-                                            }}
-                                        >
-                                            清除所有
-                                        </button>
-                                        <button
-                                            type="button"
-                                            style={styles.moreActionsItem}
-                                            onClick={() => {
-                                                setShowMoreActions(false)
-                                                handleExportQuote()
-                                            }}
-                                        >
-                                            导出当前报价单
-                                        </button>
-                                    </>
-                                )}
-                                <button
-                                    type="button"
-                                    style={styles.moreActionsItem}
-                                    onClick={() => {
-                                        setShowMoreActions(false)
-                                        fileInputRef.current?.click()
-                                    }}
-                                >
-                                    导入 Excel
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-
             {/* 产品报价表格 */}
-            {activeTab === 'products' && quoteItems.length > 0 && (
+            {quoteItems.length > 0 && (
                 <div style={styles.tableCard}>
                     <table style={styles.table}>
                         <thead>
@@ -1549,140 +1232,16 @@ export default function QuoteGenerator() {
                 </div>
             )}
 
-            {/* Excel 导入数据表格 */}
-            {activeTab === 'import' && importedData.length > 0 && (
-                <div style={styles.tableCard}>
-                    <div style={styles.tableToolbar}>
-                        <div style={styles.tableTitle}>📊 Excel 导入数据</div>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                            <button style={styles.importMoreBtn} onClick={() => fileInputRef.current?.click()}>+ 追加导入</button>
-                            <button style={{ ...styles.importMoreBtn, color: '#EF4444', backgroundColor: '#FEF2F2' }}
-                                onClick={handleClearImport}>清空</button>
-                        </div>
-                    </div>
-                    <div style={styles.tableScroll}>
-                        <table style={styles.table}>
-                            <thead>
-                                <tr style={styles.tableHeader}>
-                                    <th style={{ ...styles.th, width: '29%', paddingLeft: '24px' }}>产品名称</th>
-                                    <th style={{ ...styles.th, width: '23%' }}>产品规格</th>
-                                    <th style={{ ...styles.th, width: '13%' }}>价格</th>
-                                    <th style={{ ...styles.th, width: '17%', minWidth: '160px' }}>数量</th>
-                                    <th style={{ ...styles.th, width: '12%', minWidth: '140px', textAlign: 'right' }}>合计</th>
-                                    <th aria-label="操作" style={{ ...styles.th, width: '6%', textAlign: 'right', minWidth: '64px' }}></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {importedData.map((item, idx) => (
-                                    <tr key={item._dbId || idx} className="quote-product-row" style={styles.tableRow}>
-                                        <td style={{ ...styles.tdName, paddingLeft: '24px' }}>
-                                            <div style={styles.nameCell}>
-                                                <span style={styles.nameText} title={item.name}>{item.name}</span>
-                                            </div>
-                                        </td>
-                                        <td style={styles.tdDesc} className="quote-desc-cell">
-                                            <div style={styles.descInner}>
-                                                {item.description || '-'}
-                                            </div>
-                                            {item.description && (
-                                                <div className="quote-desc-tooltip">{item.description}</div>
-                                            )}
-                                        </td>
-                                        <td style={styles.td}>
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                step="0.01"
-                                                style={styles.inlineInput}
-                                                value={item.priceInput !== undefined ? item.priceInput : (item.price || 0)}
-                                                onChange={(e) => handleImportPriceChange(item._dbId, e.target.value)}
-                                                onBlur={(e) => handleImportPriceBlur(item._dbId, e.target.value)}
-                                            />
-                                        </td>
-                                        <td style={styles.td}>
-                                            <div style={styles.quantityControl}>
-                                                <input
-                                                    type="number"
-                                                    min="1"
-                                                    className="quote-quantity-input"
-                                                    style={{ ...styles.quantityInput, width: '70px', minWidth: '70px', maxWidth: '70px', textAlign: 'center' }}
-                                                    value={item.qtyInput !== undefined ? item.qtyInput : (item.quantity || 1)}
-                                                    onChange={(e) => handleImportQuantityChange(item._dbId, e.target.value)}
-                                                    onBlur={(e) => handleImportQuantityBlur(item._dbId, e.target.value)}
-                                                />
-                                                <div style={styles.stepperWrap}>
-                                                    <button style={styles.stepperBtn} onClick={() => handleImportQuantityAdjust(item._dbId, 1)}>+</button>
-                                                    <button style={styles.stepperBtn} onClick={() => handleImportQuantityAdjust(item._dbId, -1)}>-</button>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td style={styles.tdTotal}>
-                                            ¥{((item.price || 0) * (item.quantity || 1)).toLocaleString()}
-                                        </td>
-                                        <td style={styles.tdAction}>
-                                            <button style={styles.removeBtn} onClick={() => handleImportRemove(item._dbId)}>✕</button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                            <tfoot>
-                                <tr style={styles.totalRow}>
-                                    <td colSpan="4" style={styles.totalLabel}>导入总额</td>
-                                    <td style={styles.totalValue}>
-                                        ¥{importedData.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0).toLocaleString()}
-                                    </td>
-                                    <td></td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                </div>
-            )}
 
-            {/* Excel tab 空状态 */}
-            {activeTab === 'import' && importedData.length === 0 && (
-                <div
-                    style={{
-                        ...styles.dropZone,
-                        borderColor: isDragging ? '#1E293B' : 'var(--border)',
-                        background: isDragging ? 'rgba(30, 41, 59, 0.05)' : 'var(--bg-secondary)',
-                    }}
-                    onDrop={handleDrop}
-                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
-                    onDragLeave={() => setIsDragging(false)}
-                    onClick={() => fileInputRef.current?.click()}
-                >
-                    <div style={styles.dropIcon}>📂</div>
-                    <div style={styles.dropTitle}>暂无 Excel 导入数据</div>
-                    <div style={styles.dropDesc}>拖拽文件到此处或点击选择文件导入（支持 .xlsx / .xls / .csv）</div>
-                </div>
-            )}
 
             {/* 空状态 - 拖拽区 */}
-            {quoteItems.length === 0 && importedData.length === 0 && (
+            {quoteItems.length === 0 && (
                 <div
-                    style={{
-                        ...styles.dropZone,
-                        borderColor: isDragging ? '#1E293B' : 'var(--border)',
-                        background: isDragging ? 'rgba(30, 41, 59, 0.05)' : 'var(--bg-secondary)',
-                    }}
-                    onDrop={handleDrop}
-                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
-                    onDragLeave={() => setIsDragging(false)}
-                    onClick={() => fileInputRef.current?.click()}
+                    style={styles.dropZone}
+                    onClick={() => setShowProductModal(true)}
                 >
-                    {importing ? (
-                        <div style={styles.loadingWrap}>
-                            <div style={styles.spinner} />
-                            <div style={styles.loadingText}>正在解析文件...</div>
-                        </div>
-                    ) : (
-                        <>
-                            <div style={styles.dropIcon}>📊</div>
-                            <div style={styles.dropTitle}>点击「添加产品」选择产品生成报价，或拖拽 Excel 导入数据</div>
-                            <div style={styles.dropDesc}>支持 .xlsx / .xls / .csv 格式</div>
-                        </>
-                    )}
+                    <div style={styles.dropTitle}>点击「＋」按钮或此处选择产品生成报价</div>
+                    <div style={styles.dropDesc}>您可以从产品库中选择产品，或添加自定义产品</div>
                 </div>
             )}
 
@@ -1737,9 +1296,7 @@ export default function QuoteGenerator() {
                         <div style={styles.noResult}>未找到匹配产品</div>
                     ) : (
                         filteredProducts.map((product) => {
-                            const inList = activeTab === 'import' 
-                                ? importedData.find(i => i.productId === product.id)
-                                : quoteItems.find(i => i.productId === product.id)
+                            const inList = quoteItems.find(i => i.productId === product.id)
                             
                             return (
                                 <div
@@ -1778,7 +1335,7 @@ export default function QuoteGenerator() {
                                                 </div>
                                                 <button
                                                     style={styles.deselectBtn}
-                                                    onClick={() => activeTab === 'import' ? handleImportRemove(inList._dbId) : handleRemoveItem(inList.id)}
+                                                    onClick={() => handleRemoveItem(inList.id)}
                                                 >
                                                     取消
                                                 </button>
@@ -1857,70 +1414,6 @@ export default function QuoteGenerator() {
                 </div>
             </Modal>
 
-            {/* ─── Excel 预览弹窗 ─── */}
-            {/* ─── Excel 预览弹窗 ─── */}
-            <Modal
-                isOpen={showPreview && currentSheet}
-                onClose={handleClosePreview}
-                title={`📄 ${fileName}`}
-                width={900}
-                headerRightContent={
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        {importedSheets.length > 1 && (
-                            <span style={styles.sheetBadge}>
-                                {importedSheets.length} 个工作表
-                            </span>
-                        )}
-                        <span style={styles.rowBadge}>{currentSheet?.rows?.length} 行</span>
-                    </div>
-                }
-                footer={
-                    <>
-                        <button className="sf-btn sf-btn-cancel" onClick={handleClosePreview}>取消</button>
-                        <button className="sf-btn sf-btn-confirm" onClick={handleConfirmImport}>
-                            确认导入 ({importedSheets.reduce((s, sh) => s + sh.rows.length, 0)} 行)
-                        </button>
-                    </>
-                }
-            >
-                {importedSheets.length > 1 && (
-                    <div className="sf-capsule-group" style={{ paddingBottom: '16px', borderBottom: '1px solid #E2E8F0', marginBottom: '16px' }}>
-                        {importedSheets.map((sheet, i) => (
-                            <button
-                                key={sheet.name}
-                                className={`sf-capsule ${i === activeSheet ? 'active' : ''}`}
-                                onClick={() => setActiveSheet(i)}
-                            >
-                                {sheet.name} ({sheet.rows.length})
-                            </button>
-                        ))}
-                    </div>
-                )}
-
-                <div style={styles.previewScroll}>
-                    <table style={styles.previewTable}>
-                        <thead>
-                            <tr>
-                                {currentSheet?.headers.map((h, i) => (
-                                    <th key={i} style={styles.previewTh}>{h || `列${i + 1}`}</th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {currentSheet?.rows.slice(0, 50).map((row, rowIdx) => (
-                                <tr key={rowIdx}>
-                                    {currentSheet.headers.map((_, colIdx) => (
-                                        <td key={colIdx} style={styles.previewTd}>{row[colIdx] ?? ''}</td>
-                                    ))}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    {currentSheet?.rows.length > 50 && (
-                        <div style={styles.moreRows}>... 还有 {currentSheet.rows.length - 50} 行</div>
-                    )}
-                </div>
-            </Modal>
 
             {/* ─── 清除确认对话框 ─── */}
             <Modal
@@ -1974,59 +1467,58 @@ export default function QuoteGenerator() {
                 </div>
             </Modal>
 
-            {/* ─── 清除导入数据确认对话框 ─── */}
+            {/* 隐藏的文件输入框 */}
+            <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                accept=".xlsx, .xls"
+                onChange={handleFileSelect}
+            />
+
+            {/* 导入结果/通用提示弹窗 */}
             <Modal
-                isOpen={showClearImportModal}
-                onClose={handleCloseClearImportModal}
-                title="确认清除导入数据"
-                width={600}
-                footer={
-                    <>
-                        <button className="sf-btn sf-btn-cancel" onClick={handleCloseClearImportModal}>取消</button>
-                        <button className="sf-btn sf-btn-confirm" style={{ backgroundColor: '#111111', borderColor: '#111111' }} onClick={handleConfirmClearImport}>
-                            确认清除
-                        </button>
-                    </>
-                }
+                isOpen={showResultModal}
+                onClose={() => setShowResultModal(false)}
+                title={resultData.title}
+                width={480}
+                footer={null}
             >
-                <div style={{ textAlign: 'center' }}>
-                    <div style={styles.clearModalIcon}>
-                        <svg width="64" height="64" viewBox="0 0 64 64">
-                            <circle
-                                cx="32"
-                                cy="32"
-                                r="28"
-                                fill="none"
-                                stroke="#E11D48"
-                                strokeWidth="3"
-                                style={{ animation: 'warningPulse 2s ease-in-out infinite' }}
-                            />
-                            <path
-                                d="M20 32 L44 32"
-                                stroke="#E11D48"
-                                strokeWidth="3"
-                                strokeLinecap="round"
-                            />
-                        </svg>
+                <div style={{ padding: '8px 4px 24px', textAlign: 'center' }}>
+                    <div style={{ 
+                        fontSize: '48px', 
+                        marginBottom: '20px',
+                        display: 'flex',
+                        justifyContent: 'center'
+                    }}>
+                        {resultData.type === 'success' && '✅'}
+                        {resultData.type === 'error' && '❌'}
+                        {resultData.type === 'warning' && '⚠️'}
                     </div>
-                    <p style={styles.clearModalMessage}>
-                        确定要清空所有已导入的 Excel 数据吗？此操作不可撤销，导入的数据将被永久删除。
+                    <p style={{ 
+                        fontSize: '16px', 
+                        color: '#1E293B', 
+                        lineHeight: '1.6',
+                        margin: '0 0 28px 0',
+                        fontWeight: '500'
+                    }}>
+                        {resultData.message}
                     </p>
-                    <div style={styles.clearModalStats}>
-                        <div style={styles.statItem}>
-                            <div style={styles.statValue}>{importedData.length}</div>
-                            <div style={styles.statLabel}>导入项</div>
-                        </div>
-                        <div style={styles.statDivider}></div>
-                        <div style={styles.statItem}>
-                            <div style={styles.statValue}>¥{importedData.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0).toLocaleString()}</div>
-                            <div style={styles.statLabel}>导入总额</div>
-                        </div>
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                        <button 
+                            className="sf-btn sf-btn-confirm"
+                            style={{ minWidth: '120px' }}
+                            onClick={() => setShowResultModal(false)}
+                        >
+                            我知道了
+                        </button>
                     </div>
                 </div>
             </Modal>
+
         </div>
     )
+
 }
 
 const styles = {
@@ -2072,14 +1564,19 @@ const styles = {
     moreActionsItem: {
         padding: '12px 14px',
         backgroundColor: '#FFFFFF',
-        color: '#111111',
-        border: '1px solid transparent',
+        color: '#1E293B',
+        border: 'none',
         borderRadius: '12px',
         cursor: 'pointer',
         fontSize: '14px',
-        fontWeight: '500',
+        fontWeight: '600',
         textAlign: 'left',
-        whiteSpace: 'nowrap'
+        whiteSpace: 'nowrap',
+        display: 'flex',
+        alignItems: 'center',
+        transition: 'background-color 0.2s',
+        width: '100%',
+        boxSizing: 'border-box'
     },
     addButton: {
         width: '48px', height: '48px', padding: 0, background: '#111111', color: '#FFFFFF', border: 'none',
@@ -2088,38 +1585,7 @@ const styles = {
     },
     tabActionRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', padding: '0 8px' },
     inlineActions: { display: 'flex', alignItems: 'center', gap: '14px', marginLeft: 'auto', position: 'relative', zIndex: 100, flexWrap: 'wrap', justifyContent: 'flex-end' },
-    importButton: {
-        padding: '12px 26px', backgroundColor: '#FFFFFF', color: '#64748B',
-        border: '1px solid #E2E8F0', borderRadius: '999px', cursor: 'pointer', fontSize: '14px', fontWeight: '600',
-        whiteSpace: 'nowrap', minWidth: '132px', lineHeight: '1.2',
-        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
-    },
-    exportButton: {
-        padding: '12px 26px', backgroundColor: 'rgba(5, 150, 105, 0.08)', color: '#059669',
-        border: '1px solid rgba(5, 150, 105, 0.2)', borderRadius: '999px', cursor: 'pointer', fontSize: '14px', fontWeight: '600',
-        whiteSpace: 'nowrap', minWidth: '180px', lineHeight: '1.2',
-        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
-    },
-    clearButton: {
-        padding: '12px 26px', backgroundColor: 'rgba(225, 29, 72, 0.06)', color: '#E11D48',
-        border: '1px solid rgba(225, 29, 72, 0.12)', borderRadius: '999px', cursor: 'pointer', fontSize: '14px', fontWeight: '600',
-        whiteSpace: 'nowrap', minWidth: '180px', lineHeight: '1.2',
-        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
-    },
-    summaryCards: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' },
-    summaryCard: { backgroundColor: '#FFFFFF', padding: '24px', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 2px 8px rgba(30, 41, 59, 0.04)' },
-    summaryLabel: { fontSize: '13px', color: '#64748B', marginBottom: '8px', fontWeight: '500' },
-    summaryValue: { fontSize: '26px', fontWeight: '700', color: '#111111' },
-    tabBar: { display: 'flex', gap: '6px', backgroundColor: '#FFFFFF', padding: '6px', borderRadius: '14px', border: '1px solid #E2E8F0', width: 'fit-content' },
-    tab: {
-        padding: '12px 24px', backgroundColor: 'transparent', border: 'none', borderRadius: '10px', cursor: 'pointer',
-        fontSize: '14px', fontWeight: '500', color: '#64748B', display: 'flex', alignItems: 'center', gap: '10px', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
-    },
-    tabActive: { background: '#111111', color: '#FFFFFF' },
     tableCard: { backgroundColor: '#FFFFFF', borderRadius: '18px', border: '1px solid #E2E8F0', overflow: 'hidden', margin: '0 8px' },
-    tableToolbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #E2E8F0' },
-    tableTitle: { fontSize: '16px', fontWeight: '600', color: '#1E293B' },
-    importMoreBtn: { padding: '8px 18px', backgroundColor: 'transparent', color: '#2563EB', border: '1px solid transparent', borderRadius: '10px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' },
     tableScroll: { overflowX: 'auto' },
     table: { width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' },
     tableHeader: { backgroundColor: '#FFFFFF' },
@@ -2166,12 +1632,8 @@ const styles = {
     totalLabel: { padding: '18px 24px', fontSize: '14px', fontWeight: '700', color: '#1E293B', textAlign: 'right' },
     totalValue: { padding: '18px 24px', fontSize: '18px', fontWeight: '700', color: '#111111' },
     dropZone: { borderRadius: '20px', border: '2px dashed #E2E8F0', padding: '60px 40px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s ease', backgroundColor: '#FAFAF9', width: 'calc(100% - 16px)', margin: '0 auto', boxSizing: 'border-box' },
-    dropIcon: { fontSize: '56px', marginBottom: '16px' },
     dropTitle: { fontSize: '16px', fontWeight: '600', color: '#1E293B', marginBottom: '8px' },
     dropDesc: { fontSize: '14px', color: '#64748B' },
-    loadingWrap: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' },
-    spinner: { width: '32px', height: '32px', border: '3px solid #E2E8F0', borderTopColor: '#0F172A', borderRadius: '50%', animation: 'spin 0.8s linear infinite' },
-    loadingText: { fontSize: '14px', color: '#64748B' },
     // Modal
     modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
     modal: { backgroundColor: '#FFFFFF', padding: '0', borderRadius: '24px', border: 'none', width: '600px', maxWidth: '92%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255,255,255,0.1)' },
@@ -2199,31 +1661,12 @@ const styles = {
     },
     addBadge: { fontSize: '12px', color: '#1E293B', backgroundColor: 'rgba(30, 41, 59, 0.08)', padding: '4px 12px', borderRadius: '10px', fontWeight: '600' },
     noResult: { padding: '40px', textAlign: 'center', color: '#64748B', fontSize: '14px' },
-    // Preview
-    sheetBadge: { fontSize: '12px', color: '#1E293B', backgroundColor: 'rgba(30, 41, 59, 0.08)', padding: '4px 12px', borderRadius: '10px', fontWeight: '600' },
-    rowBadge: { fontSize: '12px', color: '#059669', backgroundColor: '#ECFDF5', padding: '4px 12px', borderRadius: '10px', fontWeight: '600' },
-    sheetTabs: { display: 'flex', gap: '6px', padding: '16px 24px', borderBottom: '1px solid #E2E8F0', overflowX: 'auto', flexShrink: 0 },
-    sheetTab: { padding: '8px 16px', border: '1px solid #E2E8F0', borderRadius: '10px', backgroundColor: 'transparent', color: '#64748B', cursor: 'pointer', fontSize: '14px', fontWeight: '600', whiteSpace: 'nowrap', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' },
-    sheetTabActive: { background: '#111111', color: '#FFFFFF', borderColor: 'transparent' },
-    previewScroll: { flex: 1, overflowY: 'auto', overflowX: 'auto' },
-    previewTable: { width: '100%', borderCollapse: 'collapse', minWidth: '500px' },
-    previewTh: { padding: '14px 20px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#64748B', backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0', whiteSpace: 'nowrap', position: 'sticky', top: 0, textTransform: 'uppercase', letterSpacing: '1px' },
-    previewTd: { padding: '12px 20px', fontSize: '13px', color: '#1E293B', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', borderBottom: '1px solid #F1F5F9' },
-    moreRows: { padding: '16px', textAlign: 'center', fontSize: '13px', color: '#64748B', backgroundColor: '#F8FAFC' },
-    modalButtons: { display: 'flex', justifyContent: 'flex-end', gap: '14px', padding: '20px 28px', backgroundColor: '#F8FAFC', borderTop: '1px solid #F1F5F9', flexShrink: 0, borderRadius: '0 0 20px 20px' },
-    cancelButton: { padding: '12px 28px', backgroundColor: '#FFFFFF', color: '#64748B', border: '1px solid #E2E8F0', borderRadius: '999px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' },
-    submitButton: { padding: '12px 28px', background: '#111111', color: '#FFFFFF', border: 'none', borderRadius: '999px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' },
     // Clear/Delete Modal
-    clearModal: { backgroundColor: 'rgba(255, 255, 255, 1)', borderRadius: '24px', border: '1px solid rgba(226, 232, 240, 0.8)', width: '400px', maxWidth: '90%', padding: '32px', textAlign: 'center', boxShadow: '0 20px 40px rgba(15, 23, 42, 0.1)' },
     clearModalIcon: { marginBottom: '20px', display: 'flex', justifyContent: 'center' },
-    clearModalTitle: { fontFamily: "'Inter', -apple-system, sans-serif", fontSize: '20px', fontWeight: '700', color: '#FFFFFF', margin: '0 0 12px 0', letterSpacing: '-0.02em' },
     clearModalMessage: { fontSize: '14px', color: '#475569', lineHeight: '1.6', margin: '0 0 28px 0' },
     clearModalStats: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '24px', marginBottom: '32px', padding: '24px', backgroundColor: 'rgba(248, 250, 252, 0.5)', borderRadius: '16px', border: '1px solid rgba(226, 232, 240, 0.5)' },
     statItem: { flex: 1 },
     statValue: { fontSize: '28px', fontWeight: '700', color: '#111111', marginBottom: '6px' },
     statLabel: { fontSize: '12px', color: '#64748B', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '1px' },
     statDivider: { width: '1px', height: '48px', backgroundColor: 'rgba(226, 232, 240, 0.5)' },
-    clearModalButtons: { display: 'flex', gap: '12px', justifyContent: 'center' },
-    clearModalCancel: { flex: 1, padding: '12px 20px', backgroundColor: 'rgba(248, 250, 252, 0.6)', color: '#475569', border: '1px solid rgba(226, 232, 240, 0.8)', borderRadius: '999px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s ease', outline: 'none' },
-    clearModalConfirm: { flex: 1, padding: '12px 20px', backgroundColor: '#111111', color: '#FFFFFF', border: '1px solid #111111', borderRadius: '999px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s ease', outline: 'none' },
 };
