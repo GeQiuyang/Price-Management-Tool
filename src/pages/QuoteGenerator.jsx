@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import * as XLSX from 'xlsx'
+import * as XLSX from 'xlsx-js-style'
 import Modal from '../components/Modal'
 import { API_URL } from '../lib/api'
 
@@ -118,6 +118,8 @@ export default function QuoteGenerator() {
     // 清除确认对话框
     const [showClearModal, setShowClearModal] = useState(false)
     const [isClearClosing, setIsClearClosing] = useState(false)
+    const [showClearImportModal, setShowClearImportModal] = useState(false)
+    const [isClearImportClosing, setIsClearImportClosing] = useState(false)
 
     // 拖拽排序
     const [dragIndex, setDragIndex] = useState(null)
@@ -505,6 +507,24 @@ export default function QuoteGenerator() {
         }, 200)
     }
 
+    const handleClearImport = () => {
+        setShowClearImportModal(true)
+    }
+
+    const handleConfirmClearImport = () => {
+        setImportedData([])
+        fetch(`${API_URL}/quote-imported-data${activeQuoteListId ? `?list_id=${activeQuoteListId}` : ''}`, { method: 'DELETE' })
+        handleCloseClearImportModal()
+    }
+
+    const handleCloseClearImportModal = () => {
+        setIsClearImportClosing(true)
+        setTimeout(() => {
+            setShowClearImportModal(false)
+            setIsClearImportClosing(false)
+        }, 200)
+    }
+
     const totalAmount = quoteItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
 
     const handleCloseProductModal = () => {
@@ -817,17 +837,94 @@ export default function QuoteGenerator() {
             alert('没有数量大于0的产品，无法导出')
             return
         }
-        const exportData = activeItems.map(item => ({
-            产品名称: item.name,
-            产品规格: item.description || '',
-            单价: item.price,
-            数量: item.quantity,
-            合计: item.price * item.quantity,
-        }))
-        exportData.push({ 产品名称: '', 产品规格: '', 单价: '', 数量: '总计', 合计: totalAmount })
-        const ws = XLSX.utils.json_to_sheet(exportData)
-        const wb = XLSX.utils.book_new()
 
+        const border = {
+            top:    { style: 'thin', color: { rgb: 'FF000000' } },
+            bottom: { style: 'thin', color: { rgb: 'FF000000' } },
+            left:   { style: 'thin', color: { rgb: 'FF000000' } },
+            right:  { style: 'thin', color: { rgb: 'FF000000' } },
+        }
+
+        // Build AOA: Row0=title, Row1=date, Row2=header, Row3+=data, last=total
+        const headers = ['产品名称', '产品规格', '单价', '数量', '合计']
+        const aoa = [
+            ['江南管业报价单'],
+            [],
+            headers,
+            ...activeItems.map(item => [
+                item.name,
+                item.description || '',
+                item.price,
+                item.quantity,
+                item.price * item.quantity,
+            ]),
+            ['', '', '', '总计', totalAmount],
+        ]
+
+        const ws = XLSX.utils.aoa_to_sheet(aoa)
+        const range = XLSX.utils.decode_range(ws['!ref'])
+        // Ensure range covers 5 columns (A-E)
+        if (range.e.c < 4) range.e.c = 4
+        ws['!ref'] = XLSX.utils.encode_range(range)
+
+        // --- Row 0: Title (merged A1:E1) ---
+        ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } }]
+        const titleStyle = {
+            font: { name: '\u5B8B\u4F53', sz: 36, bold: true },
+            alignment: { horizontal: 'center', vertical: 'center', wrapText: false },
+            border,
+        }
+        ws['A1'] = { v: '\u6C5F\u5357\u7BA1\u4E1A\u62A5\u4EF7\u5355', t: 's', s: titleStyle }
+        for (let c = 1; c <= 4; c++) {
+            const ref = XLSX.utils.encode_cell({ r: 0, c })
+            ws[ref] = { v: '', t: 's', s: { border } }
+        }
+
+        // --- Row 1: Date ---
+        const now = new Date()
+        const dateStr = `${now.getFullYear()} \u5E74 ${String(now.getMonth() + 1).padStart(2, '0')} \u6708 ${String(now.getDate()).padStart(2, '0')} \u65E5`
+        const dateStyle = {
+            font: { name: '\u5B8B\u4F53', sz: 18 },
+            alignment: { horizontal: 'center', vertical: 'center' },
+            border,
+        }
+        ws['A2'] = { v: dateStr, t: 's', s: dateStyle }
+        for (let c = 1; c <= 4; c++) {
+            const ref = XLSX.utils.encode_cell({ r: 1, c })
+            if (!ws[ref]) ws[ref] = { v: '', t: 's' }
+            ws[ref].s = { border }
+        }
+
+        // --- Row 2+: Apply data style (宋体 18, all borders) ---
+        const dataStyle = {
+            font: { name: '\u5B8B\u4F53', sz: 18 },
+            border,
+            alignment: { vertical: 'center' },
+        }
+        for (let R = 2; R <= range.e.r; R++) {
+            for (let C = 0; C <= 4; C++) {
+                const ref = XLSX.utils.encode_cell({ r: R, c: C })
+                if (!ws[ref]) ws[ref] = { v: '', t: 's' }
+                ws[ref].s = { ...dataStyle }
+            }
+        }
+
+        // --- Row heights ---
+        ws['!rows'] = [{ hpt: 37 }, { hpt: 37 }]
+        for (let R = 2; R <= range.e.r; R++) {
+            ws['!rows'][R] = { hpt: 24 }
+        }
+
+        // --- Column widths ---
+        ws['!cols'] = [
+            { wpx: 200 }, // 产品名称
+            { wpx: 300 }, // 产品规格
+            { wpx: 100 }, // 单价
+            { wpx: 80 },  // 数量
+            { wpx: 120 }, // 合计
+        ]
+
+        const wb = XLSX.utils.book_new()
         const activeList = quoteLists.find(l => l.id === activeQuoteListId)
         const sheetName = activeList ? activeList.name : '报价单'
 
@@ -1205,7 +1302,7 @@ export default function QuoteGenerator() {
                         <div style={{ display: 'flex', gap: '8px' }}>
                             <button style={styles.importMoreBtn} onClick={() => fileInputRef.current?.click()}>+ 追加导入</button>
                             <button style={{ ...styles.importMoreBtn, color: '#EF4444', backgroundColor: '#FEF2F2' }}
-                                onClick={() => { if (confirm('清空导入数据？')) { setImportedData([]); fetch(`${API_URL}/quote-imported-data`, { method: 'DELETE' }) } }}>清空</button>
+                                onClick={handleClearImport}>清空</button>
                         </div>
                     </div>
                     <div style={styles.tableScroll}>
@@ -1561,6 +1658,57 @@ export default function QuoteGenerator() {
                 </div>
             </Modal>
 
+            {/* ─── 清除导入数据确认对话框 ─── */}
+            <Modal
+                isOpen={showClearImportModal}
+                onClose={handleCloseClearImportModal}
+                title="确认清除导入数据"
+                width={600}
+                footer={
+                    <>
+                        <button className="sf-btn sf-btn-cancel" onClick={handleCloseClearImportModal}>取消</button>
+                        <button className="sf-btn sf-btn-confirm" style={{ backgroundColor: '#111111', borderColor: '#111111' }} onClick={handleConfirmClearImport}>
+                            确认清除
+                        </button>
+                    </>
+                }
+            >
+                <div style={{ textAlign: 'center' }}>
+                    <div style={styles.clearModalIcon}>
+                        <svg width="64" height="64" viewBox="0 0 64 64">
+                            <circle
+                                cx="32"
+                                cy="32"
+                                r="28"
+                                fill="none"
+                                stroke="#E11D48"
+                                strokeWidth="3"
+                                style={{ animation: 'warningPulse 2s ease-in-out infinite' }}
+                            />
+                            <path
+                                d="M20 32 L44 32"
+                                stroke="#E11D48"
+                                strokeWidth="3"
+                                strokeLinecap="round"
+                            />
+                        </svg>
+                    </div>
+                    <p style={styles.clearModalMessage}>
+                        确定要清空所有已导入的 Excel 数据吗？此操作不可撤销，导入的数据将被永久删除。
+                    </p>
+                    <div style={styles.clearModalStats}>
+                        <div style={styles.statItem}>
+                            <div style={styles.statValue}>{importedData.length}</div>
+                            <div style={styles.statLabel}>导入项</div>
+                        </div>
+                        <div style={styles.statDivider}></div>
+                        <div style={styles.statItem}>
+                            <div style={styles.statValue}>¥{importedData.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0).toLocaleString()}</div>
+                            <div style={styles.statLabel}>导入总额</div>
+                        </div>
+                    </div>
+                </div>
+            </Modal>
         </div>
     )
 }

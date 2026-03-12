@@ -1951,6 +1951,38 @@ app.post('/api/quote-imported-data', (req, res) => {
   }
 })
 
+app.put('/api/quote-imported-data/:id', (req, res) => {
+  const { id } = req.params;
+  const data = req.body;
+  try {
+    db.run(
+      'UPDATE quote_imported_data SET data_json = ? WHERE id = ?',
+      [JSON.stringify(data), id]
+    );
+    saveDB();
+    const updated = queryOne('SELECT * FROM quote_imported_data WHERE id = ?', [id]);
+    if (!updated) return res.status(404).json({ error: 'Item not found' });
+    
+    res.json({ ...JSON.parse(updated.data_json), _dbId: updated.id, sheetName: updated.sheet_name, listId: updated.quote_list_id });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update item' });
+  }
+});
+
+app.delete('/api/quote-imported-data/:id', (req, res) => {
+  const { id } = req.params;
+  try {
+    const existing = queryOne('SELECT id FROM quote_imported_data WHERE id = ?', [id]);
+    if (!existing) return res.status(404).json({ error: 'Item not found' });
+    
+    db.run('DELETE FROM quote_imported_data WHERE id = ?', [id]);
+    saveDB();
+    res.json({ message: 'Deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete item' });
+  }
+});
+
 app.delete('/api/quote-imported-data', (req, res) => {
   const { list_id } = req.query
   if (list_id) {
