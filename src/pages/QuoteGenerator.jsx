@@ -307,6 +307,45 @@ export default function QuoteGenerator() {
 
     const handleAddProduct = async (product) => {
         const selectedPrice = getProductPrice(product)
+        
+        if (activeTab === 'import') {
+            const existing = importedData.find(item => item.productId === product.id)
+            if (existing) {
+                const newQty = (existing.quantity || 0) + 1
+                setImportedData(importedData.map(item =>
+                    item._dbId === existing._dbId ? { ...item, quantity: newQty } : item
+                ))
+                fetch(`${API_URL}/quote-imported-data/${existing._dbId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ price: existing.price, quantity: newQty }),
+                })
+            } else {
+                try {
+                    const res = await fetch(`${API_URL}/quote-imported-data`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            items: [{
+                                productId: product.id,
+                                name: product.name,
+                                description: product.description || '',
+                                price: selectedPrice,
+                                quantity: 1,
+                                sheetName: 'Added manually'
+                            }],
+                            list_id: activeQuoteListId,
+                        }),
+                    })
+                    const saved = await res.json()
+                    setImportedData(prev => [...prev, ...saved])
+                } catch (err) {
+                    console.error('添加导入报价项失败:', err)
+                }
+            }
+            return
+        }
+
         const existing = quoteItems.find(item => item.productId === product.id)
         if (existing) {
             const newQty = existing.quantity + 1
@@ -345,6 +384,34 @@ export default function QuoteGenerator() {
         if (!customProduct.price || isNaN(customProduct.price)) return alert('请输入有效的单价')
         if (!customProduct.quantity || customProduct.quantity < 1) return alert('请输入有效的数量')
 
+        if (activeTab === 'import') {
+            try {
+                const res = await fetch(`${API_URL}/quote-imported-data`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        items: [{
+                            productId: '',
+                            name: customProduct.name.trim(),
+                            description: customProduct.description.trim(),
+                            price: parseFloat(customProduct.price),
+                            quantity: parseInt(customProduct.quantity, 10),
+                            sheetName: 'Added manually'
+                        }],
+                        list_id: activeQuoteListId,
+                    }),
+                })
+                const saved = await res.json()
+                setImportedData(prev => [...prev, ...saved])
+                setShowCustomProductModal(false)
+                setCustomProduct({ name: '', description: '', price: '', quantity: 1 })
+                setShowProductModal(false)
+            } catch (err) {
+                console.error('添加自定义导入产品失败:', err)
+            }
+            return
+        }
+
         try {
             // 获取当前列表的最大 order_index
             let nextOrder = 0;
@@ -377,6 +444,12 @@ export default function QuoteGenerator() {
 
     const handleQuantityInputChange = (product, value, e) => {
         e.stopPropagation()
+        if (activeTab === 'import') {
+            setImportedData(prev => prev.map(item =>
+                item.productId === product.id ? { ...item, qtyInput: value } : item
+            ))
+            return
+        }
         setQuoteItems(quoteItems.map(item =>
             item.productId === product.id ? { ...item, qtyInput: value } : item
         ))
@@ -384,6 +457,25 @@ export default function QuoteGenerator() {
 
     const handleQuantityInputBlur = (product, value, e) => {
         e.stopPropagation()
+        if (activeTab === 'import') {
+            const existing = importedData.find(item => item.productId === product.id)
+            if (existing) {
+                const num = Math.max(0, parseInt(value) || 0)
+                if (num <= 0) {
+                    handleImportRemove(existing._dbId)
+                } else {
+                    setImportedData(prev => prev.map(item =>
+                        item.productId === product.id ? { ...item, quantity: num, qtyInput: undefined } : item
+                    ))
+                    fetch(`${API_URL}/quote-imported-data/${existing._dbId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ price: existing.price, quantity: num }),
+                    })
+                }
+            }
+            return
+        }
         const existing = quoteItems.find(item => item.productId === product.id)
         if (existing) {
             const num = Math.max(0, parseInt(value) || 0)
@@ -450,6 +542,25 @@ export default function QuoteGenerator() {
 
     const handleProductQuantityAdjust = (product, delta, e) => {
         e.stopPropagation();
+        if (activeTab === 'import') {
+            const existing = importedData.find(item => item.productId === product.id);
+            if (existing) {
+                const newQty = Math.max(0, (existing.quantity || 0) + delta);
+                if (newQty <= 0) {
+                    handleImportRemove(existing._dbId);
+                } else {
+                    setImportedData(prev => prev.map(item =>
+                        item.productId === product.id ? { ...item, quantity: newQty, qtyInput: undefined } : item
+                    ));
+                    fetch(`${API_URL}/quote-imported-data/${existing._dbId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ price: existing.price, quantity: newQty }),
+                    });
+                }
+            }
+            return;
+        }
         const existing = quoteItems.find(item => item.productId === product.id);
         if (existing) {
             const newQty = Math.max(0, (existing.quantity || 0) + delta);
@@ -523,6 +634,74 @@ export default function QuoteGenerator() {
             setShowClearImportModal(false)
             setIsClearImportClosing(false)
         }, 200)
+    }
+
+    // ─── 导入数据行内编辑 ───
+    const handleImportPriceChange = (id, value) => {
+        setImportedData(importedData.map(item =>
+            item._dbId === id ? { ...item, priceInput: value } : item
+        ))
+    }
+
+    const handleImportPriceBlur = (id, value) => {
+        const num = Math.max(0, parseFloat(value) || 0)
+        setImportedData(importedData.map(item =>
+            item._dbId === id ? { ...item, price: num, priceInput: undefined } : item
+        ))
+        const item = importedData.find(i => i._dbId === id)
+        if (item) {
+            fetch(`${API_URL}/quote-imported-data/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ price: num, quantity: item.quantity }),
+            })
+        }
+    }
+
+    const handleImportQuantityChange = (id, value) => {
+        setImportedData(importedData.map(item =>
+            item._dbId === id ? { ...item, qtyInput: value } : item
+        ))
+    }
+
+    const handleImportQuantityBlur = (id, value) => {
+        const num = Math.max(0, parseInt(value) || 0)
+        if (num <= 0) {
+            setImportedData(importedData.filter(i => i._dbId !== id))
+            fetch(`${API_URL}/quote-imported-data/${id}`, { method: 'DELETE' })
+        } else {
+            setImportedData(importedData.map(item =>
+                item._dbId === id ? { ...item, quantity: num, qtyInput: undefined } : item
+            ))
+            const item = importedData.find(i => i._dbId === id)
+            if (item) {
+                fetch(`${API_URL}/quote-imported-data/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ price: item.price, quantity: num }),
+                })
+            }
+        }
+    }
+
+    const handleImportQuantityAdjust = (id, delta) => {
+        setImportedData(prev => prev.map(item => {
+            if (item._dbId === id) {
+                const newQty = Math.max(1, (item.quantity || 1) + delta);
+                fetch(`${API_URL}/quote-imported-data/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ price: item.price, quantity: newQty }),
+                });
+                return { ...item, quantity: newQty, qtyInput: undefined };
+            }
+            return item;
+        }));
+    }
+
+    const handleImportRemove = (id) => {
+        setImportedData(importedData.filter(i => i._dbId !== id))
+        fetch(`${API_URL}/quote-imported-data/${id}`, { method: 'DELETE' })
     }
 
     const totalAmount = quoteItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
@@ -764,11 +943,87 @@ export default function QuoteGenerator() {
                 const sheets = workbook.SheetNames.map((name) => {
                     const sheet = workbook.Sheets[name]
                     const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' })
+                    
+                    // Automatically detect the real header row (to skip title/date rows from exported quotes)
+                    let headerIndex = 0
+                    for (let i = 0; i < Math.min(10, jsonData.length); i++) {
+                        const rowStr = jsonData[i].join('').toLowerCase()
+                        if (rowStr.includes('名称') || rowStr.includes('品名') || rowStr.includes('产品') || rowStr.includes('规格') || rowStr.includes('单价')) {
+                            headerIndex = i
+                            break
+                        }
+                    }
+
+                    const headers = jsonData[headerIndex] || []
+                    const rows = jsonData.slice(headerIndex + 1).filter(row => row.some(cell => cell !== ''))
+                    
+                    const rawData = XLSX.utils.sheet_to_json(sheet, { range: headerIndex }).map(row => {
+                        // Attempt to map standard columns for the interactive table
+                        const mappedRow = { ...row }
+                        
+                        // Try to find Name column
+                        const nameKey = Object.keys(row).find(k => k.includes('名称') || k.includes('品名') || k === '产品' || k === '商品')
+                        if (nameKey) mappedRow.name = row[nameKey]
+                        else mappedRow.name = row[Object.keys(row)[0]] || ''
+
+                        // Try to find Description column
+                        const descKey = Object.keys(row).find(k => k.includes('规格') || k.includes('型号') || k.includes('描述'))
+                        if (descKey) mappedRow.description = row[descKey]
+
+                        // Try to find Price column
+                        const priceKey = Object.keys(row).find(k => k.includes('单价') || k.includes('价格') || k === '单价(元)')
+                        if (priceKey) {
+                            const valStr = String(row[priceKey]).replace(/[^\d.-]/g, '')
+                            const p = parseFloat(valStr)
+                            mappedRow.price = isNaN(p) ? 0 : p
+                        } else {
+                            mappedRow.price = 0
+                        }
+
+                        // Try to find Quantity column
+                        const qtyKey = Object.keys(row).find(k => k.includes('数量') || k === '件数')
+                        if (qtyKey) {
+                            const valStr = String(row[qtyKey]).replace(/[^\d.-]/g, '')
+                            const q = parseInt(valStr, 10)
+                            mappedRow.quantity = isNaN(q) ? 1 : q
+                        } else {
+                            mappedRow.quantity = 1
+                        }
+
+                        // Ensure name is a string
+                        mappedRow.name = String(mappedRow.name || '').trim()
+
+                        return mappedRow
+                    }).filter(item => {
+                        const n = String(item.name || '').trim();
+                        // 1. 过滤极其简单的无效行 (空行、仅符号行)
+                        if (!n || n === '-' || n === '/' || n === '.' || n === '——' || n === '---') return false;
+                        
+                        // 2. 过滤标题行 (大字标题)
+                        if (n.includes('江南管业') || n.includes('报价单')) return false;
+                        
+                        // 3. 过滤日期行 (各种格式的日期)
+                        if (n.includes('年') && n.includes('月') && n.includes('日')) return false;
+                        if (/^\d{4}[-/年]\d{1,2}[-/月]\d{1,2}日?$/.test(n)) return false;
+                        
+                        // 4. 过滤表头本身 (如果探测失败导致表头进入了数据列表)
+                        const headerKeywords = ['产品名称', '产品规格', '单价', '数量', '合计', '品名', '型号', '金额', '商品名称', '规格/型号'];
+                        if (headerKeywords.includes(n)) return false;
+                        
+                        // 5. 过滤汇总行和说明行
+                        if (n === '总计' || n === '合计' || n === '总计金额' || n === '备注' || n === '说明') return false;
+                        
+                        // 6. 额外校验：如果名字全是特殊符号或者是纯数字（可能是索引列被误判为名称），也过滤掉
+                        if (/^[0-9\W_]+$/.test(n) && n.length < 3) return false;
+                        
+                        return true;
+                    })
+
                     return {
                         name,
-                        headers: jsonData[0] || [],
-                        rows: jsonData.slice(1).filter(row => row.some(cell => cell !== '')),
-                        rawData: XLSX.utils.sheet_to_json(sheet),
+                        headers,
+                        rows,
+                        rawData,
                     }
                 })
                 setImportedSheets(sheets)
@@ -1309,18 +1564,76 @@ export default function QuoteGenerator() {
                         <table style={styles.table}>
                             <thead>
                                 <tr style={styles.tableHeader}>
-                                    <th style={styles.th}>#</th>
-                                    {importColumns.map(col => <th key={col} style={styles.th}>{col}</th>)}
+                                    <th style={{ ...styles.th, width: '29%', paddingLeft: '24px' }}>产品名称</th>
+                                    <th style={{ ...styles.th, width: '23%' }}>产品规格</th>
+                                    <th style={{ ...styles.th, width: '13%' }}>价格</th>
+                                    <th style={{ ...styles.th, width: '17%', minWidth: '160px' }}>数量</th>
+                                    <th style={{ ...styles.th, width: '12%', minWidth: '140px', textAlign: 'right' }}>合计</th>
+                                    <th aria-label="操作" style={{ ...styles.th, width: '6%', textAlign: 'right', minWidth: '64px' }}></th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {importedData.map((row, idx) => (
-                                    <tr key={row._dbId || idx} style={styles.tableRow}>
-                                        <td style={styles.tdIndex}>{idx + 1}</td>
-                                        {importColumns.map(col => <td key={col} style={styles.td}>{row[col] ?? ''}</td>)}
+                                {importedData.map((item, idx) => (
+                                    <tr key={item._dbId || idx} className="quote-product-row" style={styles.tableRow}>
+                                        <td style={{ ...styles.tdName, paddingLeft: '24px' }}>
+                                            <div style={styles.nameCell}>
+                                                <span style={styles.nameText} title={item.name}>{item.name}</span>
+                                            </div>
+                                        </td>
+                                        <td style={styles.tdDesc} className="quote-desc-cell">
+                                            <div style={styles.descInner}>
+                                                {item.description || '-'}
+                                            </div>
+                                            {item.description && (
+                                                <div className="quote-desc-tooltip">{item.description}</div>
+                                            )}
+                                        </td>
+                                        <td style={styles.td}>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                style={styles.inlineInput}
+                                                value={item.priceInput !== undefined ? item.priceInput : (item.price || 0)}
+                                                onChange={(e) => handleImportPriceChange(item._dbId, e.target.value)}
+                                                onBlur={(e) => handleImportPriceBlur(item._dbId, e.target.value)}
+                                            />
+                                        </td>
+                                        <td style={styles.td}>
+                                            <div style={styles.quantityControl}>
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    className="quote-quantity-input"
+                                                    style={{ ...styles.quantityInput, width: '70px', minWidth: '70px', maxWidth: '70px', textAlign: 'center' }}
+                                                    value={item.qtyInput !== undefined ? item.qtyInput : (item.quantity || 1)}
+                                                    onChange={(e) => handleImportQuantityChange(item._dbId, e.target.value)}
+                                                    onBlur={(e) => handleImportQuantityBlur(item._dbId, e.target.value)}
+                                                />
+                                                <div style={styles.stepperWrap}>
+                                                    <button style={styles.stepperBtn} onClick={() => handleImportQuantityAdjust(item._dbId, 1)}>+</button>
+                                                    <button style={styles.stepperBtn} onClick={() => handleImportQuantityAdjust(item._dbId, -1)}>-</button>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td style={styles.tdTotal}>
+                                            ¥{((item.price || 0) * (item.quantity || 1)).toLocaleString()}
+                                        </td>
+                                        <td style={styles.tdAction}>
+                                            <button style={styles.removeBtn} onClick={() => handleImportRemove(item._dbId)}>✕</button>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
+                            <tfoot>
+                                <tr style={styles.totalRow}>
+                                    <td colSpan="4" style={styles.totalLabel}>导入总额</td>
+                                    <td style={styles.totalValue}>
+                                        ¥{importedData.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0).toLocaleString()}
+                                    </td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
                 </div>
@@ -1424,7 +1737,10 @@ export default function QuoteGenerator() {
                         <div style={styles.noResult}>未找到匹配产品</div>
                     ) : (
                         filteredProducts.map((product) => {
-                            const inQuote = quoteItems.find(i => i.productId === product.id)
+                            const inList = activeTab === 'import' 
+                                ? importedData.find(i => i.productId === product.id)
+                                : quoteItems.find(i => i.productId === product.id)
+                            
                             return (
                                 <div
                                     key={product.id}
@@ -1445,14 +1761,14 @@ export default function QuoteGenerator() {
                                                 </span>
                                             )}
                                         </div>
-                                        {inQuote ? (
+                                        {inList ? (
                                             <div style={styles.productActions} onClick={(e) => e.stopPropagation()}>
                                                 <input
                                                     type="number"
                                                     min="0"
                                                     className="product-quantity-input"
                                                     style={{ ...styles.productQuantityInput, width: '70px', padding: '0 8px' }}
-                                                    value={inQuote.qtyInput !== undefined ? inQuote.qtyInput : inQuote.quantity}
+                                                    value={inList.qtyInput !== undefined ? inList.qtyInput : inList.quantity}
                                                     onChange={(e) => handleQuantityInputChange(product, e.target.value, e)}
                                                     onBlur={(e) => handleQuantityInputBlur(product, e.target.value, e)}
                                                 />
@@ -1462,7 +1778,7 @@ export default function QuoteGenerator() {
                                                 </div>
                                                 <button
                                                     style={styles.deselectBtn}
-                                                    onClick={() => handleRemoveItem(inQuote.id)}
+                                                    onClick={() => activeTab === 'import' ? handleImportRemove(inList._dbId) : handleRemoveItem(inList.id)}
                                                 >
                                                     取消
                                                 </button>
