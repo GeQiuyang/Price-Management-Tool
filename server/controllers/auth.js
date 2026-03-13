@@ -419,7 +419,7 @@ export const forgotPassword = async (req, res) => {
     if (result.rows.length === 0) {
       return res.json({
         success: true,
-        message: '如果邮箱存在，重置链接已发送'
+        message: '如果邮箱存在,重置链接已发送'
       })
     }
     

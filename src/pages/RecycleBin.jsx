@@ -160,7 +160,7 @@ export default function RecycleBin() {
         <div style={styles.infoIcon}>ℹ️</div>
         <div style={styles.infoContent}>
           <div style={styles.infoTitle}>回收站说明</div>
-          <div style={styles.infoDesc}>删除的数据会自动进入回收站，最多保留 30 天。您可以恢复或永久删除这些数据。</div>
+          <div style={styles.infoDesc}>删除的数据会自动进入回收站,最多保留 30 天。您可以恢复或永久删除这些数据。</div>
         </div>
       </div>
 
@@ -239,7 +239,7 @@ export default function RecycleBin() {
           <p style={styles.warningText}>
             确定要永久删除 <strong>{selectedItem?.item_data?.name || selectedItem?.item_data?.productName || selectedItem?.item_data?.title}</strong> 吗？
           </p>
-          <p style={styles.warningDesc}>此操作不可恢复，数据将被永久删除。</p>
+          <p style={styles.warningDesc}>此操作不可恢复,数据将被永久删除。</p>
         </div>
         <div style={{ padding: '0 28px 24px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
           <button type="button" className="sf-btn sf-btn-cancel" onClick={handleCloseModal}>

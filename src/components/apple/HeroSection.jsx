@@ -16,7 +16,7 @@ export default function HeroSection({ stats }) {
             将价格管理、客户管理与报价流程集中到一个工作台。
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-balance text-lg leading-8 text-slate md:text-[1.75rem] md:leading-[1.35]">
-            在这里处理产品资料、客户档案、报价导出，以及系统设置、审计和备份恢复。
+            在这里处理产品资料、客户档案、报价导出,以及系统设置、审计和备份恢复。
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <a href="#capabilities" className="apple-button-primary min-w-[154px]">

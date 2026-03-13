@@ -9,7 +9,7 @@ export default function ProductGrid({ modules }) {
           保留与系统实际业务直接相关的模块入口。
         </h2>
         <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate">
-          这里展示的都是可以直接进入并执行实际工作的模块，不再包含展示型或概念型内容。
+          这里展示的都是可以直接进入并执行实际工作的模块,不再包含展示型或概念型内容。
         </p>
       </Reveal>
 

@@ -27,7 +27,7 @@ async function swapSpecs() {
         const rows = productsResult[0].values;
         for (const [id, description] of rows) {
             if (typeof description === 'string') {
-                const newDescription = description.replace(/长度([：:]\s*[\d\.]+m)，壁厚([：:]\s*[\d\.]+mm)/g, '壁厚$2，长度$1');
+                const newDescription = description.replace(/长度([：:]\s*[\d\.]+m),壁厚([：:]\s*[\d\.]+mm)/g, '壁厚$2,长度$1');
                 if (newDescription !== description) {
                     db.run("UPDATE products SET description = ? WHERE id = ?", [newDescription, id]);
                     updatedProductsCount++;
@@ -42,7 +42,7 @@ async function swapSpecs() {
         const rows = warehouseProductsResult[0].values;
         for (const [id, description] of rows) {
             if (typeof description === 'string') {
-                const newDescription = description.replace(/长度([：:]\s*[\d\.]+m)，壁厚([：:]\s*[\d\.]+mm)/g, '壁厚$2，长度$1');
+                const newDescription = description.replace(/长度([：:]\s*[\d\.]+m),壁厚([：:]\s*[\d\.]+mm)/g, '壁厚$2,长度$1');
                 if (newDescription !== description) {
                     db.run("UPDATE warehouse_products SET description = ? WHERE id = ?", [newDescription, id]);
                     updatedWarehouseProductsCount++;

@@ -126,7 +126,7 @@ export default function QuoteGenerator() {
         fetchQuoteLists()
     }, [])
 
-    // 当活动的报价单切换时，重新获取其数据
+    // 当活动的报价单切换时,重新获取其数据
     useEffect(() => {
         if (activeQuoteListId) {
             fetchQuoteItems(activeQuoteListId)
@@ -154,7 +154,7 @@ export default function QuoteGenerator() {
             if (data.length > 0 && !activeQuoteListId) {
                 setActiveQuoteListId(data[0].id)
             } else if (data.length === 0) {
-                // 如果后端为空，自动创建一个默认的
+                // 如果后端为空,自动创建一个默认的
                 handleCreateQuoteList()
             }
         } catch (err) {
@@ -242,7 +242,7 @@ export default function QuoteGenerator() {
         try {
             const res = await fetch(`${API_URL}/warehouse-products`)
             const data = await res.json()
-            // 为仓库产品加上特殊前缀的ID，以免和常规产品ID冲突
+            // 为仓库产品加上特殊前缀的ID,以免和常规产品ID冲突
             setWarehouseProducts(data.map(p => ({ ...p, id: `wh_${p.id}` })))
         } catch (err) {
             console.error('获取仓库产品失败:', err)
@@ -524,7 +524,7 @@ export default function QuoteGenerator() {
             } else {
                 setResultData({
                     title: '未找到产品',
-                    message: '未在 Excel 中找到有效产品信息。请确保第一列是名称，第三列是价格。',
+                    message: '未在 Excel 中找到有效产品信息。请确保第一列是名称,第三列是价格。',
                     type: 'warning'
                 })
                 setShowResultModal(true)
@@ -611,7 +611,7 @@ export default function QuoteGenerator() {
         // 全局排除 "SMSCC" 品牌干扰项
         const keyword = queryForSearch.replace(/SMSCC/gi, '').trim().replace(/-/g, '')
 
-        // 如果剔除品牌名后关键词为空，且原始输入包含品牌名，则认为无有效搜索内容
+        // 如果剔除品牌名后关键词为空,且原始输入包含品牌名,则认为无有效搜索内容
         if (!keyword && queryForSearch.toLowerCase().includes('smscc')) {
             return []
         }
@@ -695,7 +695,7 @@ export default function QuoteGenerator() {
                 if (isPipe) {
                     if (queryType && queryType !== '导管') return false
                     if (queryDiameter) {
-                        // 匹配实际产品名称的管径位，以处理 300/288 等名称
+                        // 匹配实际产品名称的管径位,以处理 300/288 等名称
                         const matchDiameter = `${name} ${desc}`.match(/(\d{3}(?:\/\d{3})?)/)
                         if (!matchDiameter || matchDiameter[1] !== queryDiameter) return false
                     }
@@ -726,7 +726,7 @@ export default function QuoteGenerator() {
             })
         })()
 
-        // 钻具类专有搜索规则：提取【产品名称】和【型号】，组合后作为搜索关键词
+        // 钻具类专有搜索规则：提取【产品名称】和【型号】,组合后作为搜索关键词
         const levelDrill = targetProducts.filter(p => {
             if (!isWarehouseSearch && p.category !== '钻具类') return false
 
@@ -803,7 +803,7 @@ export default function QuoteGenerator() {
     const handleExportQuote = () => {
         const activeItems = quoteItems.filter(item => item.quantity > 0)
         if (activeItems.length === 0) {
-            alert('没有数量大于0的产品，无法导出')
+            alert('没有数量大于0的产品,无法导出')
             return
         }
 
@@ -816,7 +816,7 @@ export default function QuoteGenerator() {
 
         // Build AOA: Row0=title, Row1=date, Row2=header, Row3+=data, last=total
         const headers = ['产品名称', '产品规格', '单价', '数量', '合计']
-        const noticeText = "购买须知：\n1.此报价单具有合同效力，买卖双方需严格对待约定事项；\n2.由于行业特殊性，此报价单不含税、不含运费；\n3.买方收货时，需检查产品外观、核对数量。如物流原因造成产品短缺、货物变形，应第一时间联系卖方及物流协商解决。买方收到后，第一时间使用或者使用前务必对导管进行试压测试，如发现漏水现象，拍视频并及时联系本公司调换。如未试压先使用，则不予调换；\n4.买方需认真对待清单，如因质量问题以外原因产生损失，损失由买方承担。"
+        const noticeText = "购买须知：\n1.此报价单具有合同效力,买卖双方需严格对待约定事项；\n2.由于行业特殊性,此报价单不含税、不含运费；\n3.买方收货时,需检查产品外观、核对数量。如物流原因造成产品短缺、货物变形,应第一时间联系卖方及物流协商解决。买方收到后,第一时间使用或者使用前务必对导管进行试压测试,如发现漏水现象,拍视频并及时联系本公司调换。如未试压先使用,则不予调换；\n4.买方需认真对待清单,如因质量问题以外原因产生损失,损失由买方承担。"
         const aoa = [
             ['江南管业报价单'],
             [],
@@ -1259,7 +1259,7 @@ export default function QuoteGenerator() {
                     onClick={() => setShowProductModal(true)}
                 >
                     <div style={styles.dropTitle}>点击「＋」按钮或此处选择产品生成报价</div>
-                    <div style={styles.dropDesc}>您可以从产品库中选择产品，或添加自定义产品</div>
+                    <div style={styles.dropDesc}>您可以从产品库中选择产品,或添加自定义产品</div>
                 </div>
             )}
 
@@ -1469,7 +1469,7 @@ export default function QuoteGenerator() {
                         </svg>
                     </div>
                     <p style={styles.clearModalMessage}>
-                        确定要清除所有报价信息吗？此操作不可撤销，所有数据将被永久删除。
+                        确定要清除所有报价信息吗？此操作不可撤销,所有数据将被永久删除。
                     </p>
                     <div style={styles.clearModalStats}>
                         <div style={styles.statItem}>

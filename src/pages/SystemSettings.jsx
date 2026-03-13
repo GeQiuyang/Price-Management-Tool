@@ -220,7 +220,7 @@ export default function SystemSettings() {
                         <>
                             <div style={styles.errorIcon}>✕</div>
                             <h3 style={styles.modalTitle}>保存失败</h3>
-                            <p style={styles.modalMessage}>保存设置时出错，请重试</p>
+                            <p style={styles.modalMessage}>保存设置时出错,请重试</p>
                         </>
                     )}
                     <button className="sf-btn sf-btn-confirm" style={{ width: '100%', marginTop: '20px' }} onClick={handleCloseModal}>

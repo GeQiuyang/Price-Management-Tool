@@ -16,8 +16,8 @@ db.serialize(() => {
     for (const item of rows) {
       const desc = item.description || '';
       
-      // 我们只处理包含"型号"、"规格"、"重"的条目，或者像"60-26"这种直接是型号的条目
-      // 如果没有描述，直接跳过
+      // 我们只处理包含"型号"、"规格"、"重"的条目,或者像"60-26"这种直接是型号的条目
+      // 如果没有描述,直接跳过
       if (!desc) continue;
       
       let newDesc = desc;
@@ -50,8 +50,8 @@ db.serialize(() => {
          weightStr = weightMatch[1];
       }
       
-      // 对于捞沙斗/筒钻等钻具，不去动它们复杂的参数组合，这里只针对看起来像截齿/齿座的
-      // 判断条件：如果有上面提取到的 specStr 或者 weightStr，或者是纯型号，或者是包含NT/AS等
+      // 对于捞沙斗/筒钻等钻具,不去动它们复杂的参数组合,这里只针对看起来像截齿/齿座的
+      // 判断条件：如果有上面提取到的 specStr 或者 weightStr,或者是纯型号,或者是包含NT/AS等
       // 或者干脆直接匹配用户的 "型号43AS, 规格:10支/箱, 含箱总重18.1kg" 格式
       
       if ((desc.includes('箱') || desc.includes('支/') || desc.includes('重') || desc.includes('型号')) && 
@@ -62,13 +62,13 @@ db.serialize(() => {
           if (specStr) parts.push(`规格：${specStr}`);
           if (weightStr) parts.push(`总重：${weightStr}`);
           
-          // 若有其他无法解析但原本有价值的信息（比如“适配宝峨齿齿座”），保留？
+          // 若有其他无法解析但原本有价值的信息（比如“适配宝峨齿齿座”）,保留？
           // 为了严谨并符合用户的示例: "型号：43AS | 规格：10支/箱 | 总重：18.1kg"
           // 取保parts非空
           if (parts.length > 0) {
               newDesc = parts.join(' | ');
               
-              // 加上原有的其他特殊说明，如果有的话
+              // 加上原有的其他特殊说明,如果有的话
               const otherMatch = desc.match(/,(适配.+)/);
               if (otherMatch) {
                  newDesc += ` | ${otherMatch[1]}`;

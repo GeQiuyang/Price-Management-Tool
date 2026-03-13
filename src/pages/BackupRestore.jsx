@@ -72,7 +72,7 @@ function BackupRestore() {
         setMessage({ type: 'error', text: data.error || '备份创建失败' })
       }
     } catch (error) {
-      setMessage({ type: 'error', text: '网络错误，请稍后重试' })
+      setMessage({ type: 'error', text: '网络错误,请稍后重试' })
     } finally {
       setLoading(false)
       setTimeout(() => setMessage({ type: '', text: '' }), 3000)
@@ -100,7 +100,7 @@ function BackupRestore() {
         setMessage({ type: 'error', text: data.error || '数据恢复失败' })
       }
     } catch (error) {
-      setMessage({ type: 'error', text: '网络错误，请稍后重试' })
+      setMessage({ type: 'error', text: '网络错误,请稍后重试' })
     } finally {
       setLoading(false)
       setTimeout(() => setMessage({ type: '', text: '' }), 3000)
@@ -134,7 +134,7 @@ function BackupRestore() {
         setMessage({ type: 'error', text: data.error || '快照创建失败' })
       }
     } catch (error) {
-      setMessage({ type: 'error', text: '网络错误，请稍后重试' })
+      setMessage({ type: 'error', text: '网络错误,请稍后重试' })
     } finally {
       setLoading(false)
       setTimeout(() => setMessage({ type: '', text: '' }), 3000)
@@ -162,7 +162,7 @@ function BackupRestore() {
         setMessage({ type: 'error', text: data.error || '快照恢复失败' })
       }
     } catch (error) {
-      setMessage({ type: 'error', text: '网络错误，请稍后重试' })
+      setMessage({ type: 'error', text: '网络错误,请稍后重试' })
     } finally {
       setLoading(false)
       setTimeout(() => setMessage({ type: '', text: '' }), 3000)
@@ -191,7 +191,7 @@ function BackupRestore() {
         setMessage({ type: 'error', text: data.error || '快照删除失败' })
       }
     } catch (error) {
-      setMessage({ type: 'error', text: '网络错误，请稍后重试' })
+      setMessage({ type: 'error', text: '网络错误,请稍后重试' })
     } finally {
       setLoading(false)
       setTimeout(() => setMessage({ type: '', text: '' }), 3000)
@@ -362,7 +362,7 @@ function BackupRestore() {
             <div style={{ fontSize: '24px', lineHeight: '1' }}>⚠️</div>
             <div style={{ color: '#991B1B', fontSize: '14px', lineHeight: '1.5' }}>
               <p style={{ margin: '0 0 8px', fontWeight: 'bold' }}>警告：此操作将覆盖当前所有数据！</p>
-              <p style={{ margin: 0 }}>恢复后，当前的所有更改将丢失。</p>
+              <p style={{ margin: 0 }}>恢复后,当前的所有更改将丢失。</p>
             </div>
           </div>
           <div style={{ fontSize: '14px', color: '#4B5563', lineHeight: '1.8', backgroundColor: '#F9FAFB', padding: '16px', borderRadius: '8px' }}>

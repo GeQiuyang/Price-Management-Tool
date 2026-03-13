@@ -11,13 +11,13 @@
 
 ### Mac
 
-Mac 通常自带 Git，打开终端验证：
+Mac 通常自带 Git,打开终端验证：
 
 ```bash
 git --version
 ```
 
-如果未安装，执行以下命令会自动弹窗安装：
+如果未安装,执行以下命令会自动弹窗安装：
 
 ```bash
 xcode-select --install
@@ -25,7 +25,7 @@ xcode-select --install
 
 ### Windows
 
-前往 [https://git-scm.com/download/win](https://git-scm.com/download/win) 下载安装包，一路默认选项安装即可。
+前往 [https://git-scm.com/download/win](https://git-scm.com/download/win) 下载安装包,一路默认选项安装即可。
 
 ---
 
@@ -33,8 +33,8 @@ xcode-select --install
 
 前往 [https://nodejs.org](https://nodejs.org) 下载 **LTS（长期支持）版本**：
 
-- **Mac** — 下载 `.pkg` 文件，双击安装
-- **Windows** — 下载 `.msi` 文件，双击安装
+- **Mac** — 下载 `.pkg` 文件,双击安装
+- **Windows** — 下载 `.msi` 文件,双击安装
 
 安装完成后验证：
 
@@ -75,9 +75,9 @@ npm run start
 | 前端 (Vite) | http://localhost:5173 | React 前端页面 |
 | 后端 (Express) | http://localhost:3001 | API 服务 |
 
-启动成功后，在浏览器中打开 `http://localhost:5173` 即可使用。
+启动成功后,在浏览器中打开 `http://localhost:5173` 即可使用。
 
-> **提示**：也可以使用 `bash start.sh` 启动，它会自动释放被占用的端口。
+> **提示**：也可以使用 `bash start.sh` 启动,它会自动释放被占用的端口。
 
 ---
 
@@ -116,7 +116,7 @@ npm install
 
 - **前端层**: Nginx (反向代理 + 静态资源直接托管) 或使用 Vercel / Netlify。
 - **后端层**: Node.js + PM2 (进程守护)。
-- **数据层**: 本地 SQLite，或迁移至 PostgreSQL + Redis (按需启用)。
+- **数据层**: 本地 SQLite,或迁移至 PostgreSQL + Redis (按需启用)。
 
 ### 2. 前端静态部署 (推荐 Nginx)
 
@@ -160,10 +160,10 @@ npm install
 
 ### 3. 后端服务部署 (推荐 PM2)
 
-项目中包含一个 Express 后端 API (端口默认为 3001)，需要使其在服务器后台常驻运行脱离控制台生命周期。
+项目中包含一个 Express 后端 API (端口默认为 3001),需要使其在服务器后台常驻运行脱离控制台生命周期。
 
 1. **环境与依赖**:
-   在服务器上安装 Node.js，然后上传后端需要的代码（通常是提交 Git 并在服务器端拉取）。
+   在服务器上安装 Node.js,然后上传后端需要的代码（通常是提交 Git 并在服务器端拉取）。
    ```bash
    cd Price-Management-Tool
    npm install --production
@@ -177,7 +177,7 @@ npm install
    # 启动后端服务
    pm2 start npm --name "price-api" -- run server
    
-   # （如果启动命令是单纯的 node 脚本，也可以直接 pm2 start server/server.js --name "price-api"）
+   # （如果启动命令是单纯的 node 脚本,也可以直接 pm2 start server/server.js --name "price-api"）
    ```
 
 3. **常用 PM2 命令**:
@@ -185,12 +185,12 @@ npm install
    pm2 logs price-api       # 查看运行日志
    pm2 restart price-api    # 重启服务
    pm2 startup              # 设置开机自启 (需按终端提示执行对应命令)
-   pm2 save                 # 保存当前 PM2 进程列表，以便开机自启
+   pm2 save                 # 保存当前 PM2 进程列表,以便开机自启
    ```
 
 ### 4. 生产环境变量配置
 
-请确保在生产环境服务器项目根目录中，创建 `.env` 文件，配置真实且安全的生产环境凭证，尤其是数据库信息和身份验证密钥：
+请确保在生产环境服务器项目根目录中,创建 `.env` 文件,配置真实且安全的生产环境凭证,尤其是数据库信息和身份验证密钥：
 ```env
 # 服务端口
 PORT=3001
@@ -202,7 +202,7 @@ JWT_SECRET=your_production_secure_secret_key
 
 ### 5. Docker 容器化部署（替代方案）
 
-如果你的团队或服务器偏导向容器运维，可以利用 Docker：
+如果你的团队或服务器偏导向容器运维,可以利用 Docker：
 撰写 `Dockerfile` 使用多阶段构建：
 - 构建层（Node 环境执行 `npm run build`）
-- 运行层（拷贝 `dist/` 送入 Nginx 镜像，或通过 Nginx + Node 后端协同镜像）。如果采用 `docker-compose` 来编排将更加清晰，可以一次性拉起前端、后端容器与数据库容器。
+- 运行层（拷贝 `dist/` 送入 Nginx 镜像,或通过 Nginx + Node 后端协同镜像）。如果采用 `docker-compose` 来编排将更加清晰,可以一次性拉起前端、后端容器与数据库容器。

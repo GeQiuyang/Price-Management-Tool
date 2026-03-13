@@ -65,7 +65,7 @@ const updatePipeWeights = async () => {
         if (!lengthMatch) continue
         const length = parseFloat(lengthMatch[1])
 
-        // 如果该长度不在需要计算的列表中，跳过（不过用户说是上面这几个长度）
+        // 如果该长度不在需要计算的列表中,跳过（不过用户说是上面这几个长度）
         if (!lengths.includes(length)) continue
 
         // 匹配壁厚
@@ -84,11 +84,11 @@ const updatePipeWeights = async () => {
         const targetWeight = (weightPerMeter * length).toFixed(2)
 
         // 更新 description
-        // 如果已经包含重量，则替换
+        // 如果已经包含重量,则替换
         if (newDesc.includes('重量')) {
-            newDesc = newDesc.replace(/，?重量.*?kg/, `，重量${targetWeight}kg`)
+            newDesc = newDesc.replace(/,?重量.*?kg/, `,重量${targetWeight}kg`)
         } else {
-            newDesc = `${newDesc}，重量${targetWeight}kg`
+            newDesc = `${newDesc},重量${targetWeight}kg`
         }
 
         if (newDesc !== product.description) {

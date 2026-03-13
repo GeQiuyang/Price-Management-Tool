@@ -69,7 +69,7 @@
 **完整的认证API** (`/server/controllers/auth.js`):
 - ✅ `register` - 用户注册
   - 用户名/邮箱唯一性检查
-  - 密码加密（bcrypt，10轮加盐）
+  - 密码加密（bcrypt,10轮加盐）
   - 自动分配默认角色（viewer）
   - 创建会话记录
   - 返回JWT令牌和刷新令牌
@@ -414,7 +414,7 @@ curl -X GET http://localhost:3001/api/auth/me \
 
 1. **认证安全**
    - ✅ JWT令牌认证
-   - ✅ 密码加密（bcrypt，10轮加盐）
+   - ✅ 密码加密（bcrypt,10轮加盐）
    - ✅ 令牌过期机制
    - ✅ 刷新令牌机制
    - ✅ 会话管理
@@ -472,7 +472,7 @@ curl -X GET http://localhost:3001/api/auth/me \
 
 ### 1. 数据库迁移
 
-当前项目使用SQLite，新功能使用PostgreSQL。需要：
+当前项目使用SQLite,新功能使用PostgreSQL。需要：
 
 1. 安装PostgreSQL数据库
 2. 运行初始化脚本：`node server/init-db.js`
@@ -488,14 +488,14 @@ curl -X GET http://localhost:3001/api/auth/me \
 
 ### 3. 密码重置
 
-当前密码重置链接输出到控制台，生产环境需要：
+当前密码重置链接输出到控制台,生产环境需要：
 - 配置邮件服务（SMTP）
 - 发送真实邮件
 - 实现邮件模板
 
 ### 4. Redis连接
 
-Redis是可选的，如果连接失败：
+Redis是可选的,如果连接失败：
 - 系统会继续运行
 - 但不会使用缓存功能
 - 日志会显示警告信息
@@ -545,7 +545,7 @@ Redis是可选的，如果连接失败：
 
 ## 📞 技术支持
 
-如有问题，请参考：
+如有问题,请参考：
 - 架构文档：`/ARCHITECTURE.md`
 - API文档：待实现
 - 问题反馈：GitHub Issues

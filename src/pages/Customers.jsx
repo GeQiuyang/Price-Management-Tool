@@ -559,7 +559,7 @@ export default function Customers() {
       >
         <div style={{ padding: "8px 4px 4px" }}>
           <p style={styles.confirmMessage}>确定要删除该客户吗？</p>
-          <p style={styles.confirmHint}>删除后数据将进入回收站，可在回收站中恢复或永久删除。</p>
+          <p style={styles.confirmHint}>删除后数据将进入回收站,可在回收站中恢复或永久删除。</p>
           <div style={styles.confirmActions}>
             <button type="button" className="sf-btn sf-btn-cancel" onClick={() => setPendingDeleteCustomer(null)}>
               取消

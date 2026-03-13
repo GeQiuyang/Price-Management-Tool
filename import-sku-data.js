@@ -152,25 +152,25 @@ const generateSKUTable = () => {
   })
   
   const bitTypes = [
-    { sku: 'BT-60-60-24', name: '赛迈斯宝石截齿60 · 60-24', price: 270, description: '合金直径28mm，适合土层', category: '截齿类', status: 'active' },
-    { sku: 'BT-60-60-24-R', name: '赛迈斯宝石截齿60 · 60-24', price: 290, description: '合金直径28mm，适合岩层', category: '截齿类', status: 'active' },
+    { sku: 'BT-60-60-24', name: '赛迈斯宝石截齿60 · 60-24', price: 270, description: '合金直径28mm,适合土层', category: '截齿类', status: 'active' },
+    { sku: 'BT-60-60-24-R', name: '赛迈斯宝石截齿60 · 60-24', price: 290, description: '合金直径28mm,适合岩层', category: '截齿类', status: 'active' },
   ]
   tableData.push(...bitTypes)
   
   const toolTypes = [
-    { sku: 'DB-1200-20', name: '捞沙斗 · 1200mm', price: 6500, description: '1200mm，壁厚20mm', category: '钻具类', status: 'active' },
-    { sku: 'DB-1500-20', name: '捞沙斗 · 1500mm', price: 7500, description: '1500mm，壁厚20mm', category: '钻具类', status: 'active' },
-    { sku: 'CB-1200-20', name: '筒钻 · 1200mm', price: 13000, description: '1200mm，壁厚20mm', category: '钻具类', status: 'active' },
-    { sku: 'CB-1500-20', name: '筒钻 · 1500mm', price: 15000, description: '1500mm，壁厚20mm', category: '钻具类', status: 'active' },
-    { sku: 'LZZT-1200-20', name: '螺旋钻头 · 1200mm', price: 800, description: '1200mm，壁厚20mm高效螺旋钻头', category: '钻具类', status: 'active' },
+    { sku: 'DB-1200-20', name: '捞沙斗 · 1200mm', price: 6500, description: '1200mm,壁厚20mm', category: '钻具类', status: 'active' },
+    { sku: 'DB-1500-20', name: '捞沙斗 · 1500mm', price: 7500, description: '1500mm,壁厚20mm', category: '钻具类', status: 'active' },
+    { sku: 'CB-1200-20', name: '筒钻 · 1200mm', price: 13000, description: '1200mm,壁厚20mm', category: '钻具类', status: 'active' },
+    { sku: 'CB-1500-20', name: '筒钻 · 1500mm', price: 15000, description: '1500mm,壁厚20mm', category: '钻具类', status: 'active' },
+    { sku: 'LZZT-1200-20', name: '螺旋钻头 · 1200mm', price: 800, description: '1200mm,壁厚20mm高效螺旋钻头', category: '钻具类', status: 'active' },
   ]
   tableData.push(...toolTypes)
   
   const accessoryTypes = [
-    { sku: 'MT-18-4', name: '泥浆管 · 18m', price: 330, description: '口径4英寸，长度18m', category: '配件类', status: 'active' },
+    { sku: 'MT-18-4', name: '泥浆管 · 18m', price: 330, description: '口径4英寸,长度18m', category: '配件类', status: 'active' },
     { sku: 'MP-75', name: '泥浆泵 · 75kW', price: 6500, description: '75千瓦', category: '配件类', status: 'active' },
-    { sku: 'ZG-3-89', name: '钻杆 · 3m', price: 400, description: '钻杆，长度3m，直径89mm', category: '配件类', status: 'active' },
-    { sku: 'JZZG-3-89', name: '加重钻杆 · 3m', price: 600, description: '加重钻杆，长度3m，直径89mm', category: '配件类', status: 'active' },
+    { sku: 'ZG-3-89', name: '钻杆 · 3m', price: 400, description: '钻杆,长度3m,直径89mm', category: '配件类', status: 'active' },
+    { sku: 'JZZG-3-89', name: '加重钻杆 · 3m', price: 600, description: '加重钻杆,长度3m,直径89mm', category: '配件类', status: 'active' },
   ]
   tableData.push(...accessoryTypes)
   
@@ -232,7 +232,7 @@ const importProducts = async () => {
       const errorMsg = error?.message || String(error)
       if (errorMsg.includes('UNIQUE constraint')) {
         skipCount++
-        console.log(`- ${product.sku} - 已存在，跳过`)
+        console.log(`- ${product.sku} - 已存在,跳过`)
       } else {
         console.error(`✗ ${product.sku} - 错误: ${errorMsg}`)
         console.error(`   数据: ${JSON.stringify(product)}`)

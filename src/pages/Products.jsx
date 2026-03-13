@@ -209,7 +209,7 @@ export default function Products() {
 
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
-          alert('登录已过期，请重新登录')
+          alert('登录已过期,请重新登录')
           localStorage.removeItem('token')
           localStorage.removeItem('user')
           window.location.href = '/login'
@@ -233,7 +233,7 @@ export default function Products() {
       handleCloseModal()
     } catch (error) {
       console.error('保存产品失败:', error)
-      alert('保存产品失败，请稍后重试')
+      alert('保存产品失败,请稍后重试')
     }
   }
 
@@ -248,14 +248,14 @@ export default function Products() {
       // 全局排除 "SMSCC" 品牌干扰项：在处理关键词和匹配目标时均忽略它
       const keyword = trimmedQuery.replace(/SMSCC/gi, '').trim().replace(/-/g, '')
 
-      // 如果剔除品牌名后关键词为空，且原始输入包含品牌名，则认为无有效搜索内容（不显示全列表）
+      // 如果剔除品牌名后关键词为空,且原始输入包含品牌名,则认为无有效搜索内容（不显示全列表）
       if (!keyword && trimmedQuery.toLowerCase().includes('smscc')) {
         return []
       }
 
       const lowerKeyword = keyword.toLowerCase()
       const numbers = keyword.match(/\d+/g)
-      // 提取中文部分和数字部分，用于组合匹配
+      // 提取中文部分和数字部分,用于组合匹配
       const chinesePart = keyword.replace(/[\d\s]+/g, '').toLowerCase()
       const numberPart = numbers ? numbers.join('') : ''
 
@@ -266,7 +266,7 @@ export default function Products() {
       // 料斗搜索格式：料斗+尺寸+厚度
       // 接头搜索格式：300+尖丝+接头+公扣/母扣/衬套
       const levelPipe = (() => {
-        // 渐进消费法：去掉空格后依次提取各字段，每次提取后移除已匹配部分
+        // 渐进消费法：去掉空格后依次提取各字段,每次提取后移除已匹配部分
         let remaining = keyword.replace(/[\s+]+/g, '')
         // 1. 提取直径 (如 300, 300/288, 260)
         let queryDiameter = null
@@ -279,15 +279,15 @@ export default function Products() {
         let queryType = null
         const tym = remaining.match(/(导管|接头|衬套|公扣|母扣|料斗)/)
         if (tym) { queryType = tym[1]; remaining = remaining.replace(tym[1], '') }
-        // 3. 先提取厚度 Xmm（更具体，避免被长度 Xm 抢走）
+        // 3. 先提取厚度 Xmm（更具体,避免被长度 Xm 抢走）
         let queryThickness = null
         const thm = remaining.match(/(\d+\.?\d*)mm/)
         if (thm) { queryThickness = thm[1]; remaining = remaining.replace(thm[0], '') }
-        // 4. 提取长度 Xm（mm 已被消费，不会冲突）
+        // 4. 提取长度 Xm（mm 已被消费,不会冲突）
         let queryLength = null
         const lm = remaining.match(/(\d+\.?\d*)m/)
         if (lm) { queryLength = lm[1]; remaining = remaining.replace(lm[0], '') }
-        // 5. 剩余的裸数字：料斗→尺寸+厚度，导管→厚度
+        // 5. 剩余的裸数字：料斗→尺寸+厚度,导管→厚度
         const remainingNums = remaining.match(/\d+\.?\d*/g) || []
         let queryHopperSize = null
         if (queryType === '料斗') {
@@ -334,7 +334,7 @@ export default function Products() {
               const descThickness = desc.match(/厚度[：:]?\s*(\d+\.?\d*)mm/)
               if (!descThickness || descThickness[1] !== queryThickness) return false
             }
-            // 如果搜索词包含导管/接头特有关键词，跳过料斗
+            // 如果搜索词包含导管/接头特有关键词,跳过料斗
             if (queryDiameter || queryThread) return false
             return textMatch
           }
@@ -342,7 +342,7 @@ export default function Products() {
           // ── 导管匹配 ──
           if (isPipe) {
             if (queryType && queryType !== '导管') return false
-            // 匹配直径：name 开头的匹配项，支持 300/288 等格式
+            // 匹配直径：name 开头的匹配项,支持 300/288 等格式
             if (queryDiameter) {
               const matchDiameter = `${name} ${desc}`.match(/(\d{3}(?:\/\d{3})?)/)
               if (!matchDiameter || matchDiameter[1] !== queryDiameter) return false
@@ -372,17 +372,17 @@ export default function Products() {
             }
             // 匹配丝类型
             if (queryThread && !`${name} ${desc}`.includes(queryThread)) return false
-            // 接头没有长度/厚度，如果搜索了这些就不匹配
+            // 接头没有长度/厚度,如果搜索了这些就不匹配
             if (queryLength || queryThickness) return false
             return textMatch
           }
 
-          // ── 兜底：其他导管类产品，用通用文本匹配 ──
+          // ── 兜底：其他导管类产品,用通用文本匹配 ──
           return textMatch
         })
       })()
 
-      // 钻具类专有搜索规则：提取【产品名称】和【型号】，组合后作为搜索关键词
+      // 钻具类专有搜索规则：提取【产品名称】和【型号】,组合后作为搜索关键词
       const levelDrill = products.filter(p => {
         if (p.category !== '钻具类') return false
         // 钻具类搜索：合并名称和完整描述进行搜索
@@ -440,7 +440,7 @@ export default function Products() {
             (p.description && p.description.toLowerCase().includes(lowerKeyword))
         })
 
-      // Level 5: 拆词匹配 — 将查询拆为多个片段，所有片段都在name+description中出现即命中
+      // Level 5: 拆词匹配 — 将查询拆为多个片段,所有片段都在name+description中出现即命中
       const segments = keyword.match(/[\u4e00-\u9fff]+|\d+[\-\.]\d+[\-\.\d]*|\d+/g) || []
       const level5 = (segments.length > 1)
         ? products.filter((p) => {
@@ -462,11 +462,11 @@ export default function Products() {
         }
       }
 
-      // 额外逻辑：如果用户输入包含 SMSCC 但过滤后没有任何有效片段，则返回空结果（防止显示全列表）
+      // 额外逻辑：如果用户输入包含 SMSCC 但过滤后没有任何有效片段,则返回空结果（防止显示全列表）
       const hasSmscc = searchQuery.toLowerCase().includes('smscc')
       if (hasSmscc && result.length > 0) {
         // 验证结果中是否真的匹配了除 SMSCC 以外的内容
-        // 这里我们信任各 level 内部的过滤，但如果最终结果是因为 SMSCC 导致的匹配（虽然逻辑上不应该），
+        // 这里我们信任各 level 内部的过滤,但如果最终结果是因为 SMSCC 导致的匹配（虽然逻辑上不应该）,
         // 可以在这里做二次检查。不过目前各 level 已有 category 隔离或其他检查。
       }
 
@@ -484,12 +484,12 @@ export default function Products() {
         desc = desc.replace(/长度\d+(?:\.\d+)?m/, '')
       }
       if (product.name.includes('尖丝')) {
-        desc = desc.replace(/，?尖丝$/, '').replace(/尖丝，?/, '')
+        desc = desc.replace(/,?尖丝$/, '').replace(/尖丝,?/, '')
       } else if (product.name.includes('方丝')) {
-        desc = desc.replace(/，?方丝$/, '').replace(/方丝，?/, '')
+        desc = desc.replace(/,?方丝$/, '').replace(/方丝,?/, '')
       }
     }
-    return desc.replace(/，+$/, '').replace(/^，/, '')
+    return desc.replace(/,+$/, '').replace(/^,/, '')
   }
 
   if (loading) {
@@ -500,7 +500,7 @@ export default function Products() {
   const totalPages = Math.max(1, Math.ceil(displayProducts.length / ITEMS_PER_PAGE))
   const paginatedProducts = displayProducts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
 
-  // 动态决定是否显示双价格列：如果当前显示的列表中有任何一个产品属于双价格分类，就显示
+  // 动态决定是否显示双价格列：如果当前显示的列表中有任何一个产品属于双价格分类,就显示
   const shouldShowDualPrice = displayProducts.some(p => hasDualPrice(p.category))
 
   return (
@@ -730,7 +730,7 @@ export default function Products() {
           <p style={styles.confirmMessage}>
             确定要删除产品 <strong>{pendingDeleteProduct?.name}</strong> 吗？
           </p>
-          <p style={styles.confirmHint}>删除后数据将进入回收站，可在回收站中恢复或永久删除。</p>
+          <p style={styles.confirmHint}>删除后数据将进入回收站,可在回收站中恢复或永久删除。</p>
           <div style={styles.confirmActions}>
             <button type="button" className="sf-btn sf-btn-cancel" onClick={() => setPendingDeleteProduct(null)}>
               取消

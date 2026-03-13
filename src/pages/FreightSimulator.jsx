@@ -355,9 +355,9 @@ export default function FreightSimulator() {
               <div style={styles.card}>
                 <h3 style={styles.cardTitle}>条款说明</h3>
                 <div style={styles.termDesc}>
-                  {tradeTerm === 'EXW' && 'EXW - 工厂交货：卖方在工厂交付货物，买方承担全部运输费用和风险。'}
-                  {tradeTerm === 'FOB' && 'FOB - 离岸价：卖方承担货物装上船前的费用，买方承担海运费和保险费。'}
-                  {tradeTerm === 'CIF' && 'CIF - 到岸价：卖方承担海运费和保险费，买方承担目的港费用。'}
+                  {tradeTerm === 'EXW' && 'EXW - 工厂交货：卖方在工厂交付货物,买方承担全部运输费用和风险。'}
+                  {tradeTerm === 'FOB' && 'FOB - 离岸价：卖方承担货物装上船前的费用,买方承担海运费和保险费。'}
+                  {tradeTerm === 'CIF' && 'CIF - 到岸价：卖方承担海运费和保险费,买方承担目的港费用。'}
                 </div>
               </div>
             </>

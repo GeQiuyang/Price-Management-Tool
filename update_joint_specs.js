@@ -28,7 +28,7 @@ db.serialize(() => {
     const jointType = item.产品规格.replace('外径', '');
     const newDesc = `${item.产品规格}${item.数值}mm`;
     
-    // 构造模糊匹配模式，匹配包含指定管型和接头类型的产品，且不论尖丝还是方丝
+    // 构造模糊匹配模式,匹配包含指定管型和接头类型的产品,且不论尖丝还是方丝
     // 例如："%219%公扣%"
     const namePattern = `%${pipeType}%${jointType}%`;
     

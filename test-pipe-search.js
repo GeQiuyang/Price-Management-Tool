@@ -140,7 +140,7 @@ async function run() {
             // 完全匹配产品名称 (特别针对如 "销子", "拔齿器" 此类没有规格的短名词)
             if (result.search_keywords.length > 0 && result.search_keywords.some(kw => p.name.includes(kw))) {
                 if (Object.keys(result.spec_filters).length === 0) {
-                    score += 50; // 没有规格并且名字对的上，大幅增加分数保证出列
+                    score += 50; // 没有规格并且名字对的上,大幅增加分数保证出列
                 }
             }
 

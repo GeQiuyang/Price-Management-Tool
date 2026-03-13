@@ -76,7 +76,7 @@ function Register() {
 
       setError(data.error?.message || '注册失败')
     } catch (error) {
-      setError('网络错误，请稍后重试')
+      setError('网络错误,请稍后重试')
     } finally {
       setLoading(false)
     }
@@ -104,12 +104,12 @@ function Register() {
               开启更精致的业务工作台体验。
             </h1>
             <p className="mt-6 max-w-md text-lg leading-8 text-white/70">
-              注册流程延续同样的 Apple 风格克制感，用清晰留白、聚焦输入和轻量动效提升体验。
+              注册流程延续同样的 Apple 风格克制感,用清晰留白、聚焦输入和轻量动效提升体验。
             </p>
           </div>
           <div className="rounded-[32px] border border-white/10 bg-white/[0.06] p-6 backdrop-blur-xl">
             <p className="text-3xl font-semibold tracking-[-0.05em]">默认安全</p>
-            <p className="mt-4 text-sm leading-7 text-white/[0.64]">在授予访问权限前，会先校验密码强度、身份字段和账号基础规范。</p>
+            <p className="mt-4 text-sm leading-7 text-white/[0.64]">在授予访问权限前,会先校验密码强度、身份字段和账号基础规范。</p>
           </div>
         </div>
 

@@ -341,11 +341,11 @@ async function initDB() {
   const initProducts = db.exec('SELECT COUNT(*) as count FROM products')
   if (initProducts[0]?.values[0]?.[0] === 0) {
     const defaultProducts = [
-      ['300尖丝导管3米长3毫米厚', '导管类', '300JSDG3030', 358, '300尖丝导管，长度3米，厚度3毫米', 'active'],
-      ['300尖丝导管0.5米长3毫米厚', '导管类', '300JSDG0530', 143, '300尖丝导管，长度0.5米，厚度3毫米', 'active'],
-      ['300尖丝导管1米长3毫米厚', '导管类', '300JSDG1030', 245, '300尖丝导管，长度1米，厚度3毫米', 'active'],
-      ['300尖丝导管1.5米长3毫米厚', '导管类', '300JSDG1530', 278, '300尖丝导管，长度1.5米，厚度3毫米', 'active'],
-      ['300尖丝导管4米长3毫米厚', '导管类', '300JSDG4030', 398, '300尖丝导管，长度4米，厚度3毫米', 'active'],
+      ['300尖丝导管3米长3毫米厚', '导管类', '300JSDG3030', 358, '300尖丝导管,长度3米,厚度3毫米', 'active'],
+      ['300尖丝导管0.5米长3毫米厚', '导管类', '300JSDG0530', 143, '300尖丝导管,长度0.5米,厚度3毫米', 'active'],
+      ['300尖丝导管1米长3毫米厚', '导管类', '300JSDG1030', 245, '300尖丝导管,长度1米,厚度3毫米', 'active'],
+      ['300尖丝导管1.5米长3毫米厚', '导管类', '300JSDG1530', 278, '300尖丝导管,长度1.5米,厚度3毫米', 'active'],
+      ['300尖丝导管4米长3毫米厚', '导管类', '300JSDG4030', 398, '300尖丝导管,长度4米,厚度3毫米', 'active'],
     ]
 
     defaultProducts.forEach(p => {
@@ -1625,7 +1625,7 @@ function getCostTypeName(code) {
 function checkWeightWarning(weight, maxWeight) {
   const warnings = []
   const ratio = weight / maxWeight
-  if (ratio > 0.9) warnings.push('接近限重，建议检查是否超重')
+  if (ratio > 0.9) warnings.push('接近限重,建议检查是否超重')
   if (ratio > 1) warnings.push('已超重！请拆分或更换柜型')
   return warnings
 }
@@ -1713,10 +1713,10 @@ app.post('/api/freight/calculate', (req, res) => {
       if (sortedContainers.length === 0) {
         containerResult = {
           type: 'FCL_MULTI',
-          message: '体积超过单柜容量，需要多柜运输',
+          message: '体积超过单柜容量,需要多柜运输',
           requiredVolume: volume,
           maxContainerVolume: 86,
-          warnings: ['体积超过单柜容量，需要多柜运输'],
+          warnings: ['体积超过单柜容量,需要多柜运输'],
         }
       } else {
         const [code, config] = sortedContainers[0]

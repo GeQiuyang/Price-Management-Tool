@@ -254,11 +254,11 @@ async function initDB() {
   const initProducts = db.exec('SELECT COUNT(*) as count FROM products')
   if (initProducts[0]?.values[0]?.[0] === 0) {
     const defaultProducts = [
-      ['300尖丝导管3米长3毫米厚', '导管类', '300JSDG3030', 358, '300尖丝导管，长度3米，厚度3毫米', 'active'],
-      ['300尖丝导管0.5米长3毫米厚', '导管类', '300JSDG0530', 143, '300尖丝导管，长度0.5米，厚度3毫米', 'active'],
-      ['300尖丝导管1米长3毫米厚', '导管类', '300JSDG1030', 245, '300尖丝导管，长度1米，厚度3毫米', 'active'],
-      ['300尖丝导管1.5米长3毫米厚', '导管类', '300JSDG1530', 278, '300尖丝导管，长度1.5米，厚度3毫米', 'active'],
-      ['300尖丝导管4米长3毫米厚', '导管类', '300JSDG4030', 398, '300尖丝导管，长度4米，厚度3毫米', 'active'],
+      ['300尖丝导管3米长3毫米厚', '导管类', '300JSDG3030', 358, '300尖丝导管,长度3米,厚度3毫米', 'active'],
+      ['300尖丝导管0.5米长3毫米厚', '导管类', '300JSDG0530', 143, '300尖丝导管,长度0.5米,厚度3毫米', 'active'],
+      ['300尖丝导管1米长3毫米厚', '导管类', '300JSDG1030', 245, '300尖丝导管,长度1米,厚度3毫米', 'active'],
+      ['300尖丝导管1.5米长3毫米厚', '导管类', '300JSDG1530', 278, '300尖丝导管,长度1.5米,厚度3毫米', 'active'],
+      ['300尖丝导管4米长3毫米厚', '导管类', '300JSDG4030', 398, '300尖丝导管,长度4米,厚度3毫米', 'active'],
     ]
 
     defaultProducts.forEach(p => {
@@ -1026,7 +1026,7 @@ async function startServer() {
     try {
       await connectRedis()
     } catch (redisError) {
-      console.warn('Redis连接失败，将不使用缓存功能:', redisError.message)
+      console.warn('Redis连接失败,将不使用缓存功能:', redisError.message)
     }
 
     app.listen(PORT, () => {

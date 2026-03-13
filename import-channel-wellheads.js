@@ -45,7 +45,7 @@ async function run() {
             const price = item.终端价;
             const dealer_price = item.经销商价;
             const length = item.长度;
-            const description = `长度：${length}，重量：未知`;
+            const description = `长度：${length},重量：未知`;
             const sku = `CPW-${name}-${length.replace('.', '_')}-${counter++}`;
             const category = '导管类';
 

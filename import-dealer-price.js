@@ -46,7 +46,7 @@ const importDealerPrices = async () => {
         db.run('ALTER TABLE products ADD COLUMN dealer_price REAL')
         console.log('已添加 dealer_price 列')
     } catch (e) {
-        // 列已存在，忽略
+        // 列已存在,忽略
     }
 
     let successCount = 0
@@ -55,7 +55,7 @@ const importDealerPrices = async () => {
         const name = `${item.产品名称} · ${item.产品规格}`
         const sku = `P-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
         const dealerPrice = item.价格
-        const description = `${item.产品名称}，规格：${item.产品规格}`
+        const description = `${item.产品名称},规格：${item.产品规格}`
 
         try {
             db.run(

@@ -40,7 +40,7 @@ function Login() {
 
       setError(data.error?.message || data.error || '登录失败')
     } catch (error) {
-      setError('网络错误，请稍后重试')
+      setError('网络错误,请稍后重试')
     } finally {
       setLoading(false)
     }
@@ -78,7 +78,7 @@ function Login() {
 
       setError(data.error?.message || '登录失败')
     } catch (error) {
-      setError('网络错误，请稍后重试')
+      setError('网络错误,请稍后重试')
     } finally {
       setLoading(false)
     }
@@ -101,7 +101,7 @@ function Login() {
               Apple 风格的价格管理工作台。
             </h1>
             <p className="mt-6 max-w-lg text-lg leading-8 text-slate">
-              以极简界面、超大字号和克制动效，重塑价格、海运费、报价与客户管理流程。
+              以极简界面、超大字号和克制动效,重塑价格、海运费、报价与客户管理流程。
             </p>
           </div>
           <div className="grid gap-4">
@@ -131,7 +131,7 @@ function Login() {
             <div className="mb-10">
               <p className="text-sm uppercase tracking-[0.32em] text-slate">登录入口</p>
               <h2 className="mt-4 text-5xl font-semibold tracking-[-0.06em] text-ink md:text-6xl">欢迎回来</h2>
-              <p className="mt-4 text-base leading-7 text-slate">请选择快捷角色，或使用账号密码登录。</p>
+              <p className="mt-4 text-base leading-7 text-slate">请选择快捷角色,或使用账号密码登录。</p>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
