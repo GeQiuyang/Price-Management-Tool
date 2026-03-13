@@ -816,6 +816,7 @@ export default function QuoteGenerator() {
 
         // Build AOA: Row0=title, Row1=date, Row2=header, Row3+=data, last=total
         const headers = ['产品名称', '产品规格', '单价', '数量', '合计']
+        const noticeText = "购买须知：\n1.此报价单具有合同效力，买卖双方需严格对待约定事项；\n2.由于行业特殊性，此报价单不含税、不含运费；\n3.买方收货时，需检查产品外观、核对数量。如物流原因造成产品短缺、货物变形，应第一时间联系卖方及物流协商解决。买方收到后，第一时间使用或者使用前务必对导管进行试压测试，如发现漏水现象，拍视频并及时联系本公司调换。如未试压先使用，则不予调换；\n4.买方需认真对待清单，如因质量问题以外原因产生损失，损失由买方承担。"
         const aoa = [
             ['江南管业报价单'],
             [],
@@ -828,6 +829,7 @@ export default function QuoteGenerator() {
                 item.price * item.quantity,
             ]),
             ['', '', '', '总计', totalAmount],
+            [noticeText],
         ]
 
         const ws = XLSX.utils.aoa_to_sheet(aoa)
@@ -870,19 +872,35 @@ export default function QuoteGenerator() {
             border,
             alignment: { vertical: 'center' },
         }
-        for (let R = 2; R <= range.e.r; R++) {
+        const noticeR = range.e.r
+        for (let R = 2; R <= noticeR; R++) {
+            const isNoticeRow = R === noticeR
             for (let C = 0; C <= 4; C++) {
                 const ref = XLSX.utils.encode_cell({ r: R, c: C })
                 if (!ws[ref]) ws[ref] = { v: '', t: 's' }
-                ws[ref].s = { ...dataStyle }
+                
+                if (isNoticeRow) {
+                    ws[ref].s = {
+                        font: { name: '\u6977\u4F53', sz: 18 },
+                        alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+                        border
+                    }
+                } else {
+                    ws[ref].s = { ...dataStyle }
+                }
             }
         }
 
+        // --- Handle notice row merge ---
+        if (!ws['!merges']) ws['!merges'] = []
+        ws['!merges'].push({ s: { r: noticeR, c: 0 }, e: { r: noticeR, c: 4 } })
+
         // --- Row heights ---
         ws['!rows'] = [{ hpt: 37 }, { hpt: 37 }]
-        for (let R = 2; R <= range.e.r; R++) {
+        for (let R = 2; R < noticeR; R++) {
             ws['!rows'][R] = { hpt: 24 }
         }
+        ws['!rows'][noticeR] = { hpt: 166 } // 根据购买须知内容增加高度
 
         // --- Column widths ---
         ws['!cols'] = [
