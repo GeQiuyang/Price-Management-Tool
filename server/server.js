@@ -1853,7 +1853,7 @@ app.post('/api/quote-items', (req, res) => {
 
     const result = runSQL(
       'INSERT INTO quote_items (sku, name, description, price, quantity, order_index, quote_list_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [String(productId || ''), name, description || '', price, quantity || 1, nextOrder, list_id || 'default-quote']
+      [String(productId || ''), name, description || '', price, quantity ?? 1, nextOrder, list_id || 'default-quote']
     )
     const item = queryOne('SELECT * FROM quote_items WHERE id = ?', [result.lastInsertRowid])
     // Map sku field to productId for frontend
@@ -1890,9 +1890,17 @@ app.put('/api/quote-items/reorder', (req, res) => {
 })
 
 app.put('/api/quote-items/:id', (req, res) => {
-  const { price, quantity } = req.body
+  const { price, quantity, name, description } = req.body
   try {
-    db.run('UPDATE quote_items SET price = ?, quantity = ? WHERE id = ?', [price, quantity, req.params.id])
+    const fields = []
+    const values = []
+    if (price !== undefined) { fields.push('price = ?'); values.push(price) }
+    if (quantity !== undefined) { fields.push('quantity = ?'); values.push(quantity) }
+    if (name !== undefined) { fields.push('name = ?'); values.push(name) }
+    if (description !== undefined) { fields.push('description = ?'); values.push(description) }
+    if (fields.length === 0) return res.status(400).json({ error: '无更新字段' })
+    values.push(req.params.id)
+    db.run(`UPDATE quote_items SET ${fields.join(', ')} WHERE id = ?`, values)
     saveDB()
     const item = queryOne('SELECT * FROM quote_items WHERE id = ?', [req.params.id])
     res.json(item)

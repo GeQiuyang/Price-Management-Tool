@@ -79,6 +79,14 @@ const modalAnimationStyles = `
     opacity: 1;
     transform: translateY(0);
   }
+  .quote-inline-name:focus, .quote-inline-desc:focus {
+    border-color: #E2E8F0 !important;
+    background-color: #FFFFFF !important;
+    box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.08);
+  }
+  .quote-inline-name:hover, .quote-inline-desc:hover {
+    border-color: #E2E8F0 !important;
+  }
 `
 
 export default function QuoteGenerator() {
@@ -292,15 +300,8 @@ export default function QuoteGenerator() {
 
         const existing = quoteItems.find(item => item.productId === product.id)
         if (existing) {
-            const newQty = existing.quantity + 1
-            setQuoteItems(quoteItems.map(item =>
-                item.productId === product.id ? { ...item, quantity: newQty } : item
-            ))
-            fetch(`${API_URL}/quote-items/${existing.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ price: existing.price, quantity: newQty }),
-            })
+            // 已存在，不自动+1，由步进器手动调整
+            return
         } else {
             try {
                 const res = await fetch(`${API_URL}/quote-items`, {
@@ -311,7 +312,7 @@ export default function QuoteGenerator() {
                         name: product.name,
                         description: product.description || '',
                         price: selectedPrice,
-                        quantity: 1,
+                        quantity: 0,
                         list_id: activeQuoteListId,
                     }),
                 })
@@ -417,10 +418,48 @@ export default function QuoteGenerator() {
         ))
     }
 
+    const handleNameChange = (id, value) => {
+        setQuoteItems(quoteItems.map(item =>
+            item.id === id ? { ...item, nameInput: value } : item
+        ))
+    }
+
+    const handleNameBlur = (id, value) => {
+        const trimmed = value.trim()
+        setQuoteItems(quoteItems.map(item =>
+            item.id === id ? { ...item, name: trimmed || item.name, nameInput: undefined } : item
+        ))
+        if (trimmed) {
+            fetch(`${API_URL}/quote-items/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: trimmed }),
+            })
+        }
+    }
+
+    const handleDescChange = (id, value) => {
+        setQuoteItems(quoteItems.map(item =>
+            item.id === id ? { ...item, descInput: value } : item
+        ))
+    }
+
+    const handleDescBlur = (id, value) => {
+        const trimmed = value.trim()
+        setQuoteItems(quoteItems.map(item =>
+            item.id === id ? { ...item, description: trimmed, descInput: undefined } : item
+        ))
+        fetch(`${API_URL}/quote-items/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ description: trimmed }),
+        })
+    }
+
     const handleQuantityAdjust = (id, delta) => {
         setQuoteItems(prev => prev.map(item => {
             if (item.id === id) {
-                const newQty = Math.max(1, item.quantity + delta);
+                const newQty = Math.max(0, item.quantity + delta);
                 fetch(`${API_URL}/quote-items/${id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
@@ -841,7 +880,7 @@ export default function QuoteGenerator() {
         // --- Row 0: Title (merged A1:E1) ---
         ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } }]
         const titleStyle = {
-            font: { name: '\u5B8B\u4F53', sz: 36, bold: true },
+            font: { name: '\u9ED1\u4F53', sz: 36 },
             alignment: { horizontal: 'center', vertical: 'center', wrapText: false },
             border,
         }
@@ -855,7 +894,7 @@ export default function QuoteGenerator() {
         const now = new Date()
         const dateStr = `${now.getFullYear()}.${now.getMonth() + 1}.${now.getDate()}`
         const dateStyle = {
-            font: { name: '\u5B8B\u4F53', sz: 26 },
+            font: { name: '\u9ED1\u4F53', sz: 26 },
             alignment: { horizontal: 'center', vertical: 'center' },
             border,
         }
@@ -863,14 +902,19 @@ export default function QuoteGenerator() {
         for (let c = 1; c <= 4; c++) {
             const ref = XLSX.utils.encode_cell({ r: 1, c })
             if (!ws[ref]) ws[ref] = { v: '', t: 's' }
-            ws[ref].s = { font: { name: '\u5B8B\u4F53', sz: 26 }, border }
+            ws[ref].s = { font: { name: '\u9ED1\u4F53', sz: 26 }, border }
         }
 
-        // --- Row 2+: Apply data style (宋体 30, all borders) ---
+        // --- Row 2+: Apply data style (黑体 30, all borders) ---
         const dataStyle = {
-            font: { name: '\u5B8B\u4F53', sz: 30 },
+            font: { name: '\u9ED1\u4F53', sz: 30 },
             border,
             alignment: { vertical: 'center' },
+        }
+        const dataStyleLeft = {
+            font: { name: '\u9ED1\u4F53', sz: 30 },
+            border,
+            alignment: { horizontal: 'left', vertical: 'center' },
         }
         const noticeR = range.e.r
         for (let R = 2; R <= noticeR; R++) {
@@ -885,6 +929,9 @@ export default function QuoteGenerator() {
                         alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
                         border
                     }
+                } else if (C >= 2) {
+                    // 单价(C=2)、数量(C=3)、合计(C=4) 左对齐
+                    ws[ref].s = { ...dataStyleLeft }
                 } else {
                     ws[ref].s = { ...dataStyle }
                 }
@@ -898,7 +945,7 @@ export default function QuoteGenerator() {
         // --- Row heights ---
         ws['!rows'] = [{ hpt: 37 }, { hpt: 37 }]
         for (let R = 2; R < noticeR; R++) {
-            ws['!rows'][R] = { hpt: 35 }
+            ws['!rows'][R] = { hpt: 38 }
         }
         ws['!rows'][noticeR] = { hpt: 166 } // 根据购买须知内容增加高度
 
@@ -1193,16 +1240,28 @@ export default function QuoteGenerator() {
                                     <td style={styles.tdName}>
                                         <div style={styles.nameCell}>
                                             <span style={styles.dragHandle}>⋮⋮</span>
-                                            <span style={styles.nameText} title={item.name}>{item.name}</span>
+                                            <input
+                                                type="text"
+                                                className="quote-inline-name"
+                                                style={styles.inlineTextInput}
+                                                value={item.nameInput !== undefined ? item.nameInput : item.name}
+                                                onChange={(e) => handleNameChange(item.id, e.target.value)}
+                                                onBlur={(e) => handleNameBlur(item.id, e.target.value)}
+                                                title={item.name}
+                                            />
                                         </div>
                                     </td>
-                                    <td style={styles.tdDesc} className="quote-desc-cell">
-                                        <div style={styles.descInner}>
-                                            {item.description || '-'}
-                                        </div>
-                                        {item.description && (
-                                            <div className="quote-desc-tooltip">{item.description}</div>
-                                        )}
+                                    <td style={styles.tdDesc}>
+                                        <input
+                                            type="text"
+                                            className="quote-inline-desc"
+                                            style={styles.inlineDescInput}
+                                            value={item.descInput !== undefined ? item.descInput : (item.description || '')}
+                                            onChange={(e) => handleDescChange(item.id, e.target.value)}
+                                            onBlur={(e) => handleDescBlur(item.id, e.target.value)}
+                                            placeholder="-"
+                                            title={item.description || ''}
+                                        />
                                     </td>
                                     <td style={styles.td}>
                                         <input
@@ -1623,6 +1682,17 @@ const styles = {
     inlineInput: {
         width: '100%', maxWidth: '80px', padding: '8px 12px', border: '1px solid #E2E8F0', borderRadius: '10px',
         fontSize: '14px', backgroundColor: '#FFFFFF', textAlign: 'center', boxSizing: 'border-box', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+    },
+    inlineTextInput: {
+        width: '100%', padding: '6px 10px', border: '1px solid transparent', borderRadius: '8px',
+        fontSize: '14px', fontWeight: '600', color: '#1E293B', backgroundColor: 'transparent', boxSizing: 'border-box',
+        outline: 'none', transition: 'all 0.2s ease', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        minWidth: 0,
+    },
+    inlineDescInput: {
+        width: '100%', padding: '6px 10px', border: '1px solid transparent', borderRadius: '8px',
+        fontSize: '13px', color: '#64748B', backgroundColor: 'transparent', boxSizing: 'border-box',
+        outline: 'none', transition: 'all 0.2s ease', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
     },
     quantityControl: { display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-start', minWidth: 0 },
     quantityInput: {
