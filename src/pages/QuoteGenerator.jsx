@@ -823,7 +823,7 @@ export default function QuoteGenerator() {
             headers,
             ...activeItems.map(item => [
                 item.name,
-                item.description || '',
+                (item.description || '').replace(/[,，]?\s*重量\d+(\.\d+)?kg/gi, ''),
                 item.price,
                 item.quantity,
                 item.price * item.quantity,
@@ -853,9 +853,9 @@ export default function QuoteGenerator() {
 
         // --- Row 1: Date ---
         const now = new Date()
-        const dateStr = `${now.getFullYear()} \u5E74 ${String(now.getMonth() + 1).padStart(2, '0')} \u6708 ${String(now.getDate()).padStart(2, '0')} \u65E5`
+        const dateStr = `${now.getFullYear()}.${now.getMonth() + 1}.${now.getDate()}`
         const dateStyle = {
-            font: { name: '\u5B8B\u4F53', sz: 18 },
+            font: { name: '\u5B8B\u4F53', sz: 26 },
             alignment: { horizontal: 'center', vertical: 'center' },
             border,
         }
@@ -863,12 +863,12 @@ export default function QuoteGenerator() {
         for (let c = 1; c <= 4; c++) {
             const ref = XLSX.utils.encode_cell({ r: 1, c })
             if (!ws[ref]) ws[ref] = { v: '', t: 's' }
-            ws[ref].s = { border }
+            ws[ref].s = { font: { name: '\u5B8B\u4F53', sz: 26 }, border }
         }
 
-        // --- Row 2+: Apply data style (宋体 18, all borders) ---
+        // --- Row 2+: Apply data style (宋体 30, all borders) ---
         const dataStyle = {
-            font: { name: '\u5B8B\u4F53', sz: 18 },
+            font: { name: '\u5B8B\u4F53', sz: 30 },
             border,
             alignment: { vertical: 'center' },
         }
@@ -898,7 +898,7 @@ export default function QuoteGenerator() {
         // --- Row heights ---
         ws['!rows'] = [{ hpt: 37 }, { hpt: 37 }]
         for (let R = 2; R < noticeR; R++) {
-            ws['!rows'][R] = { hpt: 24 }
+            ws['!rows'][R] = { hpt: 35 }
         }
         ws['!rows'][noticeR] = { hpt: 166 } // 根据购买须知内容增加高度
 
