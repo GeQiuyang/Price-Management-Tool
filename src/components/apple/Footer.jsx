@@ -36,7 +36,7 @@ export default function Footer() {
           ))}
         </div>
         <div className="mt-6 flex flex-col gap-3 text-xs text-slate md:flex-row md:items-center md:justify-between">
-          <p>Copyright 2026 Vector 价格管理平台。</p>
+          <p>Copyright 2026 QuoteFlow 价格管理平台。</p>
           <p>基于 React + TailwindCSS 构建。</p>
         </div>
       </div>

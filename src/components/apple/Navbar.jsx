@@ -12,10 +12,10 @@ export default function Navbar() {
       <div className="glass-panel mx-auto flex items-center justify-between px-5 py-3 md:px-7">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black text-sm font-semibold text-white">
-            V
+            Q
           </div>
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.32em] text-slate">Vector</p>
+            <p className="text-xs font-medium uppercase tracking-[0.32em] text-slate">QuoteFlow</p>
             <p className="text-sm font-semibold tracking-[-0.02em] text-ink">价格管理平台</p>
           </div>
         </div>

@@ -1,1592 +1,548 @@
-# 价格管理系统 - 团队协作架构设计文档
+# 项目架构文档
 
-> 版本：v1.0  
-> 更新日期：2026-02-19  
-> 文档状态：最终版
+## 项目概述
 
----
+**项目名称**: QuoteFlow 报价管理平台 (Price Management Tool)
 
-## 📋 目录
+**项目类型**: B2B 产品报价管理系统
 
-- [一、系统整体架构](#一系统整体架构)
-- [二、用户认证和授权系统](#二用户认证和授权系统)
-- [三、数据库架构设计](#三数据库架构设计)
-- [四、API安全层架构](#四api安全层架构)
-- [五、审计日志系统](#五审计日志系统)
-- [六、数据备份和恢复方案](#六数据备份和恢复方案)
-- [七、完整架构设计](#七完整架构设计)
-- [八、实施路线图](#八实施路线图)
-- [九、成本估算](#九成本估算)
-- [十、风险评估](#十风险评估)
+**技术栈**: React + Vite (前端) + Express (后端) + SQL.js/PostgreSQL (数据库)
 
 ---
 
-## 一、系统整体架构
+## 整体架构
 
-### 1.1 架构图
+### 1. 技术栈
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        客户端层                              │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐              │
-│  │  Web端   │  │  移动端  │  │  API工具  │              │
-│  └────┬─────┘  └────┬─────┘  └────┬─────┘              │
-└───────┼────────────┼────────────┼─────────────────────────────┘
-        │            │            │
-        └────────────┴────────────┘
-                     │ HTTPS
-                     ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                       CDN层                                │
-│              (静态资源加速 + DDoS防护)                         │
-└──────────────────────────────┬──────────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                    负载均衡器                              │
-│              (Nginx / AWS ELB / ALB)                       │
-└──────────────────────────────┬──────────────────────────────────┘
-                               │
-          ┌──────────────────┼──────────────────┐
-          ▼                  ▼                  ▼
-┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-│   应用服务器1   │  │   应用服务器2   │  │   应用服务器3   │
-│  (Node.js)     │  │  (Node.js)     │  │  (Node.js)     │
-└───────┬─────────┘  └───────┬─────────┘  └───────┬─────────┘
-        │                    │                    │
-        └────────────────────┴────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                     Redis缓存层                              │
-│              (会话存储 + 热点数据)                           │
-└──────────────────────────────┬──────────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                    PostgreSQL主库                              │
-│              (读写分离 + 事务支持)                            │
-└──────────────────────────────┬──────────────────────────────────┘
-                               │
-          ┌──────────────────────┼──────────────────────┐
-          ▼                      ▼                      ▼
-┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-│  PostgreSQL从库 │  │  PostgreSQL从库 │  │  PostgreSQL从库 │
-│   (只读查询)    │  │   (只读查询)    │  │   (只读查询)    │
-└─────────────────┘  └─────────────────┘  └─────────────────┘
-```
+#### 前端技术栈
+- **框架**: React 18.3.1
+- **构建工具**: Vite 6.0.1
+- **路由**: React Router DOM 6.22.0
+- **状态管理**: React Hooks (useState, useEffect)
+- **UI 框架**: 自定义设计 + Tailwind CSS 3.4.17
+- **数据可视化**: XLSX 0.18.5 (Excel 导入导出)
+- **样式**: 自定义 CSS + Tailwind CSS (Apple 风格设计)
 
-### 1.2 技术栈
+#### 后端技术栈
+- **框架**: Express 5.2.1
+- **数据库**: SQL.js (浏览器端 SQLite) + PostgreSQL (生产环境)
+- **缓存**: Redis 4.6.12
+- **认证**: JWT (jsonwebtoken 9.0.3) + bcryptjs (密码加密)
+- **安全**: Helmet, express-rate-limit, express-validator, xss-clean
+- **定时任务**: node-cron
+- **监控**: prom-client
 
-| 层级 | 技术选型 | 版本 | 说明 |
-|--------|----------|------|------|
-| 前端框架 | React | 18.3.1 | 组件化UI框架 |
-| 构建工具 | Vite | 6.0.1 | 快速构建工具 |
-| 路由 | React Router | 6.22.0 | 前端路由 |
-| 后端框架 | Express.js | 4.x | Web应用框架 |
-| 运行时 | Node.js | 18+ | JavaScript运行时 |
-| 数据库 | PostgreSQL | 14+ | 关系型数据库 |
-| 缓存 | Redis | 6+ | 内存数据库 |
-| 认证 | JWT | - | JSON Web Token |
-| 密码加密 | bcryptjs | - | 密码哈希 |
-| 容器化 | Docker | 20+ | 容器部署 |
-| 反向代理 | Nginx | 1.20+ | 负载均衡 |
-
-### 1.3 系统特性
-
-- ✅ 多用户并发支持
-- ✅ 完善的权限管理
-- ✅ 数据读写分离
-- ✅ 自动备份恢复
-- ✅ 审计日志追踪
-- ✅ 高可用架构
-- ✅ 水平扩展能力
-- ✅ 实时监控告警
+#### 开发工具
+- **并发运行**: concurrently
+- **代码检查**: ESLint 9.15.0
+- **容器化**: Docker + Docker Compose
 
 ---
 
-## 二、用户认证和授权系统
-
-### 2.1 认证流程
+## 项目结构
 
 ```
-┌──────────┐
-│  用户    │
-└────┬─────┘
-     │ 1. 输入用户名/密码
-     ▼
-┌─────────────────────┐
-│   登录API        │
-│  POST /api/auth/login
-└────┬──────────────┘
-     │ 2. 验证凭证
-     ▼
-┌─────────────────────┐
-│   用户服务         │
-│  - 查询用户        │
-│  - 验证密码        │
-│  - 生成JWT Token   │
-└────┬──────────────┘
-     │ 3. 返回Token
-     ▼
-┌──────────┐
-│  客户端  │
-└────┬─────┘
-     │ 4. 存储Token
-     ▼
-┌─────────────────────┐
-│  LocalStorage     │
-└────┬──────────────┘
-     │ 5. 携带Token请求
-     ▼
-┌─────────────────────┐
-│   API网关         │
-│  - 验证Token      │
-│  - 检查权限       │
-└────┬──────────────┘
-     │ 6. 通过验证
-     ▼
-┌─────────────────────┐
-│   业务逻辑         │
-└─────────────────────┘
-```
-
-### 2.2 数据库设计
-
-#### 用户表
-
-```sql
-CREATE TABLE users (
-  id SERIAL PRIMARY KEY,
-  username VARCHAR(50) UNIQUE NOT NULL,
-  email VARCHAR(100) UNIQUE NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
-  full_name VARCHAR(100),
-  phone VARCHAR(20),
-  avatar_url VARCHAR(255),
-  status VARCHAR(20) DEFAULT 'active',
-  role_id INTEGER REFERENCES roles(id),
-  last_login_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_users_username ON users(username);
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_status ON users(status);
-CREATE INDEX idx_users_role ON users(role_id);
-```
-
-#### 角色表
-
-```sql
-CREATE TABLE roles (
-  id SERIAL PRIMARY KEY,
-  name VARCHAR(50) UNIQUE NOT NULL,
-  display_name VARCHAR(100) NOT NULL,
-  description TEXT,
-  permissions JSONB NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- 角色预设
-INSERT INTO roles (name, display_name, description, permissions) VALUES
-('admin', '管理员', '拥有所有权限', '["*"]'::jsonb),
-('manager', '经理', '可以管理产品和报价', '["products:*", "quotes:*", "customers:*"]'::jsonb),
-('editor', '编辑', '可以编辑产品和报价', '["products:read", "products:write", "quotes:read", "quotes:write"]'::jsonb),
-('viewer', '查看者', '只能查看数据', '["products:read", "quotes:read", "customers:read"]'::jsonb);
-```
-
-#### 会话表
-
-```sql
-CREATE TABLE user_sessions (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-  token VARCHAR(500) UNIQUE NOT NULL,
-  refresh_token VARCHAR(500) UNIQUE,
-  ip_address VARCHAR(45),
-  user_agent TEXT,
-  expires_at TIMESTAMP NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_sessions_token ON user_sessions(token);
-CREATE INDEX idx_sessions_user ON user_sessions(user_id);
-CREATE INDEX idx_sessions_expires ON user_sessions(expires_at);
-```
-
-#### 登录日志表
-
-```sql
-CREATE TABLE login_logs (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  ip_address VARCHAR(45),
-  user_agent TEXT,
-  login_status VARCHAR(20) NOT NULL,
-  failure_reason TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_login_logs_user ON login_logs(user_id);
-CREATE INDEX idx_login_logs_status ON login_logs(login_status);
-CREATE INDEX idx_login_logs_timestamp ON login_logs(created_at DESC);
-```
-
-#### 密码重置表
-
-```sql
-CREATE TABLE password_resets (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-  token VARCHAR(255) UNIQUE NOT NULL,
-  expires_at TIMESTAMP NOT NULL,
-  used_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_password_resets_token ON password_resets(token);
-CREATE INDEX idx_password_resets_user ON password_resets(user_id);
-```
-
-### 2.3 API设计
-
-#### 认证相关API
-
-| 方法 | 路径 | 描述 | 认证 | 权限 |
-|------|--------|------|--------|--------|
-| POST | /api/auth/register | 用户注册 | 否 | - |
-| POST | /api/auth/login | 用户登录 | 否 | - |
-| POST | /api/auth/refresh | 刷新令牌 | 否 | - |
-| POST | /api/auth/logout | 用户登出 | 是 | - |
-| GET | /api/auth/me | 获取当前用户 | 是 | - |
-| POST | /api/auth/change-password | 修改密码 | 是 | - |
-| POST | /api/auth/forgot-password | 请求密码重置 | 否 | - |
-| POST | /api/auth/reset-password | 重置密码 | 否 | - |
-
-#### API响应示例
-
-**登录成功响应：**
-```json
-{
-  "success": true,
-  "data": {
-    "user": {
-      "id": 1,
-      "username": "admin",
-      "email": "admin@example.com",
-      "full_name": "管理员",
-      "role": {
-        "id": 1,
-        "name": "admin",
-        "display_name": "管理员",
-        "permissions": ["*"]
-      }
-    },
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-  }
-}
-```
-
-**错误响应：**
-```json
-{
-  "success": false,
-  "error": {
-    "code": "INVALID_CREDENTIALS",
-    "message": "用户名或密码错误"
-  }
-}
+P1/
+├── src/                          # 前端源代码
+│   ├── components/               # 通用组件
+│   │   ├── apple/               # Apple 风格组件
+│   │   │   ├── AppShell.jsx     # 应用壳/布局容器
+│   │   │   ├── Navbar.jsx       # 导航栏
+│   │   │   ├── Footer.jsx       # 页脚
+│   │   │   ├── HeroSection.jsx  # 首屏区域
+│   │   │   ├── FeatureSection.jsx
+│   │   │   ├── ProductGrid.jsx
+│   │   │   └── Reveal.jsx       # 动画组件
+│   │   ├── Layout.jsx           # 主布局组件
+│   │   ├── Modal.jsx            # 模态框组件
+│   │   └── Modal.css
+│   ├── lib/                     # 工具库
+│   │   └── api.js               # API 请求封装
+│   ├── pages/                   # 页面组件
+│   │   ├── Products.jsx         # 产品管理
+│   │   ├── Warehouses.jsx       # 仓库管理
+│   │   ├── Customers.jsx        # 客户管理
+│   │   ├── QuoteGenerator.jsx   # 报价生成器
+│   │   ├── FreightSimulator.jsx # 运费模拟器
+│   │   ├── SystemSettings.jsx   # 系统设置
+│   │   ├── AuditLogs.jsx        # 审计日志
+│   │   ├── BackupRestore.jsx    # 备份恢复
+│   │   ├── Currencies.jsx       # 货币管理
+│   │   ├── TaxesUnits.jsx       # 税率和单位
+│   │   ├── RecycleBin.jsx       # 回收站
+│   │   ├── Login.jsx            # 登录页
+│   │   ├── Register.jsx         # 注册页
+│   │   ├── Auth.css             # 认证页面样式
+│   │   └── ... (CSS 文件)
+│   ├── App.jsx                  # 主应用组件
+│   ├── main.jsx                 # 入口文件
+│   └── index.css                # 全局样式
+│
+├── server/                      # 后端源代码
+│   ├── config/                  # 配置文件
+│   │   ├── database.js          # PostgreSQL 连接池
+│   │   └── redis.js             # Redis 客户端
+│   ├── controllers/             # 业务逻辑控制器
+│   │   └── auth.js              # 认证控制器
+│   ├── middleware/              # 中间件
+│   │   ├── auth.js              # JWT 认证中间件
+│   │   └── security.js          # 安全中间件
+│   ├── routes/                  # API 路由
+│   │   └── auth.js              # 认证路由
+│   ├── backups/                 # 数据库备份
+│   │   └── backup-*.db
+│   ├── server.js                # 主服务器文件 (SQL.js)
+│   ├── server-new.js            # 新版本服务器 (PostgreSQL)
+│   ├── init-db.js               # 数据库初始化
+│   └── *.js                     # 数据导入脚本
+│
+├── public/                      # 静态资源
+│   └── logo.svg
+│
+├── package.json                 # 项目配置
+├── vite.config.js               # Vite 配置
+├── tailwind.config.js           # Tailwind CSS 配置
+├── postcss.config.js            # PostCSS 配置
+├── Dockerfile                   # Docker 镜像配置
+├── docker-compose.yml           # Docker Compose 配置
+└── *.sh / *.command            # 启动脚本
 ```
 
 ---
 
-## 三、数据库架构设计
+## 核心功能模块
 
-### 3.1 核心业务表
+### 1. 认证与授权系统
 
-#### 产品表
+#### 用户角色
+- **admin** (管理员): 完整权限
+- **sales** (业务员): 产品管理、报价生成
+- **foreign_trade** (外贸员): 只读权限
 
-```sql
-CREATE TABLE products (
-  id SERIAL PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  category VARCHAR(100) NOT NULL,
-  sku VARCHAR(100) NOT NULL,
-  price DECIMAL(10, 2) NOT NULL,
-  description TEXT,
-  status VARCHAR(20) DEFAULT 'active',
-  created_by INTEGER REFERENCES users(id),
-  updated_by INTEGER REFERENCES users(id),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE (sku)
-);
-
-CREATE INDEX idx_products_category ON products(category);
-CREATE INDEX idx_products_sku ON products(sku);
-CREATE INDEX idx_products_status ON products(status);
-CREATE INDEX idx_products_created_by ON products(created_by);
+#### 认证流程
+```
+1. 用户登录 → 验证用户名密码
+2. 生成 JWT Token (7天有效期)
+3. 生成 Refresh Token (7天有效期)
+4. 存储会话信息到数据库
+5. 前端存储 token 到 localStorage
+6. 每次请求携带 Authorization: Bearer <token>
+7. 后端中间件验证 token
+8. 失败则返回 401/403 错误
 ```
 
-#### 客户表
+#### 安全特性
+- 密码 bcrypt 加密
+- JWT Token 认证
+- Rate Limiting (登录 5次/15分钟, API 100次/15分钟)
+- Helmet 安全头
+- XSS 过滤
+- SQL 注入防护
+- 输入验证 (express-validator)
 
-```sql
-CREATE TABLE customers (
-  id SERIAL PRIMARY KEY,
-  customer_type VARCHAR(50) NOT NULL,
-  country VARCHAR(100) NOT NULL,
-  city VARCHAR(100) NOT NULL,
-  contact TEXT,
-  deal_count INTEGER DEFAULT 0,
-  created_by INTEGER REFERENCES users(id),
-  updated_by INTEGER REFERENCES users(id),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+---
 
-CREATE INDEX idx_customers_type ON customers(customer_type);
-CREATE INDEX idx_customers_country ON customers(country);
-```
+### 2. 数据模型
 
-#### 货币表
+#### 核心表结构
 
-```sql
-CREATE TABLE currencies (
-  id SERIAL PRIMARY KEY,
-  code VARCHAR(10) UNIQUE NOT NULL,
-  name VARCHAR(100) NOT NULL,
-  symbol VARCHAR(10) NOT NULL,
-  exchange_rate DECIMAL(10, 4) NOT NULL,
-  is_default BOOLEAN DEFAULT false,
-  created_by INTEGER REFERENCES users(id),
-  updated_by INTEGER REFERENCES users(id),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
+**users** - 用户表
+- id, username, email, password (hash)
+- full_name, phone, role, status
+- created_at, updated_at, last_login_at
 
-#### 成本表
+**products** - 产品表
+- id, name, category, sku (唯一)
+- price, dealer_price (双价格系统)
+- description, status
+- created_at, updated_at
 
-```sql
-CREATE TABLE costs (
-  id SERIAL PRIMARY KEY,
-  product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
-  cost_type VARCHAR(50) NOT NULL,
-  amount DECIMAL(10, 2) NOT NULL,
-  description TEXT,
-  created_by INTEGER REFERENCES users(id),
-  updated_by INTEGER REFERENCES users(id),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+**customers** - 客户表
+- id, customer_type (终端/经销商)
+- country, city, contact
+- deal_count, created_at, updated_at
 
-CREATE INDEX idx_costs_product ON costs(product_id);
-CREATE INDEX idx_costs_type ON costs(cost_type);
-```
+**currencies** - 货币表
+- id, code, name, symbol
+- exchange_rate, is_default
 
-### 3.2 报价系统表
+**cost_types** - 成本类型表
+- id, code, name, category (local/ocean/related)
+- is_seller_responsibility
 
-#### 报价单表
+**ports** - 港口表
+- id, code, name, country, type (origin/destination)
 
-```sql
-CREATE TABLE quotes (
-  id SERIAL PRIMARY KEY,
-  quote_number VARCHAR(50) UNIQUE NOT NULL,
-  customer_id INTEGER REFERENCES customers(id),
-  total_amount DECIMAL(12, 2) NOT NULL,
-  currency VARCHAR(10) DEFAULT 'CNY',
-  status VARCHAR(20) DEFAULT 'draft',
-  notes TEXT,
-  created_by INTEGER REFERENCES users(id),
-  updated_by INTEGER REFERENCES users(id),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+**freight_rates** - 运费表
+- id, origin_port, destination_port
+- container_type (20GP/40GP/40HQ)
+- price, currency, valid_from, valid_to
 
-CREATE INDEX idx_quotes_customer ON quotes(customer_id);
-CREATE INDEX idx_quotes_status ON quotes(status);
-CREATE INDEX idx_quotes_created_by ON quotes(created_by);
-CREATE INDEX idx_quotes_created_at ON quotes(created_at DESC);
-```
+**audit_logs** - 审计日志
+- id, user_id, action, entity_type
+- entity_id, old_data, new_data
+- ip_address, user_agent
 
-#### 报价项表
+**data_snapshots** - 数据快照
+- id, snapshot_name, snapshot_data
+- created_by, created_at
 
-```sql
-CREATE TABLE quote_items (
-  id SERIAL PRIMARY KEY,
-  quote_id INTEGER REFERENCES quotes(id) ON DELETE CASCADE,
-  product_id INTEGER REFERENCES products(id),
-  sku VARCHAR(100) NOT NULL,
-  name VARCHAR(255) NOT NULL,
-  description TEXT,
-  price DECIMAL(10, 2) NOT NULL,
-  quantity INTEGER NOT NULL,
-  subtotal DECIMAL(12, 2) NOT NULL,
-  created_by INTEGER REFERENCES users(id),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+**backup_logs** - 备份日志
+- id, backup_type, backup_path
+- file_size, status, error_message
 
-CREATE INDEX idx_quote_items_quote ON quote_items(quote_id);
-CREATE INDEX idx_quote_items_product ON quote_items(product_id);
-```
+**system_settings** - 系统设置
+- id, key, value
 
-### 3.3 团队协作表
+---
 
-#### 团队表
+### 3. 前端架构
 
-```sql
-CREATE TABLE teams (
-  id SERIAL PRIMARY KEY,
-  name VARCHAR(100) NOT NULL,
-  description TEXT,
-  owner_id INTEGER REFERENCES users(id),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_teams_owner ON teams(owner_id);
-```
-
-#### 团队成员表
-
-```sql
-CREATE TABLE team_members (
-  id SERIAL PRIMARY KEY,
-  team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
-  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-  role VARCHAR(50) NOT NULL,
-  joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE (team_id, user_id)
-);
-
-CREATE INDEX idx_team_members_team ON team_members(team_id);
-CREATE INDEX idx_team_members_user ON team_members(user_id);
-```
-
-#### 团队资源表
-
-```sql
-CREATE TABLE team_resources (
-  id SERIAL PRIMARY KEY,
-  team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
-  resource_type VARCHAR(50) NOT NULL,
-  resource_id INTEGER NOT NULL,
-  permission_level VARCHAR(20) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE (team_id, resource_type, resource_id)
-);
-
-CREATE INDEX idx_team_resources_team ON team_resources(team_id);
-```
-
-#### 数据权限表
-
-```sql
-CREATE TABLE data_permissions (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-  resource_type VARCHAR(50) NOT NULL,
-  resource_id INTEGER NOT NULL,
-  permission_level VARCHAR(20) NOT NULL,
-  granted_by INTEGER REFERENCES users(id),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE (user_id, resource_type, resource_id)
-);
-
-CREATE INDEX idx_data_permissions_user ON data_permissions(user_id);
-CREATE INDEX idx_data_permissions_resource ON data_permissions(resource_type, resource_id);
-```
-
-### 3.4 数据库配置
-
-#### 连接池配置
-
+#### 路由结构
 ```javascript
-const { Pool } = require('pg')
-
-const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: process.env.DB_PORT || 5432,
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-})
+/                          → 重定向到 /products
+/login                     → 登录页 (公开)
+/register                  → 注册页 (公开)
+/products                  → 产品管理
+/warehouses                → 仓库管理
+/customers                 → 客户管理
+/quote-generator           → 报价生成器
+/freight-simulator         → 运费模拟器
+/system-settings           → 系统设置
+/audit-logs                → 审计日志
+/backup-restore            → 备份恢复
 ```
 
-#### 事务示例
+#### 组件设计模式
 
+**Apple 风格设计系统**
+- 圆角设计 (rounded-2xl, rounded-[32px])
+- 毛玻璃效果 (backdrop-blur-2xl)
+- 渐变背景 (aurora, hero-glow)
+- 浮动动画 (float animation)
+- 滑入动画 (reveal animation)
+- 阴影层次 (apple, float)
+
+**组件通信**
+- 父子组件: Props
+- 兄弟组件: 状态提升 + Context
+- API 调用: fetch + async/await
+- 状态管理: useState, useEffect
+
+#### API 客户端
 ```javascript
-async function createQuoteWithItems(quoteData, items) {
-  const client = await pool.connect()
-  try {
-    await client.query('BEGIN')
-    
-    const quoteResult = await client.query(
-      'INSERT INTO quotes (quote_number, customer_id, total_amount, created_by) VALUES ($1, $2, $3, $4) RETURNING *',
-      [quoteData.quoteNumber, quoteData.customerId, quoteData.totalAmount, quoteData.createdBy]
-    )
-    
-    const quoteId = quoteResult.rows[0].id
-    
-    const itemPromises = items.map(item => 
-      client.query(
-        'INSERT INTO quote_items (quote_id, product_id, sku, name, price, quantity, subtotal, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-        [quoteId, item.productId, item.sku, item.name, item.price, item.quantity, item.subtotal, quoteData.createdBy]
-      )
-    )
-    
-    await Promise.all(itemPromises)
-    await client.query('COMMIT')
-    
-    return quoteResult.rows[0]
-  } catch (error) {
-    await client.query('ROLLBACK')
-    throw error
-  } finally {
-    client.release()
-  }
-}
+// src/lib/api.js
+export const API_BASE_URL = ''
+export const API_URL = `${API_BASE_URL}/api`
+```
+
+所有 API 请求通过统一的 URL 前缀访问。
+
+---
+
+### 4. 后端架构
+
+#### 中间件管道
+```
+请求 → CORS → Helmet → Rate Limit → Body Parser → 路由 → 控制器 → 响应
+```
+
+#### 安全中间件
+1. **apiLimiter**: 通用 API 限流 (100次/15分钟)
+2. **authLimiter**: 认证接口限流 (5次/15分钟)
+3. **authenticate**: JWT 验证中间件
+4. **authorize**: 权限检查中间件
+5. **sanitizeInput**: 输入清理
+6. **errorHandler**: 统一错误处理
+
+#### 控制器模式
+- **auth.js**: 认证相关 (register, login, logout, refresh, changePassword)
+- 所有控制器使用 async/await
+- 统一错误处理格式
+- 返回结构: `{ success, data/error }`
+
+---
+
+### 5. 数据库架构
+
+#### 双数据库支持
+**开发环境**: SQL.js (浏览器端 SQLite)
+- 无服务器依赖
+- 数据存储在 IndexedDB
+- 适合本地开发和演示
+
+**生产环境**: PostgreSQL 14
+- 连接池管理 (pool)
+- Redis 缓存
+- 支持高并发
+
+#### 数据库初始化
+```javascript
+// server/init-db.js
+- 创建所有表结构
+- 插入默认数据
+- 初始化成本类型 (8种)
+- 初始化港口 (10个)
+- 初始化运费 (15条)
+- 初始化产品 (5个)
+- 初始化货币 (4种)
+- 初始化用户 (3个)
+```
+
+#### 数据备份策略
+- 手动备份: BackupRestore 页面
+- 自动备份: node-cron 定时任务
+- 备份日志: backup_logs 表
+- 恢复机制: 读取备份文件恢复数据库
+
+---
+
+### 6. 核心业务流程
+
+#### 产品管理流程
+```
+1. 用户进入产品列表页
+2. 按分类筛选 (钻具类/导管类/水泵类/配件类)
+3. 搜索产品 (SKU/名称)
+4. 分页显示 (10条/页)
+5. 点击编辑/新增
+6. 填写表单 (双价格系统)
+7. 提交保存
+8. 更新数据库
+9. 刷新列表
+```
+
+#### 报价生成流程
+```
+1. 选择产品 (多选)
+2. 设置数量
+3. 配置成本项 (可选)
+4. 选择港口 (起运港/目的港)
+5. 选择货币
+6. 计算总价 (产品 + 成本 + 运费 + 税费)
+7. 生成报价单
+8. 导出 Excel (xlsx-js-style)
+9. 保存到 quote_items 表
+```
+
+#### 运费模拟流程
+```
+1. 选择起运港 (上海/宁波/深圳/青岛)
+2. 选择目的港 (洛杉矶/纽约/汉堡/鹿特丹/横滨/胡志明)
+3. 选择集装箱类型 (20GP/40GP/40HQ)
+4. 显示实时运费
+5. 支持多条路线对比
 ```
 
 ---
 
-## 四、API安全层架构
-
-### 4.1 中间件设计
-
-#### 认证中间件
-
-```javascript
-const jwt = require('jsonwebtoken')
-
-exports.authenticate = async (req, res, next) => {
-  try {
-    const token = req.headers.authorization?.replace('Bearer ', '')
-    
-    if (!token) {
-      return res.status(401).json({ error: '未提供认证令牌' })
-    }
-    
-    const decoded = jwt.verify(token, process.env.JWT_SECRET)
-    req.user = decoded
-    
-    const session = await pool.query(
-      'SELECT * FROM user_sessions WHERE token = $1 AND expires_at > NOW()',
-      [token]
-    )
-    
-    if (!session.rows[0]) {
-      return res.status(401).json({ error: '会话已过期' })
-    }
-    
-    next()
-  } catch (error) {
-    return res.status(403).json({ error: '无效的认证令牌' })
-  }
-}
-```
-
-#### 授权中间件
-
-```javascript
-exports.authorize = (requiredPermissions) => {
-  return async (req, res, next) => {
-    const user = req.user
-    
-    if (user.role === 'admin') {
-      return next()
-    }
-    
-    const userRole = await pool.query(
-      'SELECT permissions FROM roles WHERE id = $1',
-      [user.role_id]
-    )
-    
-    const permissions = userRole.rows[0]?.permissions || []
-    const hasPermission = requiredPermissions.every(perm => 
-      permissions.includes(perm) || permissions.includes('*')
-    )
-    
-    if (!hasPermission) {
-      return res.status(403).json({ error: '权限不足' })
-    }
-    
-    next()
-  }
-}
-```
-
-#### 数据权限中间件
-
-```javascript
-exports.checkDataPermission = (resourceType, requiredLevel) => {
-  return async (req, res, next) => {
-    const user = req.user
-    const resourceId = req.params.id || req.body.id
-    
-    if (user.role === 'admin') {
-      return next()
-    }
-    
-    const permission = await pool.query(
-      `SELECT permission_level FROM data_permissions 
-       WHERE user_id = $1 AND resource_type = $2 AND resource_id = $3`,
-      [user.id, resourceType, resourceId]
-    )
-    
-    const levels = { read: 1, write: 2, delete: 3 }
-    const currentLevel = permission.rows[0]?.permission_level
-    
-    if (!currentLevel || levels[currentLevel] < levels[requiredLevel]) {
-      return res.status(403).json({ error: '无权访问此数据' })
-    }
-    
-    next()
-  }
-}
-```
-
-#### 速率限制中间件
-
-```javascript
-const rateLimit = require('express-rate-limit')
-
-exports.apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: '请求过于频繁,请稍后再试',
-  standardHeaders: true,
-  legacyHeaders: false,
-})
-
-exports.authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  skipSuccessfulRequests: true,
-  message: '登录尝试过多,请15分钟后再试'
-})
-```
-
-### 4.2 安全配置
-
-```javascript
-const helmet = require('helmet')
-const cors = require('cors')
-
-module.exports = function(app) {
-  app.use(helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", "data:", "https:"],
-      },
-    },
-    hsts: {
-      maxAge: 31536000,
-      includeSubDomains: true,
-      preload: true
-    },
-    noSniff: true,
-    xssFilter: true,
-  }))
-  
-  app.use(cors({
-    origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:5173'],
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  }))
-  
-  app.use(express.json({ limit: '10mb' }))
-  app.use(express.urlencoded({ limit: '10mb', extended: true }))
-  
-  app.disable('x-powered-by')
-}
-```
-
-### 4.3 API路由保护
-
-```javascript
-const express = require('express')
-const router = express.Router()
-const { authenticate, authorize, checkDataPermission } = require('../middleware/auth')
-const { apiLimiter, authLimiter } = require('../middleware/auth')
-
-router.post('/auth/login', authLimiter, require('./auth').login)
-router.post('/auth/register', authLimiter, require('./auth').register)
-router.post('/auth/forgot-password', authLimiter, require('./auth').forgotPassword)
-
-router.use(authenticate)
-
-router.get('/users', authorize(['users:read']), require('./users').list)
-router.post('/users', authorize(['users:create']), require('./users').create)
-router.put('/users/:id', authorize(['users:update']), require('./users').update)
-router.delete('/users/:id', authorize(['users:delete']), require('./users').delete)
-
-router.get('/products', authorize(['products:read']), require('./products').list)
-router.post('/products', authorize(['products:create']), require('./products').create)
-router.put('/products/:id', 
-  authorize(['products:update']),
-  checkDataPermission('products', 'write'),
-  require('./products').update
-)
-router.delete('/products/:id',
-  authorize(['products:delete']),
-  checkDataPermission('products', 'delete'),
-  require('./products').delete
-)
-
-module.exports = router
-```
-
----
-
-## 五、审计日志系统
-
-### 5.1 审计日志表
-
-```sql
-CREATE TABLE audit_logs (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  action VARCHAR(50) NOT NULL,
-  resource_type VARCHAR(50) NOT NULL,
-  resource_id INTEGER,
-  resource_name VARCHAR(255),
-  changes JSONB,
-  ip_address VARCHAR(45),
-  user_agent TEXT,
-  status VARCHAR(20) DEFAULT 'success',
-  error_message TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_audit_logs_user ON audit_logs(user_id);
-CREATE INDEX idx_audit_logs_action ON audit_logs(action);
-CREATE INDEX idx_audit_logs_timestamp ON audit_logs(created_at DESC);
-```
-
-### 5.2 数据快照表
-
-```sql
-CREATE TABLE data_snapshots (
-  id SERIAL PRIMARY KEY,
-  resource_type VARCHAR(50) NOT NULL,
-  resource_id INTEGER NOT NULL,
-  version INTEGER NOT NULL,
-  data JSONB NOT NULL,
-  created_by INTEGER REFERENCES users(id),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE (resource_type, resource_id, version)
-);
-
-CREATE INDEX idx_snapshots_resource ON data_snapshots(resource_type, resource_id);
-```
-
-### 5.3 操作历史表
-
-```sql
-CREATE TABLE operation_history (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  operation_type VARCHAR(50) NOT NULL,
-  description TEXT,
-  metadata JSONB,
-  duration_ms INTEGER,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_operation_history_user ON operation_history(user_id);
-CREATE INDEX idx_operation_history_type ON operation_history(operation_type);
-```
-
-### 5.4 审计中间件
-
-```javascript
-const { performance } = require('perf_hooks')
-
-exports.auditLog = (action, resourceType) => {
-  return async (req, res, next) => {
-    const startTime = performance.now()
-    const originalSend = res.send
-    
-    res.send = function(data) {
-      const duration = Math.round(performance.now() - startTime)
-      const user = req.user
-      
-      if (user) {
-        pool.query(
-          `INSERT INTO operation_history 
-           (user_id, operation_type, description, metadata, duration_ms)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [
-            user.id,
-            `${action}_${resourceType}`,
-            `${action} ${resourceType}`,
-            JSON.stringify({
-              method: req.method,
-              path: req.path,
-              statusCode: res.statusCode,
-            }),
-            duration
-          ]
-        )
-      }
-      
-      const sensitiveActions = ['create', 'update', 'delete', 'export', 'import']
-      if (sensitiveActions.includes(action)) {
-        pool.query(
-          `INSERT INTO audit_logs 
-           (user_id, action, resource_type, resource_id, resource_name, changes, ip_address, user_agent, status)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-          [
-            user?.id,
-            action,
-            resourceType,
-            req.params.id || req.body?.id,
-            req.body?.name || req.body?.title || '',
-            JSON.stringify({
-              before: req.originalData,
-              after: req.body,
-            }),
-            req.ip,
-            req.get('user-agent'),
-            res.statusCode < 400 ? 'success' : 'failed'
-          ]
-        )
-      }
-      
-      originalSend.call(this, data)
-    }
-    
-    next()
-  }
-}
-```
-
----
-
-## 六、数据备份和恢复方案
-
-### 6.1 备份策略
-
-#### 全量备份
-
-```javascript
-async function fullBackup() {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-  const filename = `full-backup-${timestamp}.sql`
-  const filepath = path.join(BACKUP_DIR, filename)
-  
-  try {
-    console.log(`开始全量备份: ${timestamp}`)
-    
-    const command = `pg_dump -h ${process.env.DB_HOST} -U ${process.env.DB_USER} -d ${process.env.DB_NAME} -F c -f ${filepath}`
-    
-    await new Promise((resolve, reject) => {
-      exec(command, { env: { PGPASSWORD: process.env.DB_PASSWORD } }, (error, stdout, stderr) => {
-        if (error) {
-          console.error('备份失败:', error)
-          reject(error)
-        } else {
-          console.log('备份成功:', filename)
-          resolve(filename)
-        }
-      })
-    })
-    
-    await pool.query(
-      `INSERT INTO backup_logs (type, filename, size, status, created_at)
-       VALUES ('full', $1, $2, 'success', NOW())`,
-      [filename, fs.statSync(filepath).size]
-    )
-    
-    return filename
-  } catch (error) {
-    await pool.query(
-      `INSERT INTO backup_logs (type, filename, status, error_message, created_at)
-       VALUES ('full', $1, 'failed', $2, NOW())`,
-      [filename, error.message]
-    )
-    throw error
-  }
-}
-```
-
-#### 增量备份
-
-```javascript
-async function incrementalBackup() {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-  const filename = `incremental-backup-${timestamp}.wal`
-  const filepath = path.join(BACKUP_DIR, filename)
-  
-  try {
-    console.log(`开始增量备份: ${timestamp}`)
-    
-    await pool.query('SELECT pg_switch_wal()')
-    
-    const walDir = path.join(BACKUP_DIR, 'wal')
-    if (!fs.existsSync(walDir)) {
-      fs.mkdirSync(walDir, { recursive: true })
-    }
-    
-    await pool.query(
-      `INSERT INTO backup_logs (type, filename, status, created_at)
-       VALUES ('incremental', $1, 'success', NOW())`,
-      [filename]
-    )
-    
-    console.log('增量备份成功:', filename)
-    return filename
-  } catch (error) {
-    await pool.query(
-      `INSERT INTO backup_logs (type, filename, status, error_message, created_at)
-       VALUES ('incremental', $1, 'failed', $2, NOW())`,
-      [filename, error.message]
-    )
-    throw error
-  }
-}
-```
-
-#### 云端备份
-
-```javascript
-async function cloudBackup(localFile) {
-  const OSS = require('ali-oss')
-  const client = new OSS({
-    region: process.env.OSS_REGION,
-    accessKeyId: process.env.OSS_ACCESS_KEY_ID,
-    accessKeySecret: process.env.OSS_ACCESS_KEY_SECRET,
-    bucket: process.env.OSS_BUCKET,
-  })
-  
-  try {
-    const filepath = path.join(BACKUP_DIR, localFile)
-    const result = await client.put(
-      `backups/${localFile}`,
-      filepath
-    )
-    
-    console.log('云端备份成功:', result.name)
-    
-    await pool.query(
-      `UPDATE backup_logs SET cloud_url = $1, cloud_uploaded_at = NOW()
-       WHERE filename = $2`,
-      [result.url, localFile]
-    )
-    
-    return result.url
-  } catch (error) {
-    console.error('云端备份失败:', error)
-    throw error
-  }
-}
-```
-
-### 6.2 恢复方案
-
-#### 从备份文件恢复
-
-```javascript
-async function restoreFromBackup(backupFile) {
-  const filepath = path.join(BACKUP_DIR, backupFile)
-  
-  if (!fs.existsSync(filepath)) {
-    throw new Error('备份文件不存在')
-  }
-  
-  try {
-    console.log(`开始恢复: ${backupFile}`)
-    
-    await pool.query('SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1', [process.env.DB_NAME])
-    
-    await new Promise((resolve, reject) => {
-      exec(`dropdb -h ${process.env.DB_HOST} -U ${process.env.DB_USER} ${process.env.DB_NAME}`, 
-        { env: { PGPASSWORD: process.env.DB_PASSWORD } },
-        (error, stdout, stderr) => {
-          if (error && !stderr.includes('does not exist')) {
-            reject(error)
-          } else {
-            resolve()
-          }
-        }
-      )
-    })
-    
-    await new Promise((resolve, reject) => {
-      exec(`createdb -h ${process.env.DB_HOST} -U ${process.env.DB_USER} ${process.env.DB_NAME}`, 
-        { env: { PGPASSWORD: process.env.DB_PASSWORD } },
-        (error, stdout, stderr) => {
-          if (error) reject(error)
-          else resolve()
-        }
-      )
-    })
-    
-    await new Promise((resolve, reject) => {
-      const command = `pg_restore -h ${process.env.DB_HOST} -U ${process.env.DB_USER} -d ${process.env.DB_NAME} -F c ${filepath}`
-      exec(command, { env: { PGPASSWORD: process.env.DB_PASSWORD } }, (error, stdout, stderr) => {
-        if (error) {
-          console.error('恢复失败:', error)
-          reject(error)
-        } else {
-          console.log('恢复成功')
-          resolve()
-        }
-      })
-    })
-    
-    await pool.query(
-      `INSERT INTO restore_logs (backup_file, status, created_at)
-       VALUES ($1, 'success', NOW())`,
-      [backupFile]
-    )
-    
-    console.log('恢复完成')
-  } catch (error) {
-    await pool.query(
-      `INSERT INTO restore_logs (backup_file, status, error_message, created_at)
-       VALUES ($1, 'failed', $2, NOW())`,
-      [backupFile, error.message]
-    )
-    throw error
-  }
-}
-```
-
-### 6.3 备份日志表
-
-```sql
-CREATE TABLE backup_logs (
-  id SERIAL PRIMARY KEY,
-  type VARCHAR(20) NOT NULL,
-  filename VARCHAR(255) NOT NULL,
-  size BIGINT,
-  status VARCHAR(20) NOT NULL,
-  error_message TEXT,
-  cloud_url VARCHAR(500),
-  cloud_uploaded_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE restore_logs (
-  id SERIAL PRIMARY KEY,
-  backup_file VARCHAR(255) NOT NULL,
-  status VARCHAR(20) NOT NULL,
-  error_message TEXT,
-  restored_by INTEGER REFERENCES users(id),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-### 6.4 自动备份调度
-
-```javascript
-const cron = require('node-cron')
-
-function scheduleBackups() {
-  cron.schedule('0 2 * * *', async () => {
-    try {
-      const backupFile = await fullBackup()
-      await cloudBackup(backupFile)
-      await cleanupOldBackups()
-    } catch (error) {
-      console.error('自动备份失败:', error)
-    }
-  })
-  
-  cron.schedule('0 */4 * * *', async () => {
-    try {
-      await incrementalBackup()
-    } catch (error) {
-      console.error('增量备份失败:', error)
-    }
-  })
-  
-  console.log('备份调度已启动')
-}
-```
-
----
-
-## 七、完整架构设计
-
-### 7.1 功能模块
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                      功能模块架构                             │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
-│  │  用户管理    │  │  产品管理    │  │  客户管理    │  │
-│  │  - 注册登录  │  │  - CRUD操作  │  │  - CRUD操作  │  │
-│  │  - 角色权限  │  │  - 分类管理  │  │  - 联系人   │  │
-│  │  - 会话管理  │  │  - SKU管理   │  │  - 交易记录  │  │
-│  └──────────────┘  └──────────────┘  └──────────────┘  │
-│                                                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
-│  │  报价管理    │  │  成本管理    │  │  货币管理    │  │
-│  │  - 创建报价  │  │  - 成本录入  │  │  - 汇率管理  │  │
-│  │  - 导出Excel │  │  - 成本分析  │  │  - 默认货币  │  │
-│  │  - 版本控制  │  │  - 报表统计  │  │  - 历史记录  │  │
-│  └──────────────┘  └──────────────┘  └──────────────┘  │
-│                                                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
-│  │  团队协作    │  │  审计日志    │  │  系统设置    │  │
-│  │  - 团队管理  │  │  - 操作记录  │  │  - 参数配置  │  │
-│  │  - 权限分配  │  │  - 数据追踪  │  │  - 备份恢复  │  │
-│  │  - 数据共享  │  │  - 快照恢复  │  │  - 通知设置  │  │
-│  └──────────────┘  └──────────────┘  └──────────────┘  │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-### 7.2 安全架构
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                      安全防护体系                             │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                              │
-│  第1层：网络安全                                              │
-│  ├─ HTTPS/TLS 1.3                                          │
-│  ├─ DDoS防护（Cloudflare/阿里云DDoS）                       │
-│  ├─ WAF防火墙（SQL注入、XSS、CSRF防护）                      │
-│  └─ IP白名单/黑名单                                          │
-│                                                              │
-│  第2层：应用安全                                              │
-│  ├─ JWT认证（Access Token + Refresh Token）                     │
-│  ├─ 密码加密（bcrypt,10轮加盐）                             │
-│  ├─ 输入验证（express-validator）                              │
-│  ├─ XSS防护（xss-clean）                                     │
-│  ├─ SQL注入防护（参数化查询）                                │
-│  └─ CSRF防护（SameSite Cookie + CSRF Token）                    │
-│                                                              │
-│  第3层：数据安全                                              │
-│  ├─ 数据库加密（TDE透明数据加密）                            │
-│  ├─ 敏感字段加密（AES-256）                                │
-│  ├─ 数据脱敏（手机号、邮箱部分隐藏）                          │
-│  ├─ 访问控制（RBAC + ABAC）                                 │
-│  └─ 审计日志（所有操作记录）                                 │
-│                                                              │
-│  第4层：运维安全                                              │
-│  ├─ 定期备份（全量+增量）                                   │
-│  ├─ 异地备份（OSS对象存储）                                   │
-│  ├─ 灾难恢复（RTO < 1小时,RPO < 15分钟）                  │
-│  ├─ 安全监控（异常登录、异常操作告警）                           │
-│  └─ 漏洞扫描（定期安全扫描）                                 │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-### 7.3 部署架构
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    生产环境部署架构                            │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                              │
-│  ┌──────────────────────────────────────────────────────────┐    │
-│  │                  CDN层                            │    │
-│  │          (静态资源 + DDoS防护)                      │    │
-│  └────────────────────┬─────────────────────────────────────┘    │
-│                       │                                        │
-│  ┌────────────────────▼─────────────────────────────────────┐    │
-│  │               负载均衡器 (Nginx)               │    │
-│  │          SSL终止 + 反向代理                          │    │
-│  └────────────────────┬─────────────────────────────────────┘    │
-│                       │                                        │
-│          ┌──────────────┼──────────────┐                    │
-│          ▼              ▼              ▼                    │
-│  ┌───────────┐  ┌───────────┐  ┌───────────┐          │
-│  │  应用服务器1│  │  应用服务器2│  │  应用服务器3│          │
-│  │  Docker   │  │  Docker   │  │  Docker   │          │
-│  │  Node.js  │  │  Node.js  │  │  Node.js  │          │
-│  └─────┬─────┘  └─────┬─────┘  └─────┬─────┘          │
-│        │                │                │                      │
-│        └────────────────┴────────────────┘                      │
-│                       │                                        │
-│  ┌────────────────────▼─────────────────────────────────────┐    │
-│  │                  PostgreSQL主库                   │    │
-│  │              (读写分离 + 流复制)                       │    │
-│  └────────────────────┬─────────────────────────────────────┘    │
-│                       │                                        │
-│          ┌──────────────┼──────────────┐                    │
-│          ▼              ▼              ▼                    │
-│  ┌───────────┐  ┌───────────┐  ┌───────────┐          │
-│  │PostgreSQL从库│  │PostgreSQL从库│  │PostgreSQL从库│          │
-│  │  (只读查询) │  │  (只读查询) │  │  (只读查询) │          │
-│  └───────────┘  └───────────┘  └───────────┘          │
-│                                                              │
-│  ┌────────────────────▼─────────────────────────────────────┐    │
-│  │                    Redis缓存                      │    │
-│  │              (会话 + 热点数据)                       │    │
-│  └─────────────────────────────────────────────────────────────┘    │
-│                                                              │
-│  ┌────────────────────▼─────────────────────────────────────┐    │
-│  │                  对象存储 (OSS)                     │    │
-│  │              (备份文件 + 静态资源)                     │    │
-│  └─────────────────────────────────────────────────────────────┘    │
-│                                                              │
-│  ┌────────────────────▼─────────────────────────────────────┐    │
-│  │                监控告警系统                  │    │
-│  │      (Prometheus + Grafana + AlertManager)            │    │
-│  └─────────────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-### 7.4 性能优化
-
-#### 缓存策略
-
-```javascript
-const redis = require('redis')
-const client = redis.createClient({
-  host: process.env.REDIS_HOST,
-  port: process.env.REDIS_PORT || 6379,
-  password: process.env.REDIS_PASSWORD,
-})
-
-const cacheStrategies = {
-  userSession: {
-    ttl: 86400,
-    key: (userId) => `session:${userId}`,
-  },
-  productList: {
-    ttl: 3600,
-    key: (category) => `products:${category}`,
-  },
-  quoteData: {
-    ttl: 1800,
-    key: (quoteId) => `quote:${quoteId}`,
-  },
-  userPermissions: {
-    ttl: 7200,
-    key: (userId) => `permissions:${userId}`,
-  },
-}
-```
-
-### 7.5 监控指标
-
-```javascript
-const promClient = require('prom-client')
-
-const httpRequestDuration = new promClient.Histogram({
-  name: 'http_request_duration_seconds',
-  help: 'HTTP请求耗时',
-  labelNames: ['method', 'route', 'status_code'],
-})
-
-const httpRequestTotal = new promClient.Counter({
-  name: 'http_requests_total',
-  help: 'HTTP请求总数',
-  labelNames: ['method', 'route', 'status_code'],
-})
-
-const dbQueryDuration = new promClient.Histogram({
-  name: 'db_query_duration_seconds',
-  help: '数据库查询耗时',
-  labelNames: ['operation', 'table'],
-})
-
-const activeUsers = new promClient.Gauge({
-  name: 'active_users_total',
-  help: '活跃用户数',
-})
-```
-
----
-
-## 八、实施路线图
-
-### 阶段一：基础安全（2-3周）
-
-**Week 1-2:**
-- ✅ 实现用户认证系统
-- ✅ 添加JWT令牌管理
-- ✅ 配置HTTPS
-- ✅ 实现基础权限控制
-
-**Week 3:**
-- ✅ 添加输入验证
-- ✅ 实现SQL注入防护
-- ✅ 配置CORS
-- ✅ 添加速率限制
-
-### 阶段二：数据库迁移（3-4周）
-
-**Week 1-2:**
-- ✅ 设计PostgreSQL数据库结构
-- ✅ 创建数据库迁移脚本
-- ✅ 测试数据迁移
-- ✅ 配置连接池
-
-**Week 3-4:**
-- ✅ 迁移所有业务数据
-- ✅ 实现读写分离
-- ✅ 配置Redis缓存
-- ✅ 性能测试和优化
-
-### 阶段三：团队协作功能（2-3周）
-
-**Week 1-2:**
-- ✅ 实现团队管理
-- ✅ 添加数据权限控制
-- ✅ 实现数据共享功能
-- ✅ 添加审计日志系统
-
-**Week 3:**
-- ✅ 实现数据快照
-- ✅ 添加版本控制
-- ✅ 实现权限继承
-- ✅ 测试协作功能
-
-### 阶段四：备份恢复（1-2周）
-
-**Week 1:**
-- ✅ 实现自动备份
-- ✅ 配置云端存储
-- ✅ 添加备份调度
-- ✅ 实现恢复功能
-
-**Week 2:**
-- ✅ 实现时间点恢复
-- ✅ 添加备份监控
-- ✅ 测试恢复流程
-- ✅ 编写恢复文档
-
-### 阶段五：监控告警（1-2周）
-
-**Week 1:**
-- ✅ 集成Prometheus
-- ✅ 配置Grafana仪表板
-- ✅ 添加业务指标
-- ✅ 配置告警规则
-
-**Week 2:**
-- ✅ 配置通知渠道
-- ✅ 测试告警流程
-- ✅ 优化监控指标
-- ✅ 编写运维文档
-
----
-
-## 九、成本估算
-
-### 9.1 基础设施成本（月）
-
-| 项目 | 配置 | 价格（月） |
-|------|--------|-----------|
-| 云服务器（3台2核4G） | 2核4G × 3 | ¥600-900 |
-| PostgreSQL云数据库 | 主库+2从库 | ¥500-800 |
-| Redis缓存 | 2G | ¥200-300 |
-| 对象存储（1TB） | OSS标准存储 | ¥150-250 |
-| CDN加速 | 国内流量 | ¥100-200 |
-| 域名+SSL证书 | .com + Let's Encrypt | ¥20-50/年 |
-| 监控告警 | Prometheus + Grafana | ¥100-200 |
-| **月度总计** | | **¥1,670-2,650** |
-| **年度总计** | | **¥20,040-31,800** |
-
-### 9.2 人力成本（月）
-
-| 角色 | 人数 | 月薪 | 小计 |
-|------|------|-------|------|
-| 后端开发 | 1人 | ¥15,000-25,000 | ¥15,000-25,000 |
-| 前端开发 | 1人 | ¥15,000-25,000 | ¥15,000-25,000 |
-| 运维工程师 | 0.5人 | ¥16,000-24,000 | ¥8,000-12,000 |
-| 测试工程师 | 0.5人 | ¥12,000-20,000 | ¥6,000-10,000 |
-| **月度总计** | | | **¥44,000-72,000** |
-| **年度总计** | | | **¥528,000-864,000** |
-
-### 9.3 总成本汇总
-
-| 阶段 | 月度成本 | 年度成本 |
-|--------|---------|---------|
-| 基础设施 | ¥1,670-2,650 | ¥20,040-31,800 |
-| 人力成本 | ¥44,000-72,000 | ¥528,000-864,000 |
-| **总计** | **¥45,670-74,650** | **¥548,040-895,800** |
-
----
-
-## 十、风险评估
-
-### 10.1 技术风险
-
-| 风险项 | 概率 | 影响 | 应对措施 |
-|---------|--------|--------|----------|
-| 数据迁移失败 | 中 | 高 | 充分测试,保留回退方案 |
-| 性能不达标 | 中 | 中 | 提前压测,优化查询 |
-| 安全漏洞 | 低 | 高 | 定期扫描,及时修复 |
-| 并发冲突 | 中 | 中 | 读写分离,优化锁机制 |
-
-### 10.2 业务风险
-
-| 风险项 | 概率 | 影响 | 应对措施 |
-|---------|--------|--------|----------|
-| 用户接受度低 | 中 | 高 | 提前培训,收集反馈 |
-| 数据丢失 | 低 | 高 | 多重备份,异地存储 |
-| 系统宕机 | 中 | 高 | 高可用架构,自动切换 |
-| 合规问题 | 低 | 高 | 遵循法规,定期审计 |
-
-### 10.3 风险缓解策略
+### 7. 安全架构
+
+#### 认证安全
+- JWT Token (HS256 算法)
+- 密码 bcrypt 加密 (10轮)
+- Refresh Token 机制
+- 会话过期自动登出
 
 #### 数据安全
-- 实施多层加密
-- 定期安全审计
-- 建立应急响应机制
+- SQL 注入防护 (参数化查询)
+- XSS 防护 (helmet, xss-clean)
+- 输入验证 (express-validator)
+- 敏感信息脱敏
 
-#### 业务连续性
-- 建立灾备中心
-- 制定应急预案
-- 定期演练恢复流程
+#### 传输安全
+- HTTPS (生产环境)
+- CORS 白名单
+- 安全响应头
+- HSTS (Strict-Transport-Security)
 
-#### 合规管理
-- 遵循数据保护法规
-- 定期合规审计
-- 建立合规文档体系
+#### 权限控制
+- 角色权限 (admin/sales/foreign_trade)
+- 数据权限 (读/写/删除)
+- 操作审计 (audit_logs)
 
 ---
 
-## 附录
+### 8. 部署架构
 
-### A. 环境变量配置
+#### Docker Compose 部署
+```yaml
+services:
+  app:      # 应用服务 (端口 3001)
+  postgres: # 数据库服务 (端口 5432)
+  redis:    # 缓存服务 (端口 6379)
+```
 
+#### 构建流程
 ```bash
-# 数据库配置
+# 开发环境
+npm run dev       # 前端 (5174)
+npm run server    # 后端 (3001)
+npm start         # 同时运行前后端
+
+# 生产环境
+npm run build     # 构建静态文件
+node server.js    # 启动服务器
+
+# Docker 部署
+docker-compose up --build
+```
+
+#### 环境变量
+```env
+# 后端
+PORT=3001
+NODE_ENV=production
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=price_management
 DB_USER=postgres
-DB_PASSWORD=your_password
-
-# Redis配置
+DB_PASSWORD=postgres
 REDIS_HOST=localhost
 REDIS_PORT=6379
-REDIS_PASSWORD=your_redis_password
-
-# JWT配置
-JWT_SECRET=your_jwt_secret_key
-JWT_EXPIRES_IN=24h
+JWT_SECRET=your-secret-key
+JWT_EXPIRES_IN=7d
 JWT_REFRESH_EXPIRES_IN=7d
+ALLOWED_ORIGINS=http://localhost:5173
 
-# OSS配置
-OSS_REGION=oss-cn-hangzhou
-OSS_ACCESS_KEY_ID=your_access_key
-OSS_ACCESS_KEY_SECRET=your_secret_key
-OSS_BUCKET=your-bucket-name
-
-# CORS配置
-ALLOWED_ORIGINS=http://localhost:5173,https://yourdomain.com
-```
-
-### B. Docker配置示例
-
-```dockerfile
-# Dockerfile
-FROM node:18-alpine
-
-WORKDIR /app
-
-COPY package*.json ./
-RUN npm ci --only=production
-
-COPY . .
-
-EXPOSE 3001
-
-CMD ["node", "server/server.js"]
-```
-
-```yaml
-# docker-compose.yml
-version: '3.8'
-
-services:
-  app:
-    build: .
-    ports:
-      - "3001:3001"
-    environment:
-      - NODE_ENV=production
-      - DB_HOST=postgres
-      - REDIS_HOST=redis
-    depends_on:
-      - postgres
-      - redis
-
-  postgres:
-    image: postgres:14
-    environment:
-      - POSTGRES_DB=price_management
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-  redis:
-    image: redis:7-alpine
-    volumes:
-      - redis_data:/data
-
-volumes:
-  postgres_data:
-  redis_data:
-```
-
-### C. Nginx配置示例
-
-```nginx
-server {
-    listen 80;
-    server_name yourdomain.com;
-    return 301 https://$server_name$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name yourdomain.com;
-
-    ssl_certificate /etc/ssl/cert.pem;
-    ssl_certificate_key /etc/ssl/key.pem;
-    ssl_protocols TLSv1.2 TLSv1.3;
-
-    location / {
-        proxy_pass http://app:3001;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    location /static {
-        alias /app/static;
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-}
+# 前端 (Vite)
+VITE_API_BASE_URL=http://localhost:3001
 ```
 
 ---
 
-## 文档变更记录
+### 9. 性能优化
 
-| 版本 | 日期 | 变更内容 | 作者 |
-|--------|--------|----------|------|
-| v1.0 | 2026-02-19 | 初始版本,完整架构设计 | AI Assistant |
+#### 前端优化
+- 代码分割 (Vite 自动)
+- 懒加载 (React.lazy)
+- 虚拟滚动 (大列表)
+- 图片懒加载
+- 缓存策略 (localStorage)
+
+#### 后端优化
+- 数据库连接池 (pool)
+- Redis 缓存
+- 查询优化 (索引)
+- 分页查询
+- 批量操作
+
+#### 构建优化
+- Tree Shaking
+- 代码压缩
+- CSS 压缩
+- 资源优化
 
 ---
 
-**文档结束**
+### 10. 开发规范
+
+#### 代码风格
+- ES6+ 语法
+- 箭头函数
+- async/await
+- 模块化导入
+- 命名规范 (PascalCase 组件, camelCase 变量)
+
+#### 文件组织
+- 组件按功能分类
+- 样式就近原则
+- 工具函数独立文件
+- 常量集中管理
+
+#### API 设计
+- RESTful 风格
+- 统一响应格式
+- 错误码规范
+- 版本控制 (/api/v1)
+
+---
+
+## 技术亮点
+
+### 1. 双价格系统
+支持终端价和经销商价两种定价策略,适应不同客户类型。
+
+### 2. 成本计算器
+支持 8 种成本类型:
+- 打包费、陆运费、报关费、港杂费 (本地)
+- 海运费、保险费 (运输相关)
+- 目的港费用 (国外)
+
+### 3. 多货币支持
+- 人民币 (CNY)
+- 美元 (USD)
+- 欧元 (EUR)
+- 越南盾 (VND)
+- 实时汇率转换
+
+### 4. 运费模拟器
+- 10 个港口配置
+- 15 条运费路线
+- 支持 3 种集装箱类型
+- 实时价格计算
+
+### 5. 审计日志
+- 记录所有关键操作
+- 包含操作前后数据对比
+- IP 地址和 User Agent 记录
+
+### 6. Apple 风格 UI
+- 现代化设计语言
+- 毛玻璃效果
+- 流畅动画
+- 响应式布局
+
+---
+
+## 扩展性设计
+
+### 插件化架构
+- 模块化组件设计
+- 可配置的路由系统
+- 动态权限管理
+
+### API 扩展
+- RESTful 设计
+- 统一的中间件管道
+- 错误处理标准化
+
+### 数据库扩展
+- PostgreSQL 支持
+- Redis 缓存层
+- 连接池管理
+
+---
+
+## 维护指南
+
+### 日常运维
+1. 定期备份数据库
+2. 查看审计日志
+3. 监控服务器状态
+4. 清理过期会话
+
+### 故障排查
+1. 查看服务器日志
+2. 检查数据库连接
+3. 验证 Redis 连接
+4. 检查环境变量
+
+### 性能监控
+1. 数据库查询性能
+2. API 响应时间
+3. 内存使用情况
+4. Redis 缓存命中率
+
+---
+
+## 未来改进方向
+
+1. **微服务化**: 拆分独立服务
+2. **WebSocket**: 实时通知
+3. **GraphQL**: 更灵活的 API
+4. **微前端**: 模块化前端
+5. **CI/CD**: 自动化部署
+6. **监控告警**: Prometheus + Grafana
+7. **日志系统**: ELK Stack
+8. **单元测试**: Jest + React Testing Library

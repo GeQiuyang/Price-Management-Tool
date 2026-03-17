@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # ═══════════════════════════════════════════════════
-# Vector 报价管理工具 - 发行包打包脚本
+# QuoteFlow 报价管理工具 - 发行包打包脚本
 # 用法: bash package-release.sh
-# 产出: release/Vector-报价管理工具.zip
+# 产出: release/QuoteFlow-报价管理工具.zip
 # ═══════════════════════════════════════════════════
 
 set -e
@@ -11,12 +11,15 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
-RELEASE_NAME="Vector-报价管理工具"
+# 默认设置
+RELEASE_NAME="QuoteFlow-报价管理工具"
+VERSION=$(date +%Y%m%d)
+BASE_DIR=$(pwd)
 RELEASE_DIR="release"
 TEMP_DIR="$RELEASE_DIR/$RELEASE_NAME"
 
 echo "═══════════════════════════════════════════"
-echo "  📦 Vector 报价管理工具 - 打包发行版"
+echo "  📦 QuoteFlow 报价管理工具 - 打包发行版"
 echo "═══════════════════════════════════════════"
 echo ""
 
@@ -73,7 +76,7 @@ cd "$SCRIPT_DIR" || exit 1
 
 echo ""
 echo "═══════════════════════════════════════════"
-echo "  🚀 Vector 报价管理工具"
+echo "  🚀 QuoteFlow 报价管理工具"
 echo "═══════════════════════════════════════════"
 echo ""
 
@@ -122,11 +125,11 @@ chmod +x "$TEMP_DIR/停止.command"
 cat > "$TEMP_DIR/启动.bat" << 'WINEOF'
 @echo off
 chcp 65001 >nul
-title Vector 报价管理工具
+title QuoteFlow 报价管理工具
 
 echo.
 echo ═══════════════════════════════════════════
-echo   Vector 报价管理工具
+echo   QuoteFlow 报价管理工具
 echo ═══════════════════════════════════════════
 echo.
 
@@ -167,7 +170,7 @@ WINSTOPEOF
 # ─── 11. 创建说明文件 ───
 cat > "$TEMP_DIR/使用说明.txt" << 'READMEEOF'
 ═══════════════════════════════════════════════
-  Vector 报价管理工具 - 使用说明
+  QuoteFlow 报价管理工具 - 使用说明
 ═══════════════════════════════════════════════
 
 【环境要求】

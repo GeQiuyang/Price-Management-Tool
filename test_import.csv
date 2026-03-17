@@ -1,0 +1,3 @@
+name,category,price,dealer_price,description,sku
+"Test CSV Product","钻具类",111,99,"Imported via CSV","CSV-TEST-001"
+"300尖丝导管3米长3毫米厚","导管类",333,288,"Updated via CSV","300JSDG3030"

@@ -297,7 +297,7 @@ async function initDB() {
   const initSettings = db.exec('SELECT COUNT(*) as count FROM system_settings')
   if (initSettings[0]?.values[0]?.[0] === 0) {
     const defaults = [
-      ['companyName', 'Vector'],
+      ['companyName', 'QuoteFlow'],
       ['defaultCurrency', 'CNY'],
       ['language', 'zh-CN'],
       ['timezone', 'Asia/Shanghai'],

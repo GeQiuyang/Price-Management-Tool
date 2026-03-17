@@ -16,7 +16,8 @@ const app = express()
 const PORT = process.env.PORT || 3001
 
 app.use(cors())
-app.use(express.json())
+app.use(express.json({ limit: '10mb' }))
+app.use(express.urlencoded({ limit: '10mb', extended: true }))
 
 const dbPath = join(__dirname, 'database.db')
 
@@ -384,7 +385,7 @@ async function initDB() {
   const initSettings = db.exec('SELECT COUNT(*) as count FROM system_settings')
   if (initSettings[0]?.values[0]?.[0] === 0) {
     const defaults = [
-      ['companyName', 'Vector'],
+      ['companyName', 'QuoteFlow'],
       ['defaultCurrency', 'CNY'],
       ['language', 'zh-CN'],
       ['timezone', 'Asia/Shanghai'],
@@ -465,6 +466,7 @@ function verifyToken(token) {
   try {
     return jwt.verify(token, JWT_SECRET)
   } catch (error) {
+    console.error('JWT验证失败:', error.message)
     return null
   }
 }
@@ -989,6 +991,92 @@ app.get('/api/products/:id', (req, res) => {
     return res.status(404).json({ error: '产品不存在' })
   }
   res.json(product)
+})
+
+app.post('/api/products/batch-import', authenticateToken, (req, res) => {
+  const { products: importList } = req.body
+
+  if (!Array.isArray(importList)) {
+    return res.status(400).json({ error: '数据格式错误，期望数组' })
+  }
+
+  const results = {
+    total: importList.length,
+    updated: 0,
+    inserted: 0,
+    errors: 0,
+    details: []
+  }
+
+  try {
+    db.run('BEGIN TRANSACTION')
+    
+    for (const item of importList) {
+      try {
+        const { name, category, price, dealer_price, description, sku, status } = item
+        
+        if (!name || !category || price === undefined) {
+          results.errors++
+          results.details.push({ name: name || '未知', error: '缺少必要字段（名称、分类或价格）' })
+          continue
+        }
+
+        // 尝试通过 SKU 或 (名称 + 分类) 匹配
+        let existing = null
+        if (sku) {
+          existing = queryOne('SELECT id FROM products WHERE sku = ?', [sku])
+        }
+        
+        if (!existing) {
+          existing = queryOne('SELECT id FROM products WHERE name = ? AND category = ?', [name, category])
+        }
+
+        if (existing) {
+          db.run(
+            'UPDATE products SET price = ?, dealer_price = ?, description = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+            [price, dealer_price !== undefined ? dealer_price : null, description || '', status || 'active', existing.id]
+          )
+          results.updated++
+        } else {
+          const autoSku = sku || `P-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
+          db.run(
+            'INSERT INTO products (name, category, sku, price, dealer_price, description, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [name, category, autoSku, price, dealer_price || null, description || '', status || 'active']
+          )
+          results.inserted++
+        }
+      } catch (err) {
+        results.errors++
+        results.details.push({ name: item.name || '未知', error: err.message })
+      }
+    }
+
+    db.run('COMMIT')
+    saveDB()
+
+    createAuditLog(
+      req.user.id,
+      'batch_import',
+      'products',
+      null,
+      null,
+      { summary: results },
+      req
+    )
+
+    res.json({ success: true, data: results })
+  } catch (error) {
+    if (db) {
+      try { db.run('ROLLBACK') } catch (e) { /* ignore */ }
+    }
+    console.error('批量导入系统错误:', error)
+    res.status(500).json({ 
+      success: false,
+      error: '批量导入系统错误', 
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    })
+  }
 })
 
 app.post('/api/products', authenticateToken, (req, res) => {

@@ -642,28 +642,26 @@ export default function Warehouses() {
 
         {/* 分页控制区域 - 居中显示 */}
         {displayProducts.length > ITEMS_PER_PAGE && (
-          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '8px' }}>
-            <div style={styles.paginationWrap}>
-              <button
-                type="button"
-                style={{ ...styles.pageButton, ...(currentPage === 1 ? styles.pageButtonDisabled : {}) }}
-                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                disabled={currentPage === 1}
-              >
-                上一页
-              </button>
-              <div style={styles.pageInfo}>
-                第 {currentPage} / {totalPages} 页
-              </div>
-              <button
-                type="button"
-                style={{ ...styles.pageButton, ...(currentPage === totalPages ? styles.pageButtonDisabled : {}) }}
-                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-                disabled={currentPage === totalPages}
-              >
-                下一页
-              </button>
-            </div>
+          <div style={styles.paginationWrap}>
+             <button
+               type="button"
+               style={{ ...styles.pageButton, ...(currentPage === 1 ? styles.pageButtonDisabled : {}) }}
+               onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+               disabled={currentPage === 1}
+             >
+               上一页
+             </button>
+             <div style={styles.pageInfo}>
+               第 {currentPage} / {totalPages} 页
+             </div>
+             <button
+               type="button"
+               style={{ ...styles.pageButton, ...(currentPage === totalPages ? styles.pageButtonDisabled : {}) }}
+               onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+               disabled={currentPage === totalPages}
+             >
+               下一页
+             </button>
           </div>
         )}
       </div>
@@ -948,9 +946,12 @@ const styles = {
   },
   paginationWrap: {
     display: 'flex',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
     alignItems: 'center',
     gap: '12px',
+    width: '100%',
+    marginTop: '32px',
+    marginBottom: '8px',
   },
   pageInfo: {
     padding: '10px 14px',

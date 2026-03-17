@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Modal from '../components/Modal'
 import { API_URL } from '../lib/api'
+import * as XLSX from 'xlsx'
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem('token')
@@ -58,6 +59,10 @@ export default function Products() {
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [hoveredProductId, setHoveredProductId] = useState(null)
+  
+  const fileInputRef = useRef(null)
+  const [showResultModal, setShowResultModal] = useState(false)
+  const [resultData, setResultData] = useState({ title: '', message: '', type: 'success' })
   const [showModal, setShowModal] = useState(false)
   const [isClosing, setIsClosing] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
@@ -92,6 +97,129 @@ export default function Products() {
   useEffect(() => {
     setCurrentPage(1)
   }, [activeCategory, searchQuery])
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    const ext = file.name.split('.').pop().toLowerCase()
+    let productsToImport = []
+
+    try {
+      if (ext === 'json') {
+        const text = await file.text()
+        productsToImport = JSON.parse(text)
+      } else if (ext === 'csv' || ext === 'xlsx' || ext === 'xls') {
+        const data = await file.arrayBuffer()
+        const workbook = XLSX.read(data, { type: 'array' })
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]]
+        
+        // Convert to array of arrays to find identifying headers
+        const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
+        let headerIdx = 0
+        
+        // Search first 20 rows for "名称" or "价格" to find the header row
+        for (let i = 0; i < Math.min(rows.length, 20); i++) {
+          const row = rows[i]
+          if (row && Array.isArray(row) && row.some(cell => {
+            const val = String(cell || '').trim()
+            return val.includes('名称') || val.includes('单价') || val.includes('价格') || val.toLowerCase().includes('name')
+          })) {
+            headerIdx = i
+            break
+          }
+        }
+        
+        productsToImport = XLSX.utils.sheet_to_json(worksheet, { range: headerIdx })
+      } else {
+        alert('不支持的文件格式')
+        return
+      }
+
+      // Robust mapping/validation
+      const processed = productsToImport.map(p => {
+        // Case-insensitive key lookup
+        const getVal = (possibleKeys) => {
+          const key = Object.keys(p).find(k => {
+            const cleanK = k.toString().replace(/\s+/g, '').toLowerCase()
+            return possibleKeys.some(pk => {
+              const cleanPK = pk.replace(/\s+/g, '').toLowerCase()
+              // Try exact match, then substring match
+              return cleanK === cleanPK || cleanK.includes(cleanPK) || cleanPK.includes(cleanK)
+            })
+          })
+          return key ? p[key] : undefined
+        }
+
+        const name = getVal(['name', '产品名称', '名称', '产品名', '项目名称'])
+        const category = getVal(['category', '分类', '产品分类', '类别']) || activeCategory
+        const priceStr = getVal(['price', '价格', '终端价', '单价', '售价'])
+        const dealerPriceStr = getVal(['dealer_price', '经销商价', '拿货价', '同行价'])
+        const description = getVal(['description', '描述', '规格描述', '规格', '产品规格', '备注']) || ''
+        const sku = getVal(['sku', 'SKU', '货号', '编码'])
+        const status = getVal(['status', '状态']) || 'active'
+
+        const price = parseFloat(priceStr)
+        const dealer_price = dealerPriceStr ? parseFloat(dealerPriceStr) : null
+
+        return {
+          name: name ? String(name).trim() : null,
+          category: category ? String(category).trim() : activeCategory,
+          price: isNaN(price) ? undefined : price,
+          dealer_price: isNaN(dealer_price) ? null : dealer_price,
+          description: String(description).trim(),
+          sku: sku ? String(sku).trim() : null,
+          status: status ? String(status).trim() : 'active'
+        }
+      }).filter(p => p.name && p.price !== undefined)
+
+      if (processed.length === 0) {
+        console.warn('Import failed: No valid products found in:', productsToImport)
+        alert('未找到有效数据。请检查文件列名是否包含："名称"、"价格" 等必要字段。')
+        return
+      }
+
+      const response = await fetch(`${API_URL}/products/batch-import`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify({ products: processed })
+      })
+
+      const resData = await response.json()
+      if (resData.success) {
+        setResultData({
+          title: '导入成功',
+          message: `总计: ${resData.data.total}, 更新: ${resData.data.updated}, 新增: ${resData.data.inserted}, 错误: ${resData.data.errors}`,
+          type: 'success'
+        })
+        setShowResultModal(true)
+        fetchProducts()
+      } else {
+        if (response.status === 401 || response.status === 403) {
+          alert('身份认证过期，请重新登录')
+          localStorage.removeItem('token')
+          localStorage.removeItem('user')
+          window.location.href = '/login'
+          return
+        }
+        console.error('导入服务器返回错误:', resData)
+        const errorMsg = resData.message ? `${resData.error}\n详情: ${resData.message}` : (resData.error || '导入失败')
+        alert(errorMsg)
+      }
+    } catch (error) {
+      console.error('导入出错:', error)
+      alert('导入出错: ' + error.message)
+    } finally {
+      e.target.value = ''
+    }
+  }
 
   const fetchProducts = async () => {
     try {
@@ -519,17 +647,33 @@ export default function Products() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
             {!isReadOnly && (
-              <button
-                type="button"
-                style={styles.addButton}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleAdd();
-                }}
-              >
-                添加产品
-              </button>
+              <>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  style={{ display: 'none' }}
+                  accept=".xlsx, .xls, .json, .csv"
+                  onChange={handleFileChange}
+                />
+                <button
+                  type="button"
+                  style={{...styles.addButton, background: '#FFFFFF', color: '#111111', border: '1px solid #E2E8F0'}}
+                  onClick={handleImportClick}
+                >
+                  导入数据
+                </button>
+                <button
+                  type="button"
+                  style={styles.addButton}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleAdd();
+                  }}
+                >
+                  添加产品
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -607,29 +751,31 @@ export default function Products() {
         </table>
       </div>
 
-      {displayProducts.length > ITEMS_PER_PAGE && (
-        <div style={styles.paginationWrap}>
-          <button
-            type="button"
-            style={{ ...styles.pageButton, ...(currentPage === 1 ? styles.pageButtonDisabled : {}) }}
-            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-            disabled={currentPage === 1}
-          >
-            上一页
-          </button>
-          <div style={styles.pageInfo}>
-            第 {currentPage} / {totalPages} 页
+      <div style={{ marginTop: '32px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {displayProducts.length > ITEMS_PER_PAGE && (
+          <div style={styles.paginationWrap}>
+            <button
+              type="button"
+              style={{ ...styles.pageButton, ...(currentPage === 1 ? styles.pageButtonDisabled : {}) }}
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              disabled={currentPage === 1}
+            >
+              上一页
+            </button>
+            <div style={styles.pageInfo}>
+              第 {currentPage} / {totalPages} 页
+            </div>
+            <button
+              type="button"
+              style={{ ...styles.pageButton, ...(currentPage === totalPages ? styles.pageButtonDisabled : {}) }}
+              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+              disabled={currentPage === totalPages}
+            >
+              下一页
+            </button>
           </div>
-          <button
-            type="button"
-            style={{ ...styles.pageButton, ...(currentPage === totalPages ? styles.pageButtonDisabled : {}) }}
-            onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-            disabled={currentPage === totalPages}
-          >
-            下一页
-          </button>
-        </div>
-      )}
+        )}
+      </div>
 
       <Modal
         isOpen={showModal}
@@ -737,6 +883,40 @@ export default function Products() {
             </button>
             <button type="button" className="sf-btn sf-btn-confirm" onClick={confirmDelete}>
               确认删除
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showResultModal}
+        onClose={() => setShowResultModal(false)}
+        title={resultData.title}
+        width={400}
+        footer={null}
+      >
+        <div style={{ padding: '8px 4px 4px', textAlign: 'center' }}>
+          <div style={{ 
+            fontSize: '48px', 
+            marginBottom: '16px',
+            color: resultData.type === 'success' ? '#10b981' : resultData.type === 'error' ? '#ef4444' : '#f59e0b'
+          }}>
+            {resultData.type === 'success' ? '✓' : resultData.type === 'error' ? '✕' : '!'}
+          </div>
+          <p style={{ ...styles.confirmMessage, fontSize: '18px', fontWeight: '600' }}>
+            {resultData.title}
+          </p>
+          <p style={styles.confirmHint}>
+            {resultData.message}
+          </p>
+          <div style={{ ...styles.confirmActions, justifyContent: 'center', marginTop: '32px' }}>
+            <button 
+              type="button" 
+              className="sf-btn sf-btn-confirm" 
+              style={{ width: '120px' }}
+              onClick={() => setShowResultModal(false)}
+            >
+              知道了
             </button>
           </div>
         </div>
@@ -914,9 +1094,12 @@ const styles = {
   },
   paginationWrap: {
     display: 'flex',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
     alignItems: 'center',
     gap: '12px',
+    width: '100%',
+    marginTop: '32px',
+    marginBottom: '8px',
   },
   pageInfo: {
     padding: '10px 14px',

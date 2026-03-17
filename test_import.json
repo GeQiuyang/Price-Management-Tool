@@ -1,0 +1,18 @@
+[
+  {
+    "name": "Test JSON Product",
+    "category": "配件类",
+    "price": 222,
+    "dealer_price": 188,
+    "description": "Imported via JSON",
+    "sku": "JSON-TEST-001"
+  },
+  {
+    "name": "300尖丝导管1米长3毫米厚",
+    "category": "导管类",
+    "price": 255,
+    "dealer_price": 210,
+    "description": "Updated via JSON",
+    "sku": "300JSDG1030"
+  }
+]

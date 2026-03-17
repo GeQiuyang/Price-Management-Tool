@@ -96,7 +96,7 @@ function Login() {
       <div className="relative grid w-full max-w-6xl overflow-hidden rounded-[40px] border border-white/70 bg-white/[0.72] shadow-float backdrop-blur-2xl lg:grid-cols-[1.08fr_0.92fr]">
         <div className="hidden min-h-[760px] flex-col justify-between bg-[linear-gradient(180deg,#f8fafc_0%,#e9eef6_100%)] p-10 lg:flex">
           <div>
-            <p className="text-sm uppercase tracking-[0.32em] text-slate">Vector 价格管理平台</p>
+            <p className="text-sm uppercase tracking-[0.32em] text-slate">QuoteFlow 价格管理平台</p>
             <h1 className="mt-6 max-w-md text-[4.25rem] font-semibold leading-[0.95] tracking-[-0.07em] text-ink">
               Apple 风格的价格管理工作台。
             </h1>

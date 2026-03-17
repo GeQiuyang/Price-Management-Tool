@@ -37,7 +37,7 @@ export default function AppShell({ children, user }) {
           >
             <div className="mb-6 flex h-16 w-full items-center justify-start gap-3 px-5">
               <div className="flex flex-col text-left justify-center">
-                <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate/80 leading-none mb-1">Vector</span>
+                <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate/80 leading-none mb-1">QuoteFlow</span>
                 <span className="text-sm font-bold tracking-[-0.01em] text-ink leading-none whitespace-nowrap">报价管理平台</span>
               </div>
             </div>

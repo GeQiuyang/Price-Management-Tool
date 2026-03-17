@@ -8,7 +8,7 @@ import { API_URL } from '../lib/api'
 export default function SystemSettings() {
     const navigate = useNavigate()
     const [settings, setSettings] = useState({
-        companyName: 'Vector',
+        companyName: 'QuoteFlow',
         defaultCurrency: 'CNY',
         language: 'zh-CN',
         timezone: 'Asia/Shanghai',

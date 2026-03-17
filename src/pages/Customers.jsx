@@ -1,228 +1,7 @@
-import { useState, useEffect } from "react";
-import Modal from "../components/Modal";
-import { API_URL } from "../lib/api";
+import { useEffect, useState } from 'react'
+import { API_URL } from '../config'
 
-const modalAnimationStyles = `
-  @keyframes modalOverlayIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  @keyframes modalOverlayOut {
-    from { opacity: 1; }
-    to { opacity: 0; }
-  }
-  @keyframes modalSlideIn {
-    from { opacity: 0; transform: translateY(32px) scale(0.95); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-  }
-  @keyframes modalSlideOut {
-    from { opacity: 1; transform: translateY(0) scale(1); }
-    to { opacity: 0; transform: translateY(24px) scale(0.97); }
-  }
-`;
-
-const CUSTOMER_TYPES = ["终端", "经销商"];
-
-const COUNTRIES = [
-  "中国",
-  "马来西亚",
-  "新加坡",
-  "越南",
-  "印度尼西亚",
-  "泰国",
-  "澳大利亚",
-];
-
-const CITIES_BY_COUNTRY = {
-  中国: [
-    "北京",
-    "上海",
-    "广州",
-    "深圳",
-    "天津",
-    "重庆",
-    "成都",
-    "杭州",
-    "武汉",
-    "南京",
-    "苏州",
-    "西安",
-    "长沙",
-    "沈阳",
-    "青岛",
-    "郑州",
-    "大连",
-    "东莞",
-    "宁波",
-    "厦门",
-    "福州",
-    "无锡",
-    "合肥",
-    "昆明",
-    "哈尔滨",
-    "济南",
-    "佛山",
-    "长春",
-    "温州",
-    "石家庄",
-    "南宁",
-    "常州",
-    "泉州",
-    "南昌",
-    "贵阳",
-    "太原",
-    "烟台",
-    "嘉兴",
-    "南通",
-    "金华",
-    "珠海",
-    "惠州",
-    "徐州",
-    "海口",
-    "乌鲁木齐",
-    "绍兴",
-    "中山",
-    "台州",
-    "兰州",
-    "洛阳",
-    "潍坊",
-    "保定",
-    "镇江",
-    "扬州",
-    "桂林",
-    "唐山",
-    "三亚",
-    "湖州",
-    "呼和浩特",
-    "廊坊",
-    "银川",
-    "西宁",
-    "芜湖",
-    "漳州",
-    "连云港",
-    "淄博",
-    "衡阳",
-    "柳州",
-    "汕头",
-    "遵义",
-    "邯郸",
-    "江门",
-    "泰州",
-    "株洲",
-    "包头",
-    "威海",
-    "宜昌",
-    "鞍山",
-    "临沂",
-    "常德",
-    "咸阳",
-    "盐城",
-    "济宁",
-    "岳阳",
-    "湛江",
-    "秦皇岛",
-    "许昌",
-    "赣州",
-    "九江",
-    "新乡",
-    "德阳",
-    "绵阳",
-    "宜宾",
-    "南充",
-    "达州",
-    "襄阳",
-    "荆州",
-    "大庆",
-    "拉萨",
-  ],
-  马来西亚: [
-    "吉隆坡",
-    "槟城",
-    "新山",
-    "马六甲",
-    "怡保",
-    "亚庇",
-    "古晋",
-    "关丹",
-    "芙蓉",
-    "莎阿南",
-    "八打灵再也",
-    "梳邦再也",
-    "巴生",
-    "太平",
-    "民都鲁",
-    "诗巫",
-    "山打根",
-  ],
-  新加坡: ["新加坡"],
-  越南: [
-    "胡志明市",
-    "河内",
-    "海防",
-    "岘港",
-    "芽庄",
-    "头顿",
-    "顺化",
-    "大叻",
-    "富国岛",
-    "归仁",
-    "芹苴",
-    "太原",
-    "平阳",
-    "同奈",
-    "隆安",
-    "永福",
-  ],
-  印度尼西亚: [
-    "雅加达",
-    "泗水",
-    "万隆",
-    "棉兰",
-    "三宝垄",
-    "望加锡",
-    "巴淡",
-    "巨港",
-    "日惹",
-    "登巴萨",
-    "万鸦老",
-    "坤甸",
-    "巴厘巴板",
-    "马辰",
-    "北干巴鲁",
-  ],
-  泰国: [
-    "曼谷",
-    "清迈",
-    "普吉",
-    "芭提雅",
-    "素叻他尼",
-    "合艾",
-    "呵叻",
-    "孔敬",
-    "乌汶",
-    "清莱",
-    "罗勇",
-    "春武里",
-    "北柳",
-    "暖武里",
-    "巴吞他尼",
-  ],
-  澳大利亚: [
-    "悉尼",
-    "墨尔本",
-    "布里斯班",
-    "珀斯",
-    "阿德莱德",
-    "堪培拉",
-    "黄金海岸",
-    "纽卡斯尔",
-    "霍巴特",
-    "达尔文",
-    "凯恩斯",
-    "汤斯维尔",
-    "伍伦贡",
-  ],
-};
+const CUSTOMER_TYPES = ['终端', '经销商', '零售商', '外贸'];
 
 export default function Customers() {
   const [customers, setCustomers] = useState([]);
@@ -235,6 +14,7 @@ export default function Customers() {
   const fetchCustomers = async () => {
     try {
       const res = await fetch(`${API_URL}/customers`);
+      if (!res.ok) throw new Error('获取客户失败');
       const data = await res.json();
       setCustomers(data);
     } catch (err) {
@@ -243,7 +23,6 @@ export default function Customers() {
   };
 
   const [showModal, setShowModal] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [pendingDeleteCustomer, setPendingDeleteCustomer] = useState(null);
   const [formData, setFormData] = useState({
@@ -263,20 +42,17 @@ export default function Customers() {
       contact: "",
       deal_count: 0,
     });
-    setIsClosing(false);
     setShowModal(true);
   };
 
   const handleEdit = (customer) => {
     setEditingCustomer(customer);
     setFormData(customer);
-    setIsClosing(false);
     setShowModal(true);
   };
 
   const handleCloseModal = () => {
     setShowModal(false);
-    setIsClosing(false);
   };
 
   const handleDelete = (customer) => {
@@ -288,30 +64,25 @@ export default function Customers() {
       await fetch(`${API_URL}/recycle-bin`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          itemType: type,
-          itemId: item.id,
-          itemData: item,
-        }),
+        body: JSON.stringify({ item_type: type, item_data: item }),
       });
-      window.dispatchEvent(new CustomEvent("recycleBin-updated"));
-    } catch (error) {
-      console.error("添加到回收站失败:", error);
+    } catch (err) {
+      console.error("添加到回收站失败:", err);
     }
   };
 
   const confirmDelete = async () => {
     if (!pendingDeleteCustomer) return;
     try {
+      await addToRecycleBin(pendingDeleteCustomer, "customer");
       await fetch(`${API_URL}/customers/${pendingDeleteCustomer.id}`, {
         method: "DELETE",
       });
-      await addToRecycleBin(pendingDeleteCustomer, "customers");
-      setCustomers((prev) => prev.filter((c) => c.id !== pendingDeleteCustomer.id));
+      await fetchCustomers();
+      setPendingDeleteCustomer(null);
     } catch (err) {
-      console.error("删除失败:", err);
+      console.error("删除客户失败:", err);
     }
-    setPendingDeleteCustomer(null);
   };
 
   const handleSubmit = async (e) => {
@@ -344,12 +115,6 @@ export default function Customers() {
     }
   };
 
-  const handleCountryChange = (country) => {
-    setFormData({ ...formData, country, city: "" });
-  };
-
-  const availableCities = CITIES_BY_COUNTRY[formData.country] || [];
-
   return (
     <div style={styles.container}>
       <style>{modalAnimationStyles}</style>
@@ -368,8 +133,7 @@ export default function Customers() {
           <thead>
             <tr style={styles.tableHeader}>
               <th style={styles.th}>客户类型</th>
-              <th style={styles.th}>国家</th>
-              <th style={styles.th}>城市</th>
+              <th style={styles.th}>所处位置</th>
               <th style={styles.th}>联系方式</th>
               <th style={styles.thRight}>成交次数</th>
               <th style={styles.thAction}>操作</th>
@@ -403,8 +167,7 @@ export default function Customers() {
                     {customer.customer_type}
                   </span>
                 </td>
-                <td style={styles.td}>{customer.country}</td>
-                <td style={styles.td}>{customer.city}</td>
+                <td style={styles.td}>{customer.country} {customer.city}</td>
                 <td style={styles.tdSecondary}>{customer.contact}</td>
                 <td style={styles.tdRight}>
                   <span style={styles.dealBadge}>{customer.deal_count}</span>
@@ -460,42 +223,24 @@ export default function Customers() {
                 </select>
               </div>
 
-              <div style={styles.formRow}>
-                <div style={{ ...styles.formGroup, flex: 1 }}>
-                  <label style={styles.label}>国家</label>
-                  <select
-                    className="sf-input"
-                    value={formData.country}
-                    onChange={(e) =>
-                      handleCountryChange(e.target.value)
+              <div style={styles.formGroup}>
+                <label style={styles.label}>所处位置</label>
+                <input
+                  className="sf-input"
+                  value={formData.country + (formData.city ? ' ' + formData.city : '')}
+                  onChange={(e) => {
+                    const value = e.target.value.trim();
+                    const lastSpaceIndex = value.lastIndexOf(' ');
+                    if (lastSpaceIndex > 0) {
+                      const country = value.substring(0, lastSpaceIndex);
+                      const city = value.substring(lastSpaceIndex + 1);
+                      setFormData({ ...formData, country, city });
+                      return;
                     }
-                    required
-                  >
-                    {COUNTRIES.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div style={{ ...styles.formGroup, flex: 1 }}>
-                  <label style={styles.label}>城市</label>
-                  <select
-                    className="sf-input"
-                    value={formData.city}
-                    onChange={(e) =>
-                      setFormData({ ...formData, city: e.target.value })
-                    }
-                    required
-                  >
-                    <option value="">请选择城市</option>
-                    {availableCities.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                    setFormData({ ...formData, country: value, city: '' });
+                  }}
+                  placeholder="例如：中国 上海"
+                />
               </div>
 
               <div style={styles.formRow}>
@@ -559,7 +304,7 @@ export default function Customers() {
       >
         <div style={{ padding: "8px 4px 4px" }}>
           <p style={styles.confirmMessage}>确定要删除该客户吗？</p>
-          <p style={styles.confirmHint}>删除后数据将进入回收站,可在回收站中恢复或永久删除。</p>
+          <p style={styles.confirmHint}>删除后数据将进入回收站，可在回收站中恢复或永久删除。</p>
           <div style={styles.confirmActions}>
             <button type="button" className="sf-btn sf-btn-cancel" onClick={() => setPendingDeleteCustomer(null)}>
               取消
@@ -920,3 +665,77 @@ const styles = {
     boxShadow: '0 4px 16px rgba(65, 105, 225, 0.35)',
   },
 };
+
+const modalAnimationStyles = `
+  @keyframes modalFadeIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95) translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes toastSlideIn {
+    from {
+      opacity: 0;
+      transform: translateX(calc(100% + 24px));
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+`;
+
+function Modal({ isOpen, onClose, title, children, footer, width = 540 }) {
+  const [isClosing, setIsClosing] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsClosing(false);
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+      setIsClosing(false);
+    }, 200);
+  };
+
+  return (
+    <div style={styles.modalOverlay} onClick={handleClose}>
+      <div
+        style={{
+          ...styles.modal,
+          width: width,
+          animation: isClosing ? 'modalFadeOut 0.2s ease forwards' : 'modalFadeIn 0.2s ease forwards',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={styles.modalHeader}>
+          <h3 style={styles.modalTitle}>{title}</h3>
+        </div>
+        {children}
+        {footer && <div style={styles.modalButtons}>{footer}</div>}
+      </div>
+    </div>
+  );
+}
