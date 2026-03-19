@@ -101,7 +101,7 @@ function Login() {
               Apple 风格的价格管理工作台。
             </h1>
             <p className="mt-6 max-w-lg text-lg leading-8 text-slate">
-              以极简界面、超大字号和克制动效,重塑价格、海运费、报价与客户管理流程。
+              以极简界面、超大字号和克制动效,重塑价格、海运费、报价与系统管理流程。
             </p>
           </div>
           <div className="grid gap-4">

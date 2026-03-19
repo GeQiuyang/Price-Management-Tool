@@ -3,7 +3,6 @@ import Reveal from './Reveal'
 export default function HeroSection({ stats }) {
   const statItems = [
     { label: '已同步产品', value: stats.products },
-    { label: '服务客户', value: stats.customers },
   ]
 
   return (
@@ -13,10 +12,10 @@ export default function HeroSection({ stats }) {
         <Reveal className="mx-auto max-w-4xl text-center">
           <p className="mb-4 text-sm font-medium uppercase tracking-[0.4em] text-slate">业务总览</p>
           <h1 className="text-balance text-[3.5rem] font-semibold leading-[0.95] tracking-[-0.06em] text-ink md:text-[4.75rem] xl:text-[5.5rem]">
-            将价格管理、客户管理与报价流程集中到一个工作台。
+            将价格管理与报价流程集中到一个工作台。
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-balance text-lg leading-8 text-slate md:text-[1.75rem] md:leading-[1.35]">
-            在这里处理产品资料、客户档案、报价导出,以及系统设置、审计和备份恢复。
+            在这里处理产品资料、报价导出,以及系统设置、审计和备份恢复。
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <a href="#capabilities" className="apple-button-primary min-w-[154px]">
@@ -38,7 +37,7 @@ export default function HeroSection({ stats }) {
               <div className="mt-16 max-w-md">
                 <p className="text-sm text-white/68">核心数据</p>
                 <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] md:text-5xl">
-                  快速查看产品、客户与报价相关状态。
+                  快速查看产品与报价相关状态。
                 </h2>
               </div>
               <div className="mt-10 grid gap-4 sm:grid-cols-3">
@@ -57,7 +56,6 @@ export default function HeroSection({ stats }) {
                 <div className="mt-8 space-y-4">
                   {[
                     ['已录入产品', `${stats.products}`],
-                    ['已维护客户', `${stats.customers}`],
                   ].map(([label, value]) => (
                     <div key={label} className="flex items-center justify-between rounded-[22px] bg-[#f5f5f7] px-4 py-3">
                       <span className="text-sm text-slate">{label}</span>

@@ -4,8 +4,8 @@ import { Link, useLocation } from 'react-router-dom'
 const primaryNavItems = [
   { path: '/products', label: '产品管理' },
   { path: '/warehouses', label: '仓库管理' },
-  { path: '/customers', label: '客户管理' },
   { path: '/quote-generator', label: '报价中心' },
+  { path: '/product-docs', label: '产品文档' },
 ]
 
 const secondaryNavItems = [

@@ -2,7 +2,7 @@ export default function Footer() {
   const columns = [
     {
       title: '浏览',
-      items: ['产品管理', '客户管理', '报价中心', '系统设置'],
+      items: ['产品管理', '报价中心', '系统设置'],
     },
     {
       title: '运营',

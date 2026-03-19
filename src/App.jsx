@@ -2,13 +2,13 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Layout from './components/Layout'
 import Products from './pages/Products'
 import Warehouses from './pages/Warehouses'
-import Customers from './pages/Customers'
 import QuoteGenerator from './pages/QuoteGenerator'
 import SystemSettings from './pages/SystemSettings'
 import AuditLogs from './pages/AuditLogs'
 import BackupRestore from './pages/BackupRestore'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import ProductDocs from './pages/ProductDocs'
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem('token')
@@ -47,11 +47,11 @@ function App() {
                 <Route path="/" element={<Navigate to="/products" replace />} />
                 <Route path="/products" element={<Products />} />
                 <Route path="/warehouses" element={<Warehouses />} />
-                <Route path="/customers" element={<Customers />} />
                 <Route path="/quote-generator" element={<QuoteGenerator />} />
                 <Route path="/system-settings" element={<SystemSettings />} />
                 <Route path="/audit-logs" element={<AuditLogs />} />
                 <Route path="/backup-restore" element={<BackupRestore />} />
+                <Route path="/product-docs" element={<ProductDocs />} />
               </Routes>
             </Layout>
           </ProtectedRoute>

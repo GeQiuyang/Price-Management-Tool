@@ -55,18 +55,6 @@ async function initDB() {
     // 列已存在则忽略
   }
 
-  db.run(`
-    CREATE TABLE IF NOT EXISTS customers (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      customer_type TEXT NOT NULL,
-      country TEXT NOT NULL,
-      city TEXT NOT NULL,
-      contact TEXT,
-      deal_count INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `)
 
   db.run(`
     CREATE TABLE IF NOT EXISTS currencies (
@@ -368,19 +356,6 @@ async function initDB() {
     })
   }
 
-  const initCustomers = db.exec('SELECT COUNT(*) as count FROM customers')
-  if (initCustomers[0]?.values[0]?.[0] === 0) {
-    const defaultCustomers = [
-      ['终端', '中国', '上海', '13800138001', 12],
-      ['经销商', '马来西亚', '吉隆坡', '+60-123456789', 8],
-      ['终端', '越南', '胡志明市', '+84-901234567', 5],
-      ['经销商', '中国', '广州', '13900139002', 20],
-    ]
-
-    defaultCustomers.forEach(c => {
-      db.run('INSERT INTO customers (customer_type, country, city, contact, deal_count) VALUES (?, ?, ?, ?, ?)', c)
-    })
-  }
 
   const initSettings = db.exec('SELECT COUNT(*) as count FROM system_settings')
   if (initSettings[0]?.values[0]?.[0] === 0) {
@@ -1262,60 +1237,6 @@ app.delete('/api/warehouse-products/:id', authenticateToken, (req, res) => {
   res.json({ message: '删除成功' })
 })
 
-app.get('/api/customers', (req, res) => {
-  const customers = queryAll('SELECT * FROM customers ORDER BY id DESC')
-  res.json(customers)
-})
-
-app.post('/api/customers', (req, res) => {
-  const { customer_type, country, city, contact, deal_count } = req.body
-
-  try {
-    const result = runSQL(
-      'INSERT INTO customers (customer_type, country, city, contact, deal_count) VALUES (?, ?, ?, ?, ?)',
-      [customer_type, country, city, contact, deal_count || 0]
-    )
-
-    const newCustomer = queryOne('SELECT * FROM customers WHERE id = ?', [result.lastInsertRowid])
-    res.status(201).json(newCustomer)
-  } catch (error) {
-    res.status(500).json({ error: '创建客户失败' })
-  }
-})
-
-app.put('/api/customers/:id', (req, res) => {
-  const { customer_type, country, city, contact, deal_count } = req.body
-
-  try {
-    db.run(
-      'UPDATE customers SET customer_type = ?, country = ?, city = ?, contact = ?, deal_count = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [customer_type, country, city, contact, deal_count, req.params.id]
-    )
-    saveDB()
-
-    const updatedCustomer = queryOne('SELECT * FROM customers WHERE id = ?', [req.params.id])
-    if (!updatedCustomer) {
-      return res.status(404).json({ error: '客户不存在' })
-    }
-
-    res.json(updatedCustomer)
-  } catch (error) {
-    res.status(500).json({ error: '更新客户失败' })
-  }
-})
-
-app.delete('/api/customers/:id', (req, res) => {
-  const customer = queryOne('SELECT * FROM customers WHERE id = ?', [req.params.id])
-
-  if (!customer) {
-    return res.status(404).json({ error: '客户不存在' })
-  }
-
-  db.run('DELETE FROM customers WHERE id = ?', [req.params.id])
-  saveDB()
-
-  res.json({ message: '删除成功' })
-})
 
 app.get('/api/currencies', (req, res) => {
   const currencies = queryAll('SELECT * FROM currencies ORDER BY is_default DESC, id DESC')

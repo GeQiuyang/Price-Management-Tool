@@ -9,7 +9,6 @@ const API_URL = 'http://localhost:3001/api'
 
 const defaultStats = {
   products: 0,
-  customers: 0,
 }
 
 export default function Dashboard() {
@@ -18,14 +17,10 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [products, customers] = await Promise.all([
-          fetch(`${API_URL}/products`).then((response) => response.json()),
-          fetch(`${API_URL}/customers`).then((response) => response.json()),
-        ])
+        const products = await fetch(`${API_URL}/products`).then((response) => response.json())
 
         setStats({
           products: Array.isArray(products) ? products.length : 0,
-          customers: Array.isArray(customers) ? customers.length : 0,
         })
       } catch (error) {
         console.error('Failed to fetch dashboard stats:', error)
@@ -42,13 +37,6 @@ export default function Dashboard() {
       description: `维护 ${stats.products} 条有效产品记录,统一管理名称、规格、价格与经销商价。`,
       href: '/products',
       visual: 'bg-[radial-gradient(circle_at_top_left,rgba(0,113,227,0.16),transparent_35%),linear-gradient(180deg,#ffffff_0%,#eef2f7_100%)]',
-    },
-    {
-      kicker: '客户关系',
-      title: '客户管理',
-      description: `查看 ${stats.customers} 条客户档案,管理客户类型、国家城市、联系方式和成交次数。`,
-      href: '/customers',
-      visual: 'bg-[linear-gradient(135deg,rgba(17,17,17,0.92)_0%,rgba(38,42,51,1)_100%)]',
     },
     {
       kicker: '系统治理',
