@@ -854,7 +854,7 @@ export default function QuoteGenerator() {
         }
 
         // Build AOA: Row0=title, Row1=date, Row2=header, Row3+=data, last=total
-        const headers = ['产品名称', '产品规格', '单价', '数量', '合计']
+        const headers = ['产品名称', '产品规格', '数量', '单位', '单价', '合计']
         const noticeText = "购买须知：\n1.此报价单具有合同效力,买卖双方需严格对待约定事项；\n2.由于行业特殊性,此报价单不含税、不含运费；\n3.买方收货时,需检查产品外观、核对数量。如物流原因造成产品短缺、货物变形,应第一时间联系卖方及物流协商解决。买方收到后,第一时间使用或者使用前务必对导管进行试压测试,如发现漏水现象,拍视频并及时联系本公司调换。如未试压先使用,则不予调换；\n4.买方需认真对待清单,如因质量问题以外原因产生损失,损失由买方承担。"
         const aoa = [
             ['江南管业报价单'],
@@ -863,29 +863,30 @@ export default function QuoteGenerator() {
             ...activeItems.map(item => [
                 item.name,
                 (item.description || '').replace(/[,，]?\s*重量\d+(\.\d+)?kg/gi, ''),
-                item.price,
                 item.quantity,
+                '',
+                item.price,
                 item.price * item.quantity,
             ]),
-            ['', '', '', '总计', totalAmount],
+            ['', '', '', '', '总计', totalAmount],
             [noticeText],
         ]
 
         const ws = XLSX.utils.aoa_to_sheet(aoa)
         const range = XLSX.utils.decode_range(ws['!ref'])
-        // Ensure range covers 5 columns (A-E)
-        if (range.e.c < 4) range.e.c = 4
+        // Ensure range covers 6 columns (A-F)
+        if (range.e.c < 5) range.e.c = 5
         ws['!ref'] = XLSX.utils.encode_range(range)
 
-        // --- Row 0: Title (merged A1:E1) ---
-        ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } }]
+        // --- Row 0: Title (merged A1:F1) ---
+        ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 5 } }]
         const titleStyle = {
             font: { name: '\u9ED1\u4F53', sz: 36 },
             alignment: { horizontal: 'center', vertical: 'center', wrapText: false },
             border,
         }
         ws['A1'] = { v: '\u6C5F\u5357\u7BA1\u4E1A\u62A5\u4EF7\u5355', t: 's', s: titleStyle }
-        for (let c = 1; c <= 4; c++) {
+        for (let c = 1; c <= 5; c++) {
             const ref = XLSX.utils.encode_cell({ r: 0, c })
             ws[ref] = { v: '', t: 's', s: { border } }
         }
@@ -899,7 +900,7 @@ export default function QuoteGenerator() {
             border,
         }
         ws['A2'] = { v: dateStr, t: 's', s: dateStyle }
-        for (let c = 1; c <= 4; c++) {
+        for (let c = 1; c <= 5; c++) {
             const ref = XLSX.utils.encode_cell({ r: 1, c })
             if (!ws[ref]) ws[ref] = { v: '', t: 's' }
             ws[ref].s = { font: { name: '\u9ED1\u4F53', sz: 26 }, border }
@@ -919,7 +920,7 @@ export default function QuoteGenerator() {
         const noticeR = range.e.r
         for (let R = 2; R <= noticeR; R++) {
             const isNoticeRow = R === noticeR
-            for (let C = 0; C <= 4; C++) {
+            for (let C = 0; C <= 5; C++) {
                 const ref = XLSX.utils.encode_cell({ r: R, c: C })
                 if (!ws[ref]) ws[ref] = { v: '', t: 's' }
                 
@@ -930,7 +931,7 @@ export default function QuoteGenerator() {
                         border
                     }
                 } else if (C >= 2) {
-                    // 单价(C=2)、数量(C=3)、合计(C=4) 左对齐
+                    // 数量(C=2)、单位(C=3)、单价(C=4)、合计(C=5) 左对齐
                     ws[ref].s = { ...dataStyleLeft }
                 } else {
                     ws[ref].s = { ...dataStyle }
@@ -940,7 +941,7 @@ export default function QuoteGenerator() {
 
         // --- Handle notice row merge ---
         if (!ws['!merges']) ws['!merges'] = []
-        ws['!merges'].push({ s: { r: noticeR, c: 0 }, e: { r: noticeR, c: 4 } })
+        ws['!merges'].push({ s: { r: noticeR, c: 0 }, e: { r: noticeR, c: 5 } })
 
         // --- Row heights ---
         ws['!rows'] = [{ hpt: 37 }, { hpt: 37 }]
@@ -953,8 +954,9 @@ export default function QuoteGenerator() {
         ws['!cols'] = [
             { wpx: 200 }, // 产品名称
             { wpx: 300 }, // 产品规格
-            { wpx: 100 }, // 单价
             { wpx: 80 },  // 数量
+            { wpx: 80 },  // 单位
+            { wpx: 100 }, // 单价
             { wpx: 120 }, // 合计
         ]
 
