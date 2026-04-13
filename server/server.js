@@ -9,7 +9,7 @@ import bcrypt from 'bcryptjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
-const projectRoot = join(__dirname, '..')
+const projectRoot = process.env.APP_ROOT || join(__dirname, '..')
 const distPath = join(projectRoot, 'dist')
 
 const app = express()
@@ -19,7 +19,23 @@ app.use(cors())
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ limit: '10mb', extended: true }))
 
-const dbPath = join(__dirname, 'database.db')
+// Electron 环境下，数据库存到用户数据目录（.app 内部是只读的）
+const isElectron = process.env.ELECTRON === '1'
+let dbDir = __dirname
+if (isElectron) {
+  const userDataDir = join(
+    process.env.HOME || process.env.USERPROFILE,
+    'Library',
+    'Application Support',
+    'QuoteFlow'
+  )
+  if (!fs.existsSync(userDataDir)) {
+    fs.mkdirSync(userDataDir, { recursive: true })
+  }
+  dbDir = userDataDir
+}
+const dbPath = join(dbDir, 'database.db')
+
 
 let db
 
@@ -2049,6 +2065,10 @@ if (fs.existsSync(distPath)) {
 initDB().then(() => {
   app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`)
+    // 通知 Electron 父进程服务器已就绪
+    if (process.send) {
+      process.send('server-ready')
+    }
   })
 }).catch(err => {
   console.error('Failed to initialize database:', err)

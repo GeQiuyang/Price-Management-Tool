@@ -1,8 +1,9 @@
 {
   "name": "price-management-tool",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite --port 5174",
     "server": "node server/server.js",
@@ -11,7 +12,9 @@
     "build": "vite build",
     "package:local": "npm run build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "electron:dev": "npm run build && electron .",
+    "electron:build": "npm run build && electron-builder --mac"
   },
   "dependencies": {
     "@uiw/react-md-editor": "^4.0.11",
@@ -33,6 +36,8 @@
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.27",
     "concurrently": "^9.2.1",
+    "electron": "^35.0.1",
+    "electron-builder": "^26.0.12",
     "eslint": "^9.15.0",
     "eslint-plugin-react": "^7.37.2",
     "eslint-plugin-react-hooks": "^5.0.0",
@@ -40,5 +45,38 @@
     "postcss": "^8.5.8",
     "tailwindcss": "^3.4.17",
     "vite": "^6.0.1"
+  },
+  "build": {
+    "appId": "com.quoteflow.app",
+    "productName": "QuoteFlow",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "asar": false,
+    "files": [
+      "dist/**/*",
+      "server/server.js",
+      "electron/**/*",
+      "package.json",
+      "node_modules/**/*",
+      "!node_modules/.cache/**/*"
+    ],
+    "extraResources": [],
+    "mac": {
+      "category": "public.app-category.business",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["universal"]
+        }
+      ]
+    },
+    "dmg": {
+      "title": "QuoteFlow 报价管理工具",
+      "contents": [
+        { "x": 130, "y": 220 },
+        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
+      ]
+    }
   }
 }

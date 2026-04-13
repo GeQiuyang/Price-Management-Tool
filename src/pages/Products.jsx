@@ -790,7 +790,6 @@ export default function Products() {
             onKeyDown={(e) => {
               if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
                 e.preventDefault()
-                handleSubmit(e)
               }
             }}
           >
